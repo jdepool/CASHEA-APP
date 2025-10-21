@@ -81,18 +81,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const headers = jsonData[0] as string[];
+      const allHeaders = jsonData[0] as string[];
       
-      if (!headers || headers.length === 0) {
+      if (!allHeaders || allHeaders.length === 0) {
         return res.status(400).json({
           error: 'El archivo no contiene encabezados válidos'
         });
       }
 
+      const requiredHeaders = [
+        "Orden",
+        "Nombre del comprador",
+        "Venta total",
+        "Fecha de compra",
+        "Tipo orden",
+        "Estado pago inicial",
+        "Fecha cuota 1", "Cuota 1", "Pagado de cuota 1", "Estado cuota 1",
+        "Fecha cuota 2", "Cuota 2", "Pagado de cuota 2", "Estado cuota 2",
+        "Fecha cuota 3", "Cuota 3", "Pagado de cuota 3", "Estado cuota 3",
+        "Fecha cuota 4", "Cuota 4", "Pagado de cuota 4", "Estado cuota 4",
+        "Fecha cuota 5", "Cuota 5", "Pagado de cuota 5", "Estado cuota 5",
+        "Fecha cuota 6", "Cuota 6", "Pagado de cuota 6", "Estado cuota 6",
+        "Fecha cuota 7", "Cuota 7", "Pagado de cuota 7", "Estado cuota 7",
+        "Fecha cuota 8", "Cuota 8", "Pagado de cuota 8", "Estado cuota 8",
+        "Fecha cuota 9", "Cuota 9", "Pagado de cuota 9", "Estado cuota 9",
+        "Fecha cuota 10", "Cuota 10", "Pagado de cuota 10", "Estado cuota 10",
+        "Fecha cuota 11", "Cuota 11", "Pagado de cuota 11", "Estado cuota 11",
+        "Fecha cuota 12", "Cuota 12", "Pagado de cuota 12", "Estado cuota 12",
+        "Fecha cuota 13", "Cuota 13", "Pagado de cuota 13", "Estado cuota 13",
+        "Fecha cuota 14", "Cuota 14", "Pagado de cuota 14"
+      ];
+
+      const headerIndexMap = new Map<string, number>();
+      allHeaders.forEach((header, idx) => {
+        headerIndexMap.set(header, idx);
+      });
+
       const rows = jsonData.slice(1).map(row => {
         const rowObj: any = {};
-        headers.forEach((header, idx) => {
-          rowObj[header] = row[idx] !== undefined ? row[idx] : "";
+        requiredHeaders.forEach(header => {
+          const idx = headerIndexMap.get(header);
+          rowObj[header] = (idx !== undefined && row[idx] !== undefined) ? row[idx] : "";
         });
         return rowObj;
       });
@@ -100,7 +129,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         success: true,
         data: {
-          headers,
+          headers: requiredHeaders,
           rows,
           fileName: req.file.originalname,
           rowCount: rows.length,
