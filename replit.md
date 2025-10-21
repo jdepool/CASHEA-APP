@@ -4,6 +4,9 @@
 Aplicación web profesional para cargar y visualizar datos de órdenes de compra con pagos en cuotas. Permite importar archivos Excel y mostrar información detallada de hasta 14 cuotas de pago con sus estados, fechas y montos.
 
 ## Características Principales
+- ✅ **Persistencia en base de datos PostgreSQL**: Todos los datos se guardan automáticamente
+- ✅ **Datos persisten al cambiar de pestaña o refrescar**: No se pierde información
+- ✅ **Carga automática al iniciar**: La aplicación carga los últimos datos guardados
 - ✅ Carga de archivos Excel (.xlsx, .xls) mediante drag & drop o selección
 - ✅ Validación de archivos en frontend (tipo y tamaño) antes de cargar
 - ✅ Procesamiento robusto de archivos en el backend con manejo de errores
@@ -32,9 +35,20 @@ Aplicación web profesional para cargar y visualizar datos de órdenes de compra
 
 ### Backend
 - **Express.js** servidor HTTP
+- **PostgreSQL** base de datos (Neon) para persistencia
+- **Drizzle ORM** para gestión de base de datos
 - **Multer** para carga segura de archivos
 - **SheetJS (xlsx)** para parseo de Excel en servidor
 - Validación robusta con manejo de errores específicos
+
+### Base de Datos
+- **PostgreSQL** (Neon-backed) para almacenamiento persistente
+- **Tablas**:
+  - `orders`: Almacena datos de órdenes con columnas JSONB para headers y rows
+  - `payment_records`: Almacena registros de pagos con columnas JSONB para headers y rows
+  - `users`: Tabla de autenticación (no utilizada actualmente)
+- **Drizzle ORM** para type-safe database queries
+- **Migraciones**: Usando `npm run db:push` para sincronizar schema
 
 ### Componentes Principales
 - `FileUpload`: Componente de carga con validación y drag & drop
@@ -55,7 +69,7 @@ Aplicación web profesional para cargar y visualizar datos de órdenes de compra
 ## API Endpoints
 
 ### POST /api/upload-excel
-Procesa archivos Excel con datos de órdenes y cuotas, retorna datos estructurados con validación completa.
+Procesa archivos Excel con datos de órdenes y cuotas, retorna datos estructurados con validación completa. **Guarda los datos en la base de datos PostgreSQL**.
 
 **Request:**
 - Method: POST
@@ -75,6 +89,11 @@ Procesa archivos Excel con datos de órdenes y cuotas, retorna datos estructurad
 }
 ```
 
+**Persistencia:**
+- ✅ Datos se guardan automáticamente en la tabla `orders`
+- ✅ Sobrescribe el registro anterior (solo se mantiene la última carga)
+- ✅ Los datos persisten al refrescar o cambiar de pestaña
+
 **Error Responses:**
 - 400: Archivo inválido, muy grande, vacío, o sin encabezados
 - 500: Error inesperado al procesar
@@ -85,8 +104,32 @@ Procesa archivos Excel con datos de órdenes y cuotas, retorna datos estructurad
 - Verifica existencia de hojas de cálculo
 - Valida encabezados presentes
 
+### GET /api/orders
+Recupera la última orden cargada desde la base de datos.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "headers": ["Orden", "Nombre del comprador", ...],
+    "rows": [{ "Orden": "001", ... }],
+    "fileName": "ordenes.xlsx",
+    "rowCount": 150
+  }
+}
+```
+
+**Cuando no hay datos:**
+```json
+{
+  "success": true,
+  "data": null
+}
+```
+
 ### POST /api/upload-payment-records
-Procesa archivos Excel con registros de pagos realizados. **Acepta CUALQUIER encabezado** del archivo.
+Procesa archivos Excel con registros de pagos realizados. **Acepta CUALQUIER encabezado** del archivo. **Guarda los datos en la base de datos PostgreSQL**.
 
 **Request:**
 - Method: POST
@@ -111,6 +154,8 @@ Procesa archivos Excel con registros de pagos realizados. **Acepta CUALQUIER enc
 - ✅ **Sin validación de encabezados**: No requiere columnas específicas
 - ✅ **Retorna datos tal cual**: Headers y rows se retornan exactamente como están en el archivo
 - ✅ **Auto-detección de moneda**: Frontend detecta columnas con "VES" o "USD" y las formatea automáticamente
+- ✅ **Persistencia automática**: Datos se guardan en la tabla `payment_records`
+- ✅ **Sobrescribe registro anterior**: Solo se mantiene la última carga
 
 **Error Responses:**
 - 400: Archivo inválido, muy grande, vacío, o sin encabezados
@@ -121,6 +166,30 @@ Procesa archivos Excel con registros de pagos realizados. **Acepta CUALQUIER enc
 - Tipos permitidos: .xlsx, .xls
 - Verifica existencia de hojas de cálculo
 - Valida que existan encabezados (mínimo 1 columna)
+
+### GET /api/payment-records
+Recupera el último registro de pagos cargado desde la base de datos.
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "headers": ["Columna1", "Columna2", "..."],
+    "rows": [{ "Columna1": "valor1", ... }],
+    "fileName": "pagos.xlsx",
+    "rowCount": 50
+  }
+}
+```
+
+**Cuando no hay datos:**
+```json
+{
+  "success": true,
+  "data": null
+}
+```
 
 ## Sistema de Carga de Archivos
 

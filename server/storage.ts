@@ -44,16 +44,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createOrder(insertOrder: InsertOrder): Promise<Order> {
-    const [order] = await db
-      .insert(orders)
-      .values({
-        fileName: insertOrder.fileName,
-        headers: insertOrder.headers as any,
-        rows: insertOrder.rows as any,
-        rowCount: insertOrder.rowCount,
-      })
-      .returning();
-    return order;
+    // Use transaction to ensure atomic delete+insert
+    // If insert fails, delete is rolled back automatically
+    return await db.transaction(async (tx) => {
+      // Delete all existing orders
+      await tx.delete(orders);
+      
+      // Insert new order
+      const [order] = await tx
+        .insert(orders)
+        .values({
+          fileName: insertOrder.fileName,
+          headers: insertOrder.headers as any,
+          rows: insertOrder.rows as any,
+          rowCount: insertOrder.rowCount,
+        })
+        .returning();
+      
+      return order;
+    });
   }
 
   async getLatestOrder(): Promise<Order | undefined> {
@@ -66,16 +75,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPaymentRecord(insertPaymentRecord: InsertPaymentRecord): Promise<PaymentRecord> {
-    const [paymentRecord] = await db
-      .insert(paymentRecords)
-      .values({
-        fileName: insertPaymentRecord.fileName,
-        headers: insertPaymentRecord.headers as any,
-        rows: insertPaymentRecord.rows as any,
-        rowCount: insertPaymentRecord.rowCount,
-      })
-      .returning();
-    return paymentRecord;
+    // Use transaction to ensure atomic delete+insert
+    // If insert fails, delete is rolled back automatically
+    return await db.transaction(async (tx) => {
+      // Delete all existing payment records
+      await tx.delete(paymentRecords);
+      
+      // Insert new payment record
+      const [paymentRecord] = await tx
+        .insert(paymentRecords)
+        .values({
+          fileName: insertPaymentRecord.fileName,
+          headers: insertPaymentRecord.headers as any,
+          rows: insertPaymentRecord.rows as any,
+          rowCount: insertPaymentRecord.rowCount,
+        })
+        .returning();
+      
+      return paymentRecord;
+    });
   }
 
   async getLatestPaymentRecord(): Promise<PaymentRecord | undefined> {
