@@ -86,10 +86,11 @@ Procesa archivos Excel y retorna datos estructurados con validación completa.
 ## Vistas de la Aplicación
 
 ### 1. TODAS LAS ÓRDENES
-Vista principal que muestra la tabla completa con todas las órdenes y sus 62 columnas:
+Vista principal que muestra la tabla completa con todas las órdenes y sus columnas:
 - **Columnas de orden**: Orden, Nombre del comprador, Venta total, Fecha de compra, Tipo orden, Estado pago inicial
-- **Columnas de cuotas (1-14)**: Para cada cuota se muestran 4 columnas (Fecha cuota N, Cuota N, Pagado de cuota N, Estado cuota N)
+- **Columnas de cuotas (1-14)**: Para cada cuota se muestran 5 columnas (Fecha cuota N, Cuota N, Pagado de cuota N, Estado cuota N, Fecha de pago cuota N)
 - **Características**: Columnas fijas, scroll horizontal, formato automático
+- **Fechas de pago**: Cuando el Estado cuota es "Done", se muestra la fecha de pago debajo del badge de estado
 
 ### 2. CUOTAS SEMANAL
 Vista filtrada que muestra solo las cuotas programadas para la semana actual (lunes-domingo):
@@ -112,6 +113,7 @@ Para cada cuota (1-14):
 - **Cuota N**: Monto de la cuota
 - **Pagado de cuota N**: Monto pagado
 - **Estado cuota N**: Estado (Pagado/Pendiente/Vencido)
+- **Fecha de pago cuota N**: Fecha en que se realizó el pago (opcional, se muestra cuando Estado = Done)
 
 ## Validación y Manejo de Errores
 

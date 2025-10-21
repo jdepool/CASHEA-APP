@@ -11,12 +11,45 @@ interface DataTableProps {
 }
 
 export function DataTable({ data, headers }: DataTableProps) {
-  const formatValue = (value: any, header: string) => {
+  const formatValue = (value: any, header: string, row?: TableRow) => {
     if (value === null || value === undefined || value === "") {
       return "-";
     }
 
     if (header.toLowerCase().includes("estado")) {
+      // Check if this is a payment installment status (e.g., "Estado cuota 1")
+      const match = header.match(/Estado cuota (\d+)/i);
+      const isDone = String(value).toLowerCase() === 'done';
+      
+      if (match && isDone && row) {
+        const cuotaNumber = match[1];
+        const fechaPagoKey = `Fecha de pago cuota ${cuotaNumber}`;
+        const fechaPago = row[fechaPagoKey];
+        
+        if (fechaPago) {
+          const dateValue = typeof fechaPago === 'number' 
+            ? excelDateToJSDate(fechaPago) 
+            : new Date(fechaPago);
+          
+          if (!isNaN(dateValue.getTime())) {
+            const formattedDate = dateValue.toLocaleDateString('es-ES', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric'
+            });
+            
+            return (
+              <div className="flex flex-col gap-1">
+                <StatusBadge status={String(value)} />
+                <span className="text-xs text-muted-foreground">
+                  Pagado: {formattedDate}
+                </span>
+              </div>
+            );
+          }
+        }
+      }
+      
       return <StatusBadge status={String(value)} />;
     }
 
@@ -106,7 +139,7 @@ export function DataTable({ data, headers }: DataTableProps) {
                   style={colIdx === 0 ? { left: 0 } : colIdx === 1 ? { left: '120px' } : {}}
                   data-testid={`cell-${rowIdx}-${colIdx}`}
                 >
-                  {formatValue(row[header], header)}
+                  {formatValue(row[header], header, row)}
                 </td>
               ))}
             </tr>

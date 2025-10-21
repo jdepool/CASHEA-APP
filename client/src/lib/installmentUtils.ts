@@ -6,6 +6,7 @@ export interface Installment {
   numeroCuota: number;
   monto: number;
   estadoCuota: string;
+  fechaPago: Date | null;
 }
 
 /**
@@ -24,14 +25,17 @@ export function extractInstallments(tableData: any[]): Installment[] {
       const cuotaKey = `Cuota ${i}`;
       const pagadoKey = `Pagado de cuota ${i}`;
       const estadoCuotaKey = `Estado cuota ${i}`;
+      const fechaPagoKey = `Fecha de pago cuota ${i}`;
 
       const fechaCuotaValue = row[fechaCuotaKey];
       const montoValue = row[cuotaKey];
       const estadoValue = row[estadoCuotaKey];
+      const fechaPagoValue = row[fechaPagoKey];
 
       // Only include installments that have at least a date or amount
       if (fechaCuotaValue || montoValue) {
         const fechaCuota = parseExcelDate(fechaCuotaValue);
+        const fechaPago = parseExcelDate(fechaPagoValue);
         const monto = typeof montoValue === 'number' ? montoValue : parseFloat(String(montoValue || 0).replace(/[^0-9.-]/g, '')) || 0;
 
         installments.push({
@@ -40,6 +44,7 @@ export function extractInstallments(tableData: any[]): Installment[] {
           numeroCuota: i,
           monto,
           estadoCuota: estadoValue || "",
+          fechaPago,
         });
       }
     }

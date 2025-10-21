@@ -43,7 +43,7 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
                 Monto
               </th>
               <th className="text-left py-3 px-4 font-semibold text-sm" data-testid="header-estado">
-                Estado Cuota
+                Estado Cuota / Fecha de Pago
               </th>
             </tr>
           </thead>
@@ -67,7 +67,14 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
                   ${inst.monto.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </td>
                 <td className="py-3 px-4" data-testid={`cell-estado-${idx}`}>
-                  <StatusBadge status={inst.estadoCuota} />
+                  <div className="flex flex-col gap-1">
+                    <StatusBadge status={inst.estadoCuota} />
+                    {inst.estadoCuota.toLowerCase() === 'done' && inst.fechaPago && (
+                      <span className="text-xs text-muted-foreground">
+                        Pagado: {formatDate(inst.fechaPago)}
+                      </span>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
