@@ -90,10 +90,10 @@ export function PaymentRecords() {
   return (
     <div className="space-y-6">
       <div className="space-y-4">
-        <div>
-          <h3 className="text-lg font-semibold">Registro de Pagos de Cuotas</h3>
-          <p className="text-sm text-muted-foreground">
-            Carga archivos Excel con los pagos realizados
+        <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+          <h3 className="text-lg font-semibold text-primary">📋 Registro de Pagos de Cuotas</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            ⚠️ <strong>Importante:</strong> Esta es una zona de carga independiente. Carga aquí tu archivo Excel con los pagos realizados (NO uses la zona de carga principal arriba).
           </p>
         </div>
 

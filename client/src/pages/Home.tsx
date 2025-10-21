@@ -124,10 +124,10 @@ export default function Home() {
         <div className="space-y-6">
           <div>
             <h2 className="text-2xl font-semibold mb-2">
-              Carga de Archivo
+              Carga de Archivo de Órdenes
             </h2>
             <p className="text-muted-foreground">
-              Sube un archivo Excel con los datos de órdenes y cuotas de pago
+              Sube un archivo Excel con los datos de órdenes y cuotas de pago. Para cargar pagos realizados, usa la pestaña "PAGO DE CUOTAS"
             </p>
           </div>
 
