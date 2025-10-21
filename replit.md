@@ -41,6 +41,8 @@ Aplicación web profesional para cargar y visualizar datos de órdenes de compra
 - `DataTable`: Tabla optimizada con sticky columns y formato automático
 - `WeeklyPayments`: Vista semanal con resumen de ingresos esperados
 - `WeeklyPaymentsTable`: Tabla de cuotas de la semana con 5 columnas
+- `PaymentRecords`: Componente para carga y visualización de registros de pagos
+- `PaymentRecordsTable`: Tabla de registros de pago con 6 columnas y formato de monedas VES/USD
 - `StatusBadge`: Badges de estado con colores semánticos
 - `ThemeToggle`: Selector de tema con persistencia
 - `ThemeProvider`: Contexto global de tema
@@ -53,7 +55,7 @@ Aplicación web profesional para cargar y visualizar datos de órdenes de compra
 ## API Endpoints
 
 ### POST /api/upload-excel
-Procesa archivos Excel y retorna datos estructurados con validación completa.
+Procesa archivos Excel con datos de órdenes y cuotas, retorna datos estructurados con validación completa.
 
 **Request:**
 - Method: POST
@@ -69,6 +71,37 @@ Procesa archivos Excel y retorna datos estructurados con validación completa.
     "rows": [{ "Orden": "001", ... }],
     "fileName": "ordenes.xlsx",
     "rowCount": 150
+  }
+}
+```
+
+**Error Responses:**
+- 400: Archivo inválido, muy grande, vacío, o sin encabezados
+- 500: Error inesperado al procesar
+
+**Validaciones:**
+- Tamaño máximo: 10MB
+- Tipos permitidos: .xlsx, .xls
+- Verifica existencia de hojas de cálculo
+- Valida encabezados presentes
+
+### POST /api/upload-payment-records
+Procesa archivos Excel con registros de pagos realizados.
+
+**Request:**
+- Method: POST
+- Content-Type: multipart/form-data
+- Body: FormData con campo 'file' conteniendo archivo Excel de pagos
+
+**Success Response (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "headers": ["# Orden", "# Cuota Pagada", "Monto Pagado en VES", "# Referencia", "Monto Pagado en USD", "Metodo de Pago"],
+    "rows": [{ "# Orden": "001", "# Cuota Pagada": "1", ... }],
+    "fileName": "pagos.xlsx",
+    "rowCount": 50
   }
 }
 ```
@@ -99,7 +132,17 @@ Vista filtrada que muestra solo las cuotas programadas para la semana actual (lu
 - **Lógica**: Extrae las 14 cuotas de cada orden y filtra solo las que caen en la semana actual
 - **Ordenamiento**: Por fecha de cuota, luego por orden
 
+### 3. PAGO DE CUOTAS
+Vista independiente para registrar y visualizar los pagos realizados:
+- **Funcionalidad**: Carga de archivo Excel separado con registros de pagos
+- **Columnas**: # Orden, # Cuota Pagada, Monto Pagado en VES, # Referencia, Monto Pagado en USD, Metodo de Pago
+- **Formato de moneda**: VES (Bolívares) y USD (Dólares) con formato de moneda apropiado
+- **Características**: Upload independiente, tabla simple de 6 columnas, exportación a Excel
+- **Disponibilidad**: Accesible incluso sin datos de órdenes cargados
+
 ## Formato de Datos Esperado
+
+### Archivo de Órdenes y Cuotas
 El archivo Excel debe contener las siguientes columnas (en cualquier orden):
 - **Orden**: ID o número de orden
 - **Nombre del comprador**: Nombre del cliente
@@ -114,6 +157,15 @@ Para cada cuota (1-14):
 - **Pagado de cuota N**: Monto pagado
 - **Estado cuota N**: Estado (Pagado/Pendiente/Vencido)
 - **Fecha de pago cuota N**: Fecha en que se realizó el pago (opcional, se muestra cuando Estado = Done)
+
+### Archivo de Registros de Pagos
+El archivo Excel debe contener las siguientes columnas (en cualquier orden):
+- **# Orden**: Número de orden de compra
+- **# Cuota Pagada**: Número de cuota que se pagó (1-14)
+- **Monto Pagado en VES**: Monto pagado en Bolívares Venezolanos
+- **# Referencia**: Número de referencia de la transacción
+- **Monto Pagado en USD**: Monto pagado en Dólares Estadounidenses
+- **Metodo de Pago**: Método de pago utilizado (Transferencia, Efectivo, etc.)
 
 ## Validación y Manejo de Errores
 

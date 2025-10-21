@@ -4,6 +4,7 @@ import { DataTable } from "@/components/DataTable";
 import { EmptyState } from "@/components/EmptyState";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { WeeklyPayments } from "@/components/WeeklyPayments";
+import { PaymentRecords } from "@/components/PaymentRecords";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Download, FileSpreadsheet } from "lucide-react";
@@ -153,6 +154,9 @@ export default function Home() {
                 <TabsTrigger value="weekly" data-testid="tab-weekly">
                   CUOTAS SEMANAL
                 </TabsTrigger>
+                <TabsTrigger value="payments" data-testid="tab-payments">
+                  PAGO DE CUOTAS
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="all" className="space-y-4">
@@ -172,12 +176,30 @@ export default function Home() {
               <TabsContent value="weekly">
                 <WeeklyPayments tableData={tableData} />
               </TabsContent>
+
+              <TabsContent value="payments">
+                <PaymentRecords />
+              </TabsContent>
             </Tabs>
           )}
 
           {!isProcessing && !selectedFile && tableData.length === 0 && (
-            <EmptyState />
+            <>
+              <Tabs defaultValue="payments" className="space-y-4">
+                <TabsList data-testid="tabs-list-empty">
+                  <TabsTrigger value="payments" data-testid="tab-payments-empty">
+                    PAGO DE CUOTAS
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="payments">
+                  <PaymentRecords />
+                </TabsContent>
+              </Tabs>
+              <EmptyState />
+            </>
           )}
+
         </div>
       </main>
     </div>
