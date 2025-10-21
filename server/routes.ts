@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import multer from "multer";
 import * as XLSX from "xlsx";
+import { storage } from "./storage";
 
 // Normalize header for flexible matching
 function normalizeHeader(header: string): string {
@@ -114,6 +115,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalRows: jsonData.length - 1,
         rowCount: rows.length,
         firstRow: rows[0]
+      });
+
+      // Save to database
+      await storage.createPaymentRecord({
+        fileName: req.file.originalname,
+        headers: allHeaders,
+        rows,
+        rowCount: String(rows.length),
       });
 
       res.json({
@@ -235,6 +244,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return rowObj;
       });
 
+      // Save to database
+      await storage.createOrder({
+        fileName: req.file.originalname,
+        headers: requiredHeaders,
+        rows,
+        rowCount: String(rows.length),
+      });
+
       res.json({
         success: true,
         data: {
@@ -248,6 +265,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Error processing Excel file:', error);
       res.status(500).json({
         error: 'Error al procesar el archivo Excel',
+        details: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+
+  // GET endpoint to retrieve latest order data
+  app.get('/api/orders', async (req, res) => {
+    try {
+      const latestOrder = await storage.getLatestOrder();
+      
+      if (!latestOrder) {
+        return res.json({
+          success: true,
+          data: null
+        });
+      }
+
+      res.json({
+        success: true,
+        data: {
+          headers: latestOrder.headers,
+          rows: latestOrder.rows,
+          fileName: latestOrder.fileName,
+          rowCount: parseInt(latestOrder.rowCount, 10),
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      res.status(500).json({
+        error: 'Error al obtener las órdenes',
+        details: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+
+  // GET endpoint to retrieve latest payment records
+  app.get('/api/payment-records', async (req, res) => {
+    try {
+      const latestPaymentRecord = await storage.getLatestPaymentRecord();
+      
+      if (!latestPaymentRecord) {
+        return res.json({
+          success: true,
+          data: null
+        });
+      }
+
+      res.json({
+        success: true,
+        data: {
+          headers: latestPaymentRecord.headers,
+          rows: latestPaymentRecord.rows,
+          fileName: latestPaymentRecord.fileName,
+          rowCount: parseInt(latestPaymentRecord.rowCount, 10),
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching payment records:', error);
+      res.status(500).json({
+        error: 'Error al obtener los registros de pagos',
         details: error instanceof Error ? error.message : 'Error desconocido'
       });
     }

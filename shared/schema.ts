@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, jsonb, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -16,6 +16,40 @@ export const insertUserSchema = createInsertSchema(users).pick({
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+
+export const orders = pgTable("orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  fileName: text("file_name").notNull(),
+  headers: jsonb("headers").notNull().$type<string[]>(),
+  rows: jsonb("rows").notNull().$type<ExcelRow[]>(),
+  rowCount: text("row_count").notNull(),
+  uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
+});
+
+export const insertOrderSchema = createInsertSchema(orders).omit({
+  id: true,
+  uploadedAt: true,
+});
+
+export type InsertOrder = z.infer<typeof insertOrderSchema>;
+export type Order = typeof orders.$inferSelect;
+
+export const paymentRecords = pgTable("payment_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  fileName: text("file_name").notNull(),
+  headers: jsonb("headers").notNull().$type<string[]>(),
+  rows: jsonb("rows").notNull().$type<ExcelRow[]>(),
+  rowCount: text("row_count").notNull(),
+  uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
+});
+
+export const insertPaymentRecordSchema = createInsertSchema(paymentRecords).omit({
+  id: true,
+  uploadedAt: true,
+});
+
+export type InsertPaymentRecord = z.infer<typeof insertPaymentRecordSchema>;
+export type PaymentRecord = typeof paymentRecords.$inferSelect;
 
 export interface ExcelRow {
   [key: string]: any;

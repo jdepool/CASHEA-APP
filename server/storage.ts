@@ -1,38 +1,91 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import { 
+  type User, 
+  type InsertUser, 
+  type Order, 
+  type InsertOrder,
+  type PaymentRecord,
+  type InsertPaymentRecord,
+  users,
+  orders,
+  paymentRecords
+} from "@shared/schema";
+import { db } from "./db";
+import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  
+  createOrder(order: InsertOrder): Promise<Order>;
+  getLatestOrder(): Promise<Order | undefined>;
+  
+  createPaymentRecord(paymentRecord: InsertPaymentRecord): Promise<PaymentRecord>;
+  getLatestPaymentRecord(): Promise<PaymentRecord | undefined>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
-  }
-
+export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
     return user;
+  }
+
+  async createOrder(insertOrder: InsertOrder): Promise<Order> {
+    const [order] = await db
+      .insert(orders)
+      .values({
+        fileName: insertOrder.fileName,
+        headers: insertOrder.headers as any,
+        rows: insertOrder.rows as any,
+        rowCount: insertOrder.rowCount,
+      })
+      .returning();
+    return order;
+  }
+
+  async getLatestOrder(): Promise<Order | undefined> {
+    const [order] = await db
+      .select()
+      .from(orders)
+      .orderBy(desc(orders.uploadedAt))
+      .limit(1);
+    return order || undefined;
+  }
+
+  async createPaymentRecord(insertPaymentRecord: InsertPaymentRecord): Promise<PaymentRecord> {
+    const [paymentRecord] = await db
+      .insert(paymentRecords)
+      .values({
+        fileName: insertPaymentRecord.fileName,
+        headers: insertPaymentRecord.headers as any,
+        rows: insertPaymentRecord.rows as any,
+        rowCount: insertPaymentRecord.rowCount,
+      })
+      .returning();
+    return paymentRecord;
+  }
+
+  async getLatestPaymentRecord(): Promise<PaymentRecord | undefined> {
+    const [paymentRecord] = await db
+      .select()
+      .from(paymentRecords)
+      .orderBy(desc(paymentRecords.uploadedAt))
+      .limit(1);
+    return paymentRecord || undefined;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
