@@ -106,8 +106,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate that all required headers are present
       const missingHeaders = requiredHeaders.filter(header => !headerIndexMap.has(header));
       if (missingHeaders.length > 0) {
+        console.log('Headers found in file:', allHeaders);
+        console.log('Required headers:', requiredHeaders);
+        console.log('Missing headers:', missingHeaders);
         return res.status(400).json({
-          error: `El archivo no contiene todas las columnas requeridas. Faltan: ${missingHeaders.join(', ')}`
+          error: `El archivo no contiene todas las columnas requeridas. Faltan: ${missingHeaders.join(', ')}`,
+          foundHeaders: allHeaders,
+          missingHeaders: missingHeaders
         });
       }
 
