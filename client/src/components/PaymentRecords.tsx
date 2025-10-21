@@ -106,20 +106,20 @@ export function PaymentRecords() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-4">
-        <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-primary">📋 Registro de Pagos de Cuotas</h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            ⚠️ <strong>Importante:</strong> Esta es una zona de carga independiente. Carga aquí tu archivo Excel con los pagos realizados (NO uses la zona de carga principal arriba).
+    <div className="space-y-4">
+      <div className="space-y-3">
+        <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+          <h3 className="text-sm font-semibold text-primary">📋 Cargar Registro de Pagos</h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            Zona independiente para archivos de pagos realizados
           </p>
         </div>
 
         {uploadMutation.isPending ? (
-          <div className="flex items-center justify-center py-12 border-2 border-dashed rounded-md">
+          <div className="flex items-center justify-center py-8 border-2 border-dashed rounded-md">
             <div className="text-center">
-              <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-              <p className="text-sm text-muted-foreground">Procesando archivo...</p>
+              <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
+              <p className="text-xs text-muted-foreground">Procesando archivo...</p>
             </div>
           </div>
         ) : (

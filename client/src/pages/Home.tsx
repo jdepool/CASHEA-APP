@@ -141,23 +141,21 @@ export default function Home() {
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-6">
           {(selectedFile || tableData.length > 0) && (
-            <>
-              <div>
-                <h2 className="text-2xl font-semibold mb-2">
-                  Carga de Archivo de Órdenes
-                </h2>
-                <p className="text-muted-foreground">
-                  Sube un archivo Excel con los datos de órdenes y cuotas de pago
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-muted-foreground">
+                  Cargar nuevo archivo de órdenes:
                 </p>
               </div>
-
-              <FileUpload
-                onFileSelect={handleFileSelect}
-                selectedFile={selectedFile}
-                onClearFile={handleClearFile}
-                onInvalidFile={handleInvalidFile}
-              />
-            </>
+              <div className="flex-1">
+                <FileUpload
+                  onFileSelect={handleFileSelect}
+                  selectedFile={selectedFile}
+                  onClearFile={handleClearFile}
+                  onInvalidFile={handleInvalidFile}
+                />
+              </div>
+            </div>
           )}
 
           {isProcessing && (

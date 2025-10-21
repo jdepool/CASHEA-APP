@@ -95,18 +95,15 @@ export function FileUpload({ onFileSelect, selectedFile, onClearFile, onInvalidF
     >
       <label
         htmlFor="file-upload"
-        className="cursor-pointer block p-12 text-center"
+        className="cursor-pointer block p-4 text-center"
         data-testid="label-upload-zone"
       >
-        <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-        <p className="text-lg font-medium mb-2">
-          Arrastra tu archivo Excel aquí
-        </p>
-        <p className="text-sm text-muted-foreground mb-4">
-          o haz clic para seleccionar
+        <Upload className="mx-auto h-6 w-6 text-muted-foreground mb-2" />
+        <p className="text-sm font-medium mb-1">
+          Arrastra tu archivo Excel aquí o haz clic para seleccionar
         </p>
         <p className="text-xs text-muted-foreground">
-          Formatos soportados: .xlsx, .xls
+          Formatos: .xlsx, .xls (máx 10MB)
         </p>
         <input
           id="file-upload"
