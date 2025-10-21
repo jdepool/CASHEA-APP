@@ -122,21 +122,25 @@ export default function Home() {
 
       <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-6">
-          <div>
-            <h2 className="text-2xl font-semibold mb-2">
-              Carga de Archivo de Órdenes
-            </h2>
-            <p className="text-muted-foreground">
-              Sube un archivo Excel con los datos de órdenes y cuotas de pago. Para cargar pagos realizados, usa la pestaña "PAGO DE CUOTAS"
-            </p>
-          </div>
+          {(selectedFile || tableData.length > 0) && (
+            <>
+              <div>
+                <h2 className="text-2xl font-semibold mb-2">
+                  Carga de Archivo de Órdenes
+                </h2>
+                <p className="text-muted-foreground">
+                  Sube un archivo Excel con los datos de órdenes y cuotas de pago
+                </p>
+              </div>
 
-          <FileUpload
-            onFileSelect={handleFileSelect}
-            selectedFile={selectedFile}
-            onClearFile={handleClearFile}
-            onInvalidFile={handleInvalidFile}
-          />
+              <FileUpload
+                onFileSelect={handleFileSelect}
+                selectedFile={selectedFile}
+                onClearFile={handleClearFile}
+                onInvalidFile={handleInvalidFile}
+              />
+            </>
+          )}
 
           {isProcessing && (
             <div className="text-center py-8">
@@ -184,20 +188,48 @@ export default function Home() {
           )}
 
           {!isProcessing && !selectedFile && tableData.length === 0 && (
-            <>
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-semibold mb-2">
+                  Bienvenido al Gestor de Cuotas
+                </h2>
+                <p className="text-muted-foreground">
+                  Selecciona qué tipo de archivo deseas cargar
+                </p>
+              </div>
+
               <Tabs defaultValue="payments" className="space-y-4">
                 <TabsList data-testid="tabs-list-empty">
                   <TabsTrigger value="payments" data-testid="tab-payments-empty">
                     PAGO DE CUOTAS
+                  </TabsTrigger>
+                  <TabsTrigger value="orders" data-testid="tab-orders-empty">
+                    ÓRDENES Y CUOTAS
                   </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="payments">
                   <PaymentRecords />
                 </TabsContent>
+
+                <TabsContent value="orders">
+                  <div className="space-y-4">
+                    <div className="bg-muted/50 border rounded-lg p-4">
+                      <h3 className="text-lg font-semibold mb-2">📦 Cargar Órdenes y Cuotas</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Carga aquí tu archivo Excel con los datos de órdenes de compra y sus cuotas programadas
+                      </p>
+                    </div>
+                    <FileUpload
+                      onFileSelect={handleFileSelect}
+                      selectedFile={selectedFile}
+                      onClearFile={handleClearFile}
+                      onInvalidFile={handleInvalidFile}
+                    />
+                  </div>
+                </TabsContent>
               </Tabs>
-              <EmptyState />
-            </>
+            </div>
           )}
 
         </div>
