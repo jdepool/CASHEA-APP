@@ -16,3 +16,14 @@ export const insertUserSchema = createInsertSchema(users).pick({
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+
+export interface ExcelRow {
+  [key: string]: any;
+}
+
+export interface ParsedExcelData {
+  headers: string[];
+  rows: ExcelRow[];
+  fileName: string;
+  rowCount: number;
+}

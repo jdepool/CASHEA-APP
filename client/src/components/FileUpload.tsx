@@ -7,10 +7,26 @@ interface FileUploadProps {
   onFileSelect: (file: File) => void;
   selectedFile: File | null;
   onClearFile: () => void;
+  onInvalidFile?: (message: string) => void;
 }
 
-export function FileUpload({ onFileSelect, selectedFile, onClearFile }: FileUploadProps) {
+export function FileUpload({ onFileSelect, selectedFile, onClearFile, onInvalidFile }: FileUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
+
+  const validateFile = useCallback((file: File): boolean => {
+    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+      onInvalidFile?.('Por favor, selecciona un archivo Excel (.xlsx o .xls)');
+      return false;
+    }
+    
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      onInvalidFile?.('El archivo es demasiado grande. Tamaño máximo: 10MB');
+      return false;
+    }
+    
+    return true;
+  }, [onInvalidFile]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -27,17 +43,22 @@ export function FileUpload({ onFileSelect, selectedFile, onClearFile }: FileUplo
     setIsDragging(false);
 
     const file = e.dataTransfer.files[0];
-    if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
-      onFileSelect(file);
+    if (file) {
+      if (validateFile(file)) {
+        onFileSelect(file);
+      }
     }
-  }, [onFileSelect]);
+  }, [onFileSelect, validateFile]);
 
   const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      onFileSelect(file);
+      if (validateFile(file)) {
+        onFileSelect(file);
+      }
     }
-  }, [onFileSelect]);
+    e.target.value = '';
+  }, [onFileSelect, validateFile]);
 
   if (selectedFile) {
     return (

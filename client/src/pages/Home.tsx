@@ -1,5 +1,4 @@
 import { useState, useCallback } from "react";
-import * as XLSX from "xlsx";
 import { FileUpload } from "@/components/FileUpload";
 import { DataTable } from "@/components/DataTable";
 import { EmptyState } from "@/components/EmptyState";
@@ -7,6 +6,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Download, FileSpreadsheet } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import * as XLSX from "xlsx";
 
 export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -17,49 +17,39 @@ export default function Home() {
 
   const processFile = useCallback(async (file: File) => {
     setIsProcessing(true);
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-      
-      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json(firstSheet, { 
-        header: 1,
-        defval: ""
-      }) as any[][];
+    
+    const formData = new FormData();
+    formData.append('file', file);
 
-      if (jsonData.length === 0) {
-        toast({
-          title: "Error",
-          description: "El archivo está vacío",
-          variant: "destructive"
-        });
-        setIsProcessing(false);
-        return;
+    try {
+      const response = await fetch('/api/upload-excel', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Error al procesar el archivo');
       }
 
-      const fileHeaders = jsonData[0] as string[];
-      const rows = jsonData.slice(1).map(row => {
-        const rowObj: any = {};
-        fileHeaders.forEach((header, idx) => {
-          rowObj[header] = row[idx];
+      if (result.success && result.data) {
+        setHeaders(result.data.headers);
+        setTableData(result.data.rows);
+        
+        toast({
+          title: "Archivo procesado",
+          description: `Se cargaron ${result.data.rowCount} registros correctamente`,
         });
-        return rowObj;
-      });
-
-      setHeaders(fileHeaders);
-      setTableData(rows);
-      
-      toast({
-        title: "Archivo procesado",
-        description: `Se cargaron ${rows.length} registros correctamente`,
-      });
+      }
     } catch (error) {
       console.error("Error processing file:", error);
       toast({
         title: "Error al procesar archivo",
-        description: "No se pudo leer el archivo. Verifica que sea un archivo Excel válido.",
+        description: error instanceof Error ? error.message : "No se pudo procesar el archivo",
         variant: "destructive"
       });
+      setSelectedFile(null);
     } finally {
       setIsProcessing(false);
     }
@@ -69,6 +59,14 @@ export default function Home() {
     setSelectedFile(file);
     processFile(file);
   }, [processFile]);
+
+  const handleInvalidFile = useCallback((message: string) => {
+    toast({
+      title: "Archivo no válido",
+      description: message,
+      variant: "destructive"
+    });
+  }, [toast]);
 
   const handleClearFile = useCallback(() => {
     setSelectedFile(null);
@@ -134,6 +132,7 @@ export default function Home() {
             onFileSelect={handleFileSelect}
             selectedFile={selectedFile}
             onClearFile={handleClearFile}
+            onInvalidFile={handleInvalidFile}
           />
 
           {isProcessing && (
