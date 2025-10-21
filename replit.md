@@ -86,7 +86,7 @@ Procesa archivos Excel con datos de órdenes y cuotas, retorna datos estructurad
 - Valida encabezados presentes
 
 ### POST /api/upload-payment-records
-Procesa archivos Excel con registros de pagos realizados.
+Procesa archivos Excel con registros de pagos realizados. **Acepta CUALQUIER encabezado** del archivo.
 
 **Request:**
 - Method: POST
@@ -98,13 +98,19 @@ Procesa archivos Excel con registros de pagos realizados.
 {
   "success": true,
   "data": {
-    "headers": ["# Orden", "# Cuota Pagada", "Monto Pagado en VES", "# Referencia", "Monto Pagado en USD", "Metodo de Pago"],
-    "rows": [{ "# Orden": "001", "# Cuota Pagada": "1", ... }],
+    "headers": ["Columna1", "Columna2", "..."],
+    "rows": [{ "Columna1": "valor1", "Columna2": "valor2", ... }],
     "fileName": "pagos.xlsx",
     "rowCount": 50
   }
 }
 ```
+
+**Características Especiales:**
+- ✅ **Flexibilidad total**: Acepta cualquier nombre de columna del archivo Excel
+- ✅ **Sin validación de encabezados**: No requiere columnas específicas
+- ✅ **Retorna datos tal cual**: Headers y rows se retornan exactamente como están en el archivo
+- ✅ **Auto-detección de moneda**: Frontend detecta columnas con "VES" o "USD" y las formatea automáticamente
 
 **Error Responses:**
 - 400: Archivo inválido, muy grande, vacío, o sin encabezados
@@ -114,7 +120,29 @@ Procesa archivos Excel con registros de pagos realizados.
 - Tamaño máximo: 10MB
 - Tipos permitidos: .xlsx, .xls
 - Verifica existencia de hojas de cálculo
-- Valida encabezados presentes
+- Valida que existan encabezados (mínimo 1 columna)
+
+## Sistema de Carga de Archivos
+
+### Zonas de Carga Separadas
+El sistema tiene **dos zonas de carga independientes** para prevenir confusión:
+
+**Estado Inicial (Sin Datos Cargados):**
+- Muestra 2 pestañas: **PAGO DE CUOTAS** (por defecto) y **ÓRDENES Y CUOTAS**
+- Cada pestaña tiene su propia zona de carga claramente identificada
+- **PAGO DE CUOTAS**: Zona de carga para archivos de registros de pagos (usa `/api/upload-payment-records`)
+- **ÓRDENES Y CUOTAS**: Zona de carga para archivos de órdenes y cuotas programadas (usa `/api/upload-excel`)
+
+**Estado con Datos de Órdenes Cargados:**
+- Muestra 3 pestañas: **TODAS LAS ÓRDENES**, **CUOTAS SEMANAL**, **PAGO DE CUOTAS**
+- Zona de carga principal visible solo para órdenes
+- Pestaña PAGO DE CUOTAS mantiene su zona de carga independiente
+
+### Flexibilidad en Archivos de Pagos
+- **Acepta CUALQUIER encabezado** del archivo Excel de pagos
+- **No requiere nombres específicos** de columnas
+- **Auto-detección de monedas**: Columnas que contienen "VES" o "USD" en el encabezado se formatean automáticamente como moneda
+- **Tabla dinámica**: Se ajusta automáticamente al número y nombres de columnas del archivo
 
 ## Vistas de la Aplicación
 
