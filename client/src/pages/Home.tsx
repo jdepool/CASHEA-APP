@@ -3,7 +3,9 @@ import { FileUpload } from "@/components/FileUpload";
 import { DataTable } from "@/components/DataTable";
 import { EmptyState } from "@/components/EmptyState";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { WeeklyPayments } from "@/components/WeeklyPayments";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Download, FileSpreadsheet } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
@@ -143,19 +145,34 @@ export default function Home() {
           )}
 
           {!isProcessing && tableData.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold">
-                    Datos de Cuotas
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {tableData.length} {tableData.length === 1 ? 'registro' : 'registros'} encontrados
-                  </p>
+            <Tabs defaultValue="all" className="space-y-4">
+              <TabsList data-testid="tabs-list">
+                <TabsTrigger value="all" data-testid="tab-all">
+                  TODAS LAS ÓRDENES
+                </TabsTrigger>
+                <TabsTrigger value="weekly" data-testid="tab-weekly">
+                  CUOTAS SEMANAL
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="all" className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold">
+                      Datos de Cuotas
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {tableData.length} {tableData.length === 1 ? 'registro' : 'registros'} encontrados
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <DataTable data={tableData} headers={headers} />
-            </div>
+                <DataTable data={tableData} headers={headers} />
+              </TabsContent>
+
+              <TabsContent value="weekly">
+                <WeeklyPayments tableData={tableData} />
+              </TabsContent>
+            </Tabs>
           )}
 
           {!isProcessing && !selectedFile && tableData.length === 0 && (
