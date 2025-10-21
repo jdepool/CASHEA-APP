@@ -90,9 +90,9 @@ export default function Home() {
   }, [toast]);
 
   const handleClearFile = useCallback(() => {
+    // Only clear the selected file, NOT the persisted data from database
+    // This prevents data from disappearing when user clears the file input
     setSelectedFile(null);
-    setTableData([]);
-    setHeaders([]);
   }, []);
 
   const handleExport = useCallback(() => {
