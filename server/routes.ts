@@ -3,6 +3,16 @@ import { createServer, type Server } from "http";
 import multer from "multer";
 import * as XLSX from "xlsx";
 
+// Normalize header for flexible matching
+function normalizeHeader(header: string): string {
+  return header
+    .toLowerCase()
+    .trim()
+    .replace(/[#\s]+/g, '') // Remove # and spaces
+    .normalize('NFD') // Decompose accented characters
+    .replace(/[\u0300-\u036f]/g, ''); // Remove accent marks
+}
+
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,
@@ -98,28 +108,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "Metodo de Pago"
       ];
 
+      // Create normalized header mapping
+      const normalizedToOriginal = new Map<string, string>();
       const headerIndexMap = new Map<string, number>();
+      
       allHeaders.forEach((header, idx) => {
-        headerIndexMap.set(header, idx);
+        const normalized = normalizeHeader(header);
+        normalizedToOriginal.set(normalized, header);
+        headerIndexMap.set(normalized, idx);
       });
 
-      // Validate that all required headers are present
-      const missingHeaders = requiredHeaders.filter(header => !headerIndexMap.has(header));
+      // Check for required headers using normalized comparison
+      const normalizedRequired = requiredHeaders.map(h => ({
+        original: h,
+        normalized: normalizeHeader(h)
+      }));
+
+      const missingHeaders = normalizedRequired.filter(
+        req => !headerIndexMap.has(req.normalized)
+      );
+
       if (missingHeaders.length > 0) {
-        console.log('Headers found in file:', allHeaders);
-        console.log('Required headers:', requiredHeaders);
-        console.log('Missing headers:', missingHeaders);
         return res.status(400).json({
-          error: `El archivo no contiene todas las columnas requeridas. Faltan: ${missingHeaders.join(', ')}`,
-          foundHeaders: allHeaders,
-          missingHeaders: missingHeaders
+          error: `El archivo no contiene todas las columnas requeridas. Faltan: ${missingHeaders.map(h => h.original).join(', ')}`,
+          hint: 'Las columnas pueden tener variaciones en mayúsculas, espacios o caracteres especiales'
         });
       }
 
       const rows = jsonData.slice(1).map(row => {
         const rowObj: any = {};
         requiredHeaders.forEach(header => {
-          const idx = headerIndexMap.get(header);
+          const normalized = normalizeHeader(header);
+          const idx = headerIndexMap.get(normalized);
           rowObj[header] = (idx !== undefined && row[idx] !== undefined) ? row[idx] : "";
         });
         return rowObj;
