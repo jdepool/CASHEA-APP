@@ -108,6 +108,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return rowObj;
       });
 
+      console.log('Payment records processed:', {
+        fileName: req.file.originalname,
+        headers: allHeaders,
+        totalRows: jsonData.length - 1,
+        rowCount: rows.length,
+        firstRow: rows[0]
+      });
+
       res.json({
         success: true,
         data: {
