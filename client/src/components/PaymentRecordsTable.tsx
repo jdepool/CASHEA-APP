@@ -4,24 +4,37 @@ interface PaymentRecord {
 
 interface PaymentRecordsTableProps {
   records: PaymentRecord[];
+  headers: string[];
 }
 
-export function PaymentRecordsTable({ records }: PaymentRecordsTableProps) {
-  const formatCurrency = (value: any, currency: 'VES' | 'USD') => {
+export function PaymentRecordsTable({ records, headers }: PaymentRecordsTableProps) {
+  const formatValue = (value: any, header: string) => {
     if (value === null || value === undefined || value === "") {
       return "-";
     }
 
-    const numValue = typeof value === 'number' 
-      ? value 
-      : parseFloat(String(value).replace(/[^0-9.-]/g, '')) || 0;
+    // Check if this is a currency column (VES or USD)
+    const headerLower = header.toLowerCase();
+    if (headerLower.includes('ves') || headerLower.includes('usd')) {
+      const numValue = typeof value === 'number' 
+        ? value 
+        : parseFloat(String(value).replace(/[^0-9.-]/g, '')) || 0;
 
-    return new Intl.NumberFormat('es-ES', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(numValue);
+      const currency = headerLower.includes('ves') ? 'VES' : 'USD';
+      return new Intl.NumberFormat('es-ES', {
+        style: 'currency',
+        currency: currency,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(numValue);
+    }
+
+    return String(value);
+  };
+
+  const isNumericColumn = (header: string) => {
+    const headerLower = header.toLowerCase();
+    return headerLower.includes('monto') || headerLower.includes('ves') || headerLower.includes('usd');
   };
 
   if (!records || records.length === 0) {
@@ -37,51 +50,37 @@ export function PaymentRecordsTable({ records }: PaymentRecordsTableProps) {
       <table className="w-full border-collapse text-sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
         <thead className="sticky top-0 z-10 bg-muted">
           <tr>
-            <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wide border-b whitespace-nowrap" data-testid="header-orden">
-              # Orden
-            </th>
-            <th className="px-4 py-3 text-center font-semibold text-xs uppercase tracking-wide border-b whitespace-nowrap" data-testid="header-cuota">
-              # Cuota Pagada
-            </th>
-            <th className="px-4 py-3 text-right font-semibold text-xs uppercase tracking-wide border-b whitespace-nowrap" data-testid="header-ves">
-              Monto Pagado en VES
-            </th>
-            <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wide border-b whitespace-nowrap" data-testid="header-referencia">
-              # Referencia
-            </th>
-            <th className="px-4 py-3 text-right font-semibold text-xs uppercase tracking-wide border-b whitespace-nowrap" data-testid="header-usd">
-              Monto Pagado en USD
-            </th>
-            <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wide border-b whitespace-nowrap" data-testid="header-metodo">
-              Método de Pago
-            </th>
+            {headers.map((header, idx) => (
+              <th
+                key={idx}
+                className={`px-4 py-3 font-semibold text-xs uppercase tracking-wide border-b whitespace-nowrap ${
+                  isNumericColumn(header) ? 'text-right' : 'text-left'
+                }`}
+                data-testid={`header-${idx}`}
+              >
+                {header}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
-          {records.map((record, idx) => (
+          {records.map((record, rowIdx) => (
             <tr
-              key={idx}
+              key={rowIdx}
               className="border-b hover-elevate"
-              data-testid={`row-${idx}`}
+              data-testid={`row-${rowIdx}`}
             >
-              <td className="px-4 py-3 whitespace-nowrap" data-testid={`cell-orden-${idx}`}>
-                {record["# Orden"] || "-"}
-              </td>
-              <td className="px-4 py-3 text-center whitespace-nowrap" data-testid={`cell-cuota-${idx}`}>
-                {record["# Cuota Pagada"] || "-"}
-              </td>
-              <td className="px-4 py-3 text-right whitespace-nowrap font-mono" data-testid={`cell-ves-${idx}`}>
-                {formatCurrency(record["Monto Pagado en VES"], 'VES')}
-              </td>
-              <td className="px-4 py-3 whitespace-nowrap" data-testid={`cell-referencia-${idx}`}>
-                {record["# Referencia"] || "-"}
-              </td>
-              <td className="px-4 py-3 text-right whitespace-nowrap font-mono" data-testid={`cell-usd-${idx}`}>
-                {formatCurrency(record["Monto Pagado en USD"], 'USD')}
-              </td>
-              <td className="px-4 py-3 whitespace-nowrap" data-testid={`cell-metodo-${idx}`}>
-                {record["Metodo de Pago"] || "-"}
-              </td>
+              {headers.map((header, colIdx) => (
+                <td
+                  key={colIdx}
+                  className={`px-4 py-3 whitespace-nowrap ${
+                    isNumericColumn(header) ? 'text-right font-mono' : ''
+                  }`}
+                  data-testid={`cell-${rowIdx}-${colIdx}`}
+                >
+                  {formatValue(record[header], header)}
+                </td>
+              ))}
             </tr>
           ))}
         </tbody>

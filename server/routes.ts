@@ -99,48 +99,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const requiredHeaders = [
-        "# Orden",
-        "# Cuota Pagada",
-        "Monto Pagado en VES",
-        "# Referencia",
-        "Monto Pagado en USD",
-        "Metodo de Pago"
-      ];
-
-      // Create normalized header mapping
-      const normalizedToOriginal = new Map<string, string>();
-      const headerIndexMap = new Map<string, number>();
-      
-      allHeaders.forEach((header, idx) => {
-        const normalized = normalizeHeader(header);
-        normalizedToOriginal.set(normalized, header);
-        headerIndexMap.set(normalized, idx);
-      });
-
-      // Check for required headers using normalized comparison
-      const normalizedRequired = requiredHeaders.map(h => ({
-        original: h,
-        normalized: normalizeHeader(h)
-      }));
-
-      const missingHeaders = normalizedRequired.filter(
-        req => !headerIndexMap.has(req.normalized)
-      );
-
-      if (missingHeaders.length > 0) {
-        return res.status(400).json({
-          error: `El archivo no contiene todas las columnas requeridas. Faltan: ${missingHeaders.map(h => h.original).join(', ')}`,
-          hint: 'Las columnas pueden tener variaciones en mayúsculas, espacios o caracteres especiales'
-        });
-      }
-
+      // Use all headers from the file as-is
       const rows = jsonData.slice(1).map(row => {
         const rowObj: any = {};
-        requiredHeaders.forEach(header => {
-          const normalized = normalizeHeader(header);
-          const idx = headerIndexMap.get(normalized);
-          rowObj[header] = (idx !== undefined && row[idx] !== undefined) ? row[idx] : "";
+        allHeaders.forEach((header, idx) => {
+          rowObj[header] = (row[idx] !== undefined) ? row[idx] : "";
         });
         return rowObj;
       });
@@ -148,7 +111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         success: true,
         data: {
-          headers: requiredHeaders,
+          headers: allHeaders,
           rows,
           fileName: req.file.originalname,
           rowCount: rows.length,

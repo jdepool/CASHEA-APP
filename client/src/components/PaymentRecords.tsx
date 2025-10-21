@@ -10,6 +10,7 @@ import { Loader2 } from "lucide-react";
 
 export function PaymentRecords() {
   const [paymentData, setPaymentData] = useState<any[]>([]);
+  const [headers, setHeaders] = useState<string[]>([]);
   const [fileName, setFileName] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { toast } = useToast();
@@ -33,6 +34,7 @@ export function PaymentRecords() {
     },
     onSuccess: (data) => {
       setPaymentData(data.data.rows || []);
+      setHeaders(data.data.headers || []);
       setFileName(data.data.fileName || "");
       toast({
         title: "Archivo cargado exitosamente",
@@ -133,7 +135,7 @@ export function PaymentRecords() {
       </div>
 
       {paymentData.length > 0 && (
-        <PaymentRecordsTable records={paymentData} />
+        <PaymentRecordsTable records={paymentData} headers={headers} />
       )}
     </div>
   );
