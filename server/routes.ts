@@ -14,9 +14,9 @@ function normalizeHeader(header: string): string {
     .replace(/[\u0300-\u036f]/g, ''); // Remove accent marks
 }
 
-const storage = multer.memoryStorage();
+const uploadStorage = multer.memoryStorage();
 const upload = multer({
-  storage,
+  storage: uploadStorage,
   limits: {
     fileSize: 10 * 1024 * 1024,
   },

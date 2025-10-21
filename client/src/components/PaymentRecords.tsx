@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FileUpload } from "./FileUpload";
 import { PaymentRecordsTable } from "./PaymentRecordsTable";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 
 export function PaymentRecords() {
@@ -14,6 +14,24 @@ export function PaymentRecords() {
   const [fileName, setFileName] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { toast } = useToast();
+
+  // Fetch persisted payment records on mount
+  const { data: paymentRecordsData, isLoading: isLoadingPayments } = useQuery({
+    queryKey: ['/api/payment-records'],
+    refetchOnWindowFocus: false,
+  });
+
+  // Load persisted data when query succeeds
+  useEffect(() => {
+    if (paymentRecordsData) {
+      const data = paymentRecordsData as any;
+      if (data.data) {
+        setPaymentData(data.data.rows || []);
+        setHeaders(data.data.headers || []);
+        setFileName(data.data.fileName || "");
+      }
+    }
+  }, [paymentRecordsData]);
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {

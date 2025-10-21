@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { FileUpload } from "@/components/FileUpload";
 import { DataTable } from "@/components/DataTable";
 import { EmptyState } from "@/components/EmptyState";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Download, FileSpreadsheet } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
 import * as XLSX from "xlsx";
 
 export default function Home() {
@@ -17,6 +18,23 @@ export default function Home() {
   const [headers, setHeaders] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
+
+  // Fetch persisted orders on mount
+  const { data: ordersData, isLoading: isLoadingOrders } = useQuery({
+    queryKey: ['/api/orders'],
+    refetchOnWindowFocus: false,
+  });
+
+  // Load persisted data when query succeeds
+  useEffect(() => {
+    if (ordersData) {
+      const data = ordersData as any;
+      if (data.data) {
+        setHeaders(data.data.headers || []);
+        setTableData(data.data.rows || []);
+      }
+    }
+  }, [ordersData]);
 
   const processFile = useCallback(async (file: File) => {
     setIsProcessing(true);
