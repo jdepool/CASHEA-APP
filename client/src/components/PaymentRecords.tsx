@@ -108,13 +108,6 @@ export function PaymentRecords() {
   return (
     <div className="space-y-4">
       <div className="space-y-3">
-        <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
-          <h3 className="text-sm font-semibold text-primary">📋 Cargar Registro de Pagos</h3>
-          <p className="text-xs text-muted-foreground mt-1">
-            Zona independiente para archivos de pagos realizados
-          </p>
-        </div>
-
         {uploadMutation.isPending ? (
           <div className="flex items-center justify-center py-8 border-2 border-dashed rounded-md">
             <div className="text-center">
