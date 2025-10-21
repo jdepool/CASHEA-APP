@@ -123,26 +123,6 @@ export function PaymentRecords() {
             onInvalidFile={handleInvalidFile}
           />
         )}
-
-        {paymentData.length > 0 && (
-          <div className="flex items-center justify-between bg-muted/50 rounded-lg p-4">
-            <div>
-              <p className="text-sm font-medium">{fileName}</p>
-              <p className="text-xs text-muted-foreground">
-                {paymentData.length} registro{paymentData.length !== 1 ? 's' : ''} de pago
-              </p>
-            </div>
-            <Button
-              onClick={handleExport}
-              variant="outline"
-              size="sm"
-              data-testid="button-export"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Exportar
-            </Button>
-          </div>
-        )}
       </div>
 
       {paymentData.length > 0 && (
