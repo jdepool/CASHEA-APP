@@ -207,6 +207,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      console.log('=== EXCEL FILE HEADERS ===');
+      console.log('Total headers in Excel:', allHeaders.length);
+      console.log('First 10 headers:', allHeaders.slice(0, 10));
+      console.log('Headers containing "Nombre":', allHeaders.filter(h => h.toLowerCase().includes('nombre')));
+      console.log('Headers containing "Venta":', allHeaders.filter(h => h.toLowerCase().includes('venta')));
+      console.log('Headers containing "Cuota 1":', allHeaders.filter(h => h.includes('1')).slice(0, 5));
+
       const requiredHeaders = [
         "Orden",
         "Nombre del comprador",
@@ -246,6 +253,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.warn(`Duplicate normalized header detected: "${header}" normalizes to "${normalized}" (skipping duplicate)`);
         }
       });
+
+      // Log matching results
+      console.log('=== HEADER MATCHING RESULTS ===');
+      const matchedHeaders: string[] = [];
+      const unmatchedHeaders: string[] = [];
+      
+      requiredHeaders.forEach(header => {
+        const normalized = normalizeHeader(header);
+        const headerInfo = normalizedHeaderMap.get(normalized);
+        if (headerInfo) {
+          matchedHeaders.push(header);
+        } else {
+          unmatchedHeaders.push(header);
+        }
+      });
+      
+      console.log(`Matched ${matchedHeaders.length} of ${requiredHeaders.length} headers`);
+      console.log('Matched headers:', matchedHeaders.slice(0, 10));
+      console.log('Unmatched headers:', unmatchedHeaders.slice(0, 10));
 
       const rows = jsonData.slice(1).map(row => {
         const rowObj: any = {};
