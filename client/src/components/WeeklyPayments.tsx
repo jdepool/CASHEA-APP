@@ -17,27 +17,18 @@ export function WeeklyPayments({ tableData }: WeeklyPaymentsProps) {
 
   const { weeklyInstallments, expectedIncome, fridayDate} = useMemo(() => {
     // Extract all installments from the data
-    const allInstallments = extractInstallments(tableData);
+    let allInstallments = extractInstallments(tableData);
 
-    // Get current week range (Monday to Sunday)
-    const monday = getMonday();
-    monday.setHours(0, 0, 0, 0);
-    
-    const sunday = getSunday();
-    sunday.setHours(23, 59, 59, 999);
-
-    // Filter installments for current week
-    let weeklyInstallments = filterInstallmentsByDateRange(allInstallments, monday, sunday);
-
-    // Cross-reference with payment records to add payment dates
+    // Cross-reference with payment records to add payment dates BEFORE filtering
+    // This allows the hybrid filter to use actual payment dates
     const apiData = paymentRecordsData as any;
     const hasPaymentData = apiData?.data?.rows && Array.isArray(apiData.data.rows) && apiData.data.rows.length > 0;
     
     if (hasPaymentData) {
       const paymentRows = apiData.data.rows;
       
-      // Create enriched installments with payment dates
-      weeklyInstallments = weeklyInstallments.map((installment) => {
+      // Enrich all installments with payment dates from payment records
+      allInstallments = allInstallments.map((installment) => {
         // Find matching payment record by order number (and optionally installment number)
         const matchingPayment = paymentRows.find((payment: any) => {
           const paymentOrder = String(payment['# Orden'] || payment['#Orden'] || payment['Orden'] || '').trim();
@@ -77,6 +68,17 @@ export function WeeklyPayments({ tableData }: WeeklyPaymentsProps) {
         return installment;
       });
     }
+
+    // Get current week range (Monday to Sunday)
+    const monday = getMonday();
+    monday.setHours(0, 0, 0, 0);
+    
+    const sunday = getSunday();
+    sunday.setHours(23, 59, 59, 999);
+
+    // Filter installments for current week using hybrid logic
+    // Paid cuotas appear in week they were paid, unpaid cuotas appear in scheduled week
+    const weeklyInstallments = filterInstallmentsByDateRange(allInstallments, monday, sunday);
 
     // Calculate expected income
     const expectedIncome = calculateTotalAmount(weeklyInstallments);

@@ -54,17 +54,33 @@ export function extractInstallments(tableData: any[]): Installment[] {
 }
 
 /**
- * Filter installments by a date range
+ * Filter installments by a date range using hybrid logic:
+ * - If payment date exists (fechaPago or fechaPagoReal), filter by payment date
+ * - Otherwise, filter by scheduled date (fechaCuota)
+ * This shows actual cash flow for paid installments and expected income for unpaid ones
  */
 export function filterInstallmentsByDateRange(
-  installments: Installment[],
+  installments: any[],
   startDate: Date,
   endDate: Date
-): Installment[] {
+): any[] {
   return installments.filter(inst => {
-    if (!inst.fechaCuota) return false;
+    // Determine which date to use for filtering
+    // Priority: fechaPagoReal (from payment records) > fechaPago (from orders file) > fechaCuota (scheduled)
+    let filterDate: Date | null = null;
     
-    const instTime = inst.fechaCuota.getTime();
+    if (inst.fechaPagoReal) {
+      filterDate = inst.fechaPagoReal;
+    } else if (inst.fechaPago) {
+      filterDate = inst.fechaPago;
+    } else if (inst.fechaCuota) {
+      filterDate = inst.fechaCuota;
+    }
+    
+    // If no valid date found, exclude this installment
+    if (!filterDate) return false;
+    
+    const instTime = filterDate.getTime();
     return instTime >= startDate.getTime() && instTime <= endDate.getTime();
   });
 }
