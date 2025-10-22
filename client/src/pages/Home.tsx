@@ -27,11 +27,19 @@ export default function Home() {
 
   // Load persisted data when query succeeds
   useEffect(() => {
+    console.log('🔍 useEffect triggered. ordersData:', ordersData);
     if (ordersData) {
       const data = ordersData as any;
+      console.log('🔍 data:', data);
+      console.log('🔍 data.data:', data.data);
       if (data.data) {
-        setHeaders(data.data.headers || []);
-        setTableData(data.data.rows || []);
+        const headers = data.data.headers || [];
+        const rows = data.data.rows || [];
+        console.log('🔍 Setting headers:', headers);
+        console.log('🔍 Setting tableData rows:', rows);
+        console.log('🔍 Rows length:', rows.length);
+        setHeaders(headers);
+        setTableData(rows);
       }
     }
   }, [ordersData]);
