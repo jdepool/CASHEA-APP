@@ -1,342 +1,76 @@
 # Gestor de Cuotas - Sistema de Gestión de Pagos
 
-## Descripción General
-Aplicación web profesional para cargar y visualizar datos de órdenes de compra con pagos en cuotas. Permite importar archivos Excel y mostrar información detallada de hasta 14 cuotas de pago con sus estados, fechas y montos.
+## Overview
+This project is a professional web application designed to manage purchase orders with installment payments. It allows users to import Excel files containing order and payment data, visualize detailed information for up to 14 payment installments, track their statuses, dates, and amounts. The system also supports importing separate payment records, offers a weekly payments view with expected income, and ensures data persistence through a PostgreSQL database.
 
-## Características Principales
-- ✅ **Persistencia en base de datos PostgreSQL**: Todos los datos se guardan automáticamente
-- ✅ **Datos persisten al cambiar de pestaña o refrescar**: No se pierde información
-- ✅ **Carga automática al iniciar**: La aplicación carga los últimos datos guardados
-- ✅ Carga de archivos Excel (.xlsx, .xls) mediante drag & drop o selección
-- ✅ Validación de archivos en frontend (tipo y tamaño) antes de cargar
-- ✅ Procesamiento robusto de archivos en el backend con manejo de errores
-- ✅ Visualización en tabla con más de 60 columnas soportadas
-- ✅ **Navegación por pestañas**: TODAS LAS ÓRDENES y CUOTAS SEMANAL
-- ✅ **Vista semanal**: Muestra solo las cuotas programadas para la semana actual (lunes-domingo)
-- ✅ **Resumen de ingresos**: Calcula ingresos esperados al viernes de la semana
-- ✅ Columnas fijas (Orden y Nombre del comprador) para fácil navegación
-- ✅ Formato automático de fechas (DD/MM/YYYY), monedas (USD) y estados
-- ✅ Badges de estado con colores semánticos (Pagado/Pendiente/Vencido)
-- ✅ Exportación de datos a Excel con un clic
-- ✅ Modo oscuro/claro con persistencia en localStorage
-- ✅ Diseño responsive con scroll horizontal
-- ✅ Notificaciones toast para feedback del usuario
-- ✅ Estados de carga y vacío bien definidos
+**Business Vision**: To provide a robust, user-friendly tool for businesses to efficiently track and manage their installment payment plans, improving cash flow visibility and reducing manual data handling.
 
-## Estructura del Proyecto
+## User Preferences
+- I prefer clear and detailed explanations.
+- Please ask for confirmation before implementing significant changes.
+- I value a clean, professional, and responsive UI/UX.
+- Ensure that data persistence is a top priority; no data should be lost on refresh or navigation.
+- I need the application to handle flexible Excel formats for payment records, auto-detecting currency and adjusting table columns dynamically.
 
-### Frontend
-- **React** con TypeScript
-- **Tailwind CSS** para estilos profesionales
-- **Shadcn UI** para componentes accesibles
-- **SheetJS (xlsx)** para importación/exportación de Excel
-- **Wouter** para routing
-- **React Query** para gestión de estado
+## System Architecture
+The application follows a client-server architecture with a React frontend and an Express.js backend.
 
-### Backend
-- **Express.js** servidor HTTP
-- **PostgreSQL** base de datos (Neon) para persistencia
-- **Drizzle ORM** para gestión de base de datos
-- **Multer** para carga segura de archivos
-- **SheetJS (xlsx)** para parseo de Excel en servidor
-- Validación robusta con manejo de errores específicos
+**UI/UX Decisions**:
+- **Design System**: Professional and clean UI using Tailwind CSS for styling and Shadcn UI for accessible components.
+- **Theming**: Dark/light mode toggle with persistence using `localStorage`.
+- **Layout**: Tabbed navigation (`TODAS LAS ÓRDENES`, `CUOTAS SEMANAL`, `PAGO DE CUOTAS`) for clear separation of concerns.
+- **Data Presentation**:
+    - `DataTable` for displaying main order data with over 60 columns, sticky headers, and horizontal scroll.
+    - `WeeklyPaymentsTable` for a summarized view of weekly installments.
+    - `PaymentRecordsTable` for payment transaction records, dynamically adjusting to input columns.
+    - Semantic colored badges (`StatusBadge`) for payment statuses (Paid/Pending/Overdue).
+- **User Feedback**: Toast notifications for user actions and error messages, animated spinners for loading states, and clear empty states.
 
-### Base de Datos
-- **PostgreSQL** (Neon-backed) para almacenamiento persistente
-- **Tablas**:
-  - `orders`: Almacena datos de órdenes con columnas JSONB para headers y rows
-  - `payment_records`: Almacena registros de pagos con columnas JSONB para headers y rows
-  - `users`: Tabla de autenticación (no utilizada actualmente)
-- **Drizzle ORM** para type-safe database queries
-- **Migraciones**: Usando `npm run db:push` para sincronizar schema
+**Technical Implementations**:
+- **Frontend**:
+    - **Framework**: React with TypeScript.
+    - **State Management**: React Query for data fetching and caching.
+    - **Routing**: Wouter.
+    - **Excel Handling**: SheetJS (xlsx) for client-side import/export.
+- **Backend**:
+    - **Server**: Express.js.
+    - **Database ORM**: Drizzle ORM for type-safe interaction with PostgreSQL.
+    - **File Upload**: Multer for secure and efficient file handling.
+    - **Excel Parsing**: SheetJS (xlsx) for server-side Excel processing.
+- **Database**:
+    - **Provider**: PostgreSQL (Neon-backed).
+    - **Schema**:
+        - `orders`: Stores processed order and installment data (headers and rows as JSONB).
+        - `payment_records`: Stores payment transaction data (headers and rows as JSONB).
+    - **Migrations**: Handled via `drizzle-kit` (`npm run db:push`).
 
-### Componentes Principales
-- `FileUpload`: Componente de carga con validación y drag & drop
-- `DataTable`: Tabla optimizada con sticky columns y formato automático
-- `WeeklyPayments`: Vista semanal con resumen de ingresos esperados
-- `WeeklyPaymentsTable`: Tabla de cuotas de la semana con 5 columnas
-- `PaymentRecords`: Componente para carga y visualización de registros de pagos
-- `PaymentRecordsTable`: Tabla de registros de pago con 6 columnas y formato de monedas VES/USD
-- `StatusBadge`: Badges de estado con colores semánticos
-- `ThemeToggle`: Selector de tema con persistencia
-- `ThemeProvider`: Contexto global de tema
-- `EmptyState`: Estado vacío cuando no hay datos
+**Feature Specifications**:
+- **File Upload**: Drag & drop or file selection with client-side validation (type, size). Separate upload zones for orders and payment records.
+- **Data Persistence**: All uploaded and processed data automatically saved to PostgreSQL, with the latest upload overwriting previous data. Data is reloaded automatically on app start.
+- **Weekly View**: `CUOTAS SEMANAL` tab filters installments for the current week (Monday-Sunday) and calculates "expected income" to Friday.
+    - **Hybrid Filtering Logic**: Paid installments appear in the week they were *effectively paid*; unpaid installments appear in their *scheduled week*.
+    - **Date Prioritization**: Payment date from payment records > payment date from order file > scheduled installment date.
+- **Payment Records View**: `PAGO DE CUOTAS` tab allows uploading and viewing payment transaction files with flexible column headers and auto-detection/formatting of 'VES' and 'USD' currency columns.
+- **Data Export**: Export current table view to Excel.
+- **Date Handling**: Automatic conversion of Excel serial dates and various date formats (DD/MM/YYYY, ISO).
+- **Installment Extraction**: Converts wide-format Excel installment data into a long format for easier processing and filtering.
 
-### Utilidades
-- `dateUtils.ts`: Funciones para cálculo de semanas, conversión de fechas Excel y formato
-- `installmentUtils.ts`: Extracción y filtrado de cuotas desde formato ancho a largo
+**System Design Choices**:
+- **Robust Error Handling**: Comprehensive validation on both frontend (file type, size) and backend (file structure, headers, parsing errors) with clear user feedback.
+- **Separation of Concerns**: Clear distinction between frontend and backend responsibilities.
+- **Modularity**: Use of reusable components and utility functions (`dateUtils.ts`, `installmentUtils.ts`).
 
-## API Endpoints
-
-### POST /api/upload-excel
-Procesa archivos Excel con datos de órdenes y cuotas, retorna datos estructurados con validación completa. **Guarda los datos en la base de datos PostgreSQL**.
-
-**Request:**
-- Method: POST
-- Content-Type: multipart/form-data
-- Body: FormData con campo 'file' conteniendo archivo Excel
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "headers": ["Orden", "Nombre del comprador", ...],
-    "rows": [{ "Orden": "001", ... }],
-    "fileName": "ordenes.xlsx",
-    "rowCount": 150
-  }
-}
-```
-
-**Persistencia:**
-- ✅ Datos se guardan automáticamente en la tabla `orders`
-- ✅ Sobrescribe el registro anterior (solo se mantiene la última carga)
-- ✅ Los datos persisten al refrescar o cambiar de pestaña
-
-**Error Responses:**
-- 400: Archivo inválido, muy grande, vacío, o sin encabezados
-- 500: Error inesperado al procesar
-
-**Validaciones:**
-- Tamaño máximo: 10MB
-- Tipos permitidos: .xlsx, .xls
-- Verifica existencia de hojas de cálculo
-- Valida encabezados presentes
-
-### GET /api/orders
-Recupera la última orden cargada desde la base de datos.
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "headers": ["Orden", "Nombre del comprador", ...],
-    "rows": [{ "Orden": "001", ... }],
-    "fileName": "ordenes.xlsx",
-    "rowCount": 150
-  }
-}
-```
-
-**Cuando no hay datos:**
-```json
-{
-  "success": true,
-  "data": null
-}
-```
-
-### POST /api/upload-payment-records
-Procesa archivos Excel con registros de pagos realizados. **Acepta CUALQUIER encabezado** del archivo. **Guarda los datos en la base de datos PostgreSQL**.
-
-**Request:**
-- Method: POST
-- Content-Type: multipart/form-data
-- Body: FormData con campo 'file' conteniendo archivo Excel de pagos
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "headers": ["Columna1", "Columna2", "..."],
-    "rows": [{ "Columna1": "valor1", "Columna2": "valor2", ... }],
-    "fileName": "pagos.xlsx",
-    "rowCount": 50
-  }
-}
-```
-
-**Características Especiales:**
-- ✅ **Flexibilidad total**: Acepta cualquier nombre de columna del archivo Excel
-- ✅ **Sin validación de encabezados**: No requiere columnas específicas
-- ✅ **Retorna datos tal cual**: Headers y rows se retornan exactamente como están en el archivo
-- ✅ **Auto-detección de moneda**: Frontend detecta columnas con "VES" o "USD" y las formatea automáticamente
-- ✅ **Persistencia automática**: Datos se guardan en la tabla `payment_records`
-- ✅ **Sobrescribe registro anterior**: Solo se mantiene la última carga
-
-**Error Responses:**
-- 400: Archivo inválido, muy grande, vacío, o sin encabezados
-- 500: Error inesperado al procesar
-
-**Validaciones:**
-- Tamaño máximo: 10MB
-- Tipos permitidos: .xlsx, .xls
-- Verifica existencia de hojas de cálculo
-- Valida que existan encabezados (mínimo 1 columna)
-
-### GET /api/payment-records
-Recupera el último registro de pagos cargado desde la base de datos.
-
-**Success Response (200):**
-```json
-{
-  "success": true,
-  "data": {
-    "headers": ["Columna1", "Columna2", "..."],
-    "rows": [{ "Columna1": "valor1", ... }],
-    "fileName": "pagos.xlsx",
-    "rowCount": 50
-  }
-}
-```
-
-**Cuando no hay datos:**
-```json
-{
-  "success": true,
-  "data": null
-}
-```
-
-## Sistema de Carga de Archivos
-
-### Zonas de Carga Separadas
-El sistema tiene **dos zonas de carga independientes** para prevenir confusión:
-
-**Estado Inicial (Sin Datos Cargados):**
-- Muestra 2 pestañas: **PAGO DE CUOTAS** (por defecto) y **ÓRDENES Y CUOTAS**
-- Cada pestaña tiene su propia zona de carga claramente identificada
-- **PAGO DE CUOTAS**: Zona de carga para archivos de registros de pagos (usa `/api/upload-payment-records`)
-- **ÓRDENES Y CUOTAS**: Zona de carga para archivos de órdenes y cuotas programadas (usa `/api/upload-excel`)
-
-**Estado con Datos de Órdenes Cargados:**
-- Muestra 3 pestañas: **TODAS LAS ÓRDENES**, **CUOTAS SEMANAL**, **PAGO DE CUOTAS**
-- Zona de carga principal visible solo para órdenes
-- Pestaña PAGO DE CUOTAS mantiene su zona de carga independiente
-
-### Flexibilidad en Archivos de Pagos
-- **Acepta CUALQUIER encabezado** del archivo Excel de pagos
-- **No requiere nombres específicos** de columnas
-- **Auto-detección de monedas**: Columnas que contienen "VES" o "USD" en el encabezado se formatean automáticamente como moneda
-- **Tabla dinámica**: Se ajusta automáticamente al número y nombres de columnas del archivo
-
-## Vistas de la Aplicación
-
-### 1. TODAS LAS ÓRDENES
-Vista principal que muestra la tabla completa con todas las órdenes y sus columnas:
-- **Columnas de orden**: Orden, Nombre del comprador, Venta total, Fecha de compra, Tipo orden, Estado pago inicial
-- **Columnas de cuotas (1-14)**: Para cada cuota se muestran 5 columnas (Fecha cuota N, Cuota N, Pagado de cuota N, Estado cuota N, Fecha de pago cuota N)
-- **Características**: Columnas fijas, scroll horizontal, formato automático
-- **Fechas de pago**: Cuando el Estado cuota es "Done", se muestra la fecha de pago debajo del badge de estado
-
-### 2. CUOTAS SEMANAL
-Vista filtrada que muestra solo las cuotas programadas para la semana actual (lunes-domingo):
-- **Resumen superior**: "Ingresos Esperados al [Viernes DD/MM/YYYY]: $X,XXX.XX"
-- **Columnas**: Orden, Fecha Cuota, # de Cuota (1-14), Monto, Estado Cuota
-- **Lógica**: Extrae las 14 cuotas de cada orden y filtra solo las que caen en la semana actual
-- **Ordenamiento**: Por fecha de cuota, luego por orden
-
-### 3. PAGO DE CUOTAS
-Vista independiente para registrar y visualizar los pagos realizados:
-- **Funcionalidad**: Carga de archivo Excel separado con registros de pagos
-- **Columnas**: # Orden, # Cuota Pagada, Monto Pagado en VES, # Referencia, Monto Pagado en USD, Metodo de Pago
-- **Formato de moneda**: VES (Bolívares) y USD (Dólares) con formato de moneda apropiado
-- **Características**: Upload independiente, tabla simple de 6 columnas, exportación a Excel
-- **Disponibilidad**: Accesible incluso sin datos de órdenes cargados
-
-## Formato de Datos Esperado
-
-### Archivo de Órdenes y Cuotas
-El archivo Excel debe contener las siguientes columnas (en cualquier orden):
-- **Orden**: ID o número de orden
-- **Nombre del comprador**: Nombre del cliente
-- **Venta total**: Monto total de la venta
-- **Fecha de compra**: Fecha de la orden
-- **Tipo orden**: Tipo de orden
-- **Estado pago inicial**: Estado del pago inicial
-
-Para cada cuota (1-14):
-- **Fecha cuota N**: Fecha de vencimiento (puede ser número serial de Excel o texto DD/MM/YYYY)
-- **Cuota N**: Monto de la cuota
-- **Pagado de cuota N**: Monto pagado
-- **Estado cuota N**: Estado (Pagado/Pendiente/Vencido)
-- **Fecha de pago cuota N**: Fecha en que se realizó el pago (opcional, se muestra cuando Estado = Done)
-
-### Archivo de Registros de Pagos
-El archivo Excel debe contener las siguientes columnas (en cualquier orden):
-- **# Orden**: Número de orden de compra
-- **# Cuota Pagada**: Número de cuota que se pagó (1-14)
-- **Monto Pagado en VES**: Monto pagado en Bolívares Venezolanos
-- **# Referencia**: Número de referencia de la transacción
-- **Monto Pagado en USD**: Monto pagado en Dólares Estadounidenses
-- **Metodo de Pago**: Método de pago utilizado (Transferencia, Efectivo, etc.)
-
-## Validación y Manejo de Errores
-
-### Frontend
-- Validación de extensión de archivo (.xlsx, .xls)
-- Validación de tamaño (máximo 10MB)
-- Toast notifications para errores claros
-- Reset de input después de selección para permitir re-selección
-
-### Backend
-- Manejo específico de errores de Multer (tamaño, tipo)
-- Validación de estructura del workbook
-- Validación de hojas de cálculo
-- Validación de encabezados
-- Respuestas HTTP apropiadas (4xx para errores del cliente, 5xx para errores del servidor)
-
-## Experiencia de Usuario
-
-### Estados
-1. **Estado vacío**: Muestra mensaje y zona de carga
-2. **Cargando**: Spinner animado durante procesamiento
-3. **Datos cargados**: Tabla completa con todas las funcionalidades
-4. **Error**: Notificación toast descriptiva
-
-### Interacciones
-- Drag & drop de archivos
-- Click para seleccionar archivo
-- Clear file con botón X
-- Toggle de tema persistente
-- Export a Excel
-- Scroll horizontal en tabla con sticky columns
-- Hover effects en filas de tabla
-
-## Lógica de Negocio
-
-### Conversión de Fechas Excel
-- **Excel serial numbers**: Convierte correctamente números seriales de Excel a fechas
-- **Época base**: 31 de diciembre de 1899 (serial 1 = 1 de enero de 1900)
-- **Corrección de bug de Excel**: Compensa el error de año bisiesto 1900 (resta 1 día para serials >= 60)
-- **Formatos soportados**: Serial numbers, DD/MM/YYYY, ISO dates
-
-### Cálculo de Semana Actual
-- **Inicio de semana**: Lunes a las 00:00:00
-- **Fin de semana**: Domingo a las 23:59:59.999
-- **Viernes**: Usado para mostrar "Ingresos Esperados al [fecha]"
-- **Filtrado**: Compara timestamps para determinar si una cuota cae en la semana actual
-
-### Extracción de Cuotas
-1. **Formato ancho**: Archivo Excel tiene 14 cuotas por fila (56 columnas de cuotas)
-2. **Formato largo**: Se convierte a una fila por cuota para facilitar filtrado
-3. **Validación**: Solo se incluyen cuotas que tienen fecha o monto
-
-## Convenciones de Código
-- Componentes funcionales con hooks
-- TypeScript estricto para type safety
-- Componentes reutilizables en `/components`
-- Utilidades en `/lib`
-- Páginas en `/pages`
-- Estilos con Tailwind CSS y sistema de tokens de diseño
-- Test IDs en elementos interactivos para testing
-- Manejo de errores exhaustivo en backend y frontend
-- Memoización con `useMemo` para optimizar cálculos costosos
-
-## Desarrollo
-```bash
-npm run dev
-```
-
-Inicia servidor Express (backend) y Vite (frontend) en el mismo puerto (5000).
-
-## Estado del Proyecto
-✅ **Producción ready** - Aplicación completa y funcional con:
-- Validación robusta de archivos
-- Manejo de errores completo
-- UX optimizada con feedback claro
-- Diseño profesional y responsive
-- Código limpio y mantenible
+## External Dependencies
+- **Database**: PostgreSQL (specifically Neon for serverless capabilities).
+- **Frontend Libraries**:
+    - React
+    - Tailwind CSS
+    - Shadcn UI
+    - SheetJS (xlsx)
+    - Wouter
+    - React Query
+- **Backend Libraries**:
+    - Express.js
+    - Drizzle ORM
+    - Multer
+    - SheetJS (xlsx)
