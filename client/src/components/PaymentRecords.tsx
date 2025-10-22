@@ -50,14 +50,30 @@ export function PaymentRecords() {
 
       return response.json();
     },
-    onSuccess: (data) => {
-      setPaymentData(data.data.rows || []);
-      setHeaders(data.data.headers || []);
-      setFileName(data.data.fileName || "");
-      toast({
-        title: "Archivo cargado exitosamente",
-        description: `${data.data.rowCount} registros de pago importados`,
-      });
+    onSuccess: async (data) => {
+      // Refetch to get the complete merged data
+      const paymentResponse = await fetch('/api/payment-records');
+      const paymentResult = await paymentResponse.json();
+      
+      if (paymentResult.success && paymentResult.data) {
+        setPaymentData(paymentResult.data.rows || []);
+        setHeaders(paymentResult.data.headers || []);
+        setFileName(paymentResult.data.fileName || "");
+      }
+      
+      // Show merge statistics
+      const mergeInfo = data.merge;
+      if (mergeInfo) {
+        toast({
+          title: "Archivo cargado exitosamente",
+          description: mergeInfo.message,
+        });
+      } else {
+        toast({
+          title: "Archivo cargado exitosamente",
+          description: `${data.data.rowCount} registros de pago importados`,
+        });
+      }
     },
     onError: (error: Error) => {
       toast({

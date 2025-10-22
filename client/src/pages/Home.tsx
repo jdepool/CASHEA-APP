@@ -55,13 +55,28 @@ export default function Home() {
       }
 
       if (result.success && result.data) {
-        setHeaders(result.data.headers);
-        setTableData(result.data.rows);
+        // Refetch to get the complete merged data
+        const ordersResponse = await fetch('/api/orders');
+        const ordersResult = await ordersResponse.json();
         
-        toast({
-          title: "Archivo procesado",
-          description: `Se cargaron ${result.data.rowCount} registros correctamente`,
-        });
+        if (ordersResult.success && ordersResult.data) {
+          setHeaders(ordersResult.data.headers);
+          setTableData(ordersResult.data.rows);
+        }
+        
+        // Show merge statistics
+        const mergeInfo = result.merge;
+        if (mergeInfo) {
+          toast({
+            title: "Archivo procesado",
+            description: mergeInfo.message,
+          });
+        } else {
+          toast({
+            title: "Archivo procesado",
+            description: `Se cargaron ${result.data.rowCount} registros correctamente`,
+          });
+        }
       }
     } catch (error) {
       console.error("Error processing file:", error);

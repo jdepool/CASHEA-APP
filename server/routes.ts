@@ -117,13 +117,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstRow: rows[0]
       });
 
-      // Save to database
-      await storage.createPaymentRecord({
-        fileName: req.file.originalname,
-        headers: allHeaders,
-        rows,
-        rowCount: String(rows.length),
-      });
+      // Merge with existing payment records (skip duplicates by Orden + Cuota)
+      const mergeResult = await storage.mergePaymentRecords(rows, req.file.originalname, allHeaders);
 
       res.json({
         success: true,
@@ -132,6 +127,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           rows,
           fileName: req.file.originalname,
           rowCount: rows.length,
+        },
+        merge: {
+          added: mergeResult.added,
+          skipped: mergeResult.skipped,
+          total: mergeResult.total,
+          message: `${mergeResult.added} nuevos pagos agregados, ${mergeResult.skipped} pagos duplicados omitidos. Total: ${mergeResult.total} pagos.`
         }
       });
     } catch (error) {
@@ -290,13 +291,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return rowObj;
       });
 
-      // Save to database
-      await storage.createOrder({
-        fileName: req.file.originalname,
-        headers: requiredHeaders,
-        rows,
-        rowCount: String(rows.length),
-      });
+      // Merge with existing orders (upsert by Orden)
+      const mergeResult = await storage.mergeOrders(rows, req.file.originalname, requiredHeaders);
 
       res.json({
         success: true,
@@ -305,6 +301,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           rows,
           fileName: req.file.originalname,
           rowCount: rows.length,
+        },
+        merge: {
+          added: mergeResult.added,
+          updated: mergeResult.updated,
+          total: mergeResult.total,
+          message: `${mergeResult.added} nuevas órdenes agregadas, ${mergeResult.updated} órdenes actualizadas. Total: ${mergeResult.total} órdenes.`
         }
       });
     } catch (error) {
