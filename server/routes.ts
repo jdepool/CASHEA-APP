@@ -230,16 +230,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "Fecha cuota 14", "Cuota 14", "Pagado de cuota 14", "Estado cuota 14", "Fecha de pago cuota 14"
       ];
 
-      const headerIndexMap = new Map<string, number>();
+      // Create normalized header map for flexible matching
+      // Use first match if multiple headers normalize to the same value
+      const normalizedHeaderMap = new Map<string, {actualHeader: string, index: number}>();
+      const seenNormalized = new Set<string>();
+      
       allHeaders.forEach((header, idx) => {
-        headerIndexMap.set(header, idx);
+        const normalized = normalizeHeader(header);
+        
+        // Only store first occurrence of each normalized header
+        if (!seenNormalized.has(normalized)) {
+          normalizedHeaderMap.set(normalized, {actualHeader: header, index: idx});
+          seenNormalized.add(normalized);
+        } else {
+          console.warn(`Duplicate normalized header detected: "${header}" normalizes to "${normalized}" (skipping duplicate)`);
+        }
       });
 
       const rows = jsonData.slice(1).map(row => {
         const rowObj: any = {};
         requiredHeaders.forEach(header => {
-          const idx = headerIndexMap.get(header);
-          rowObj[header] = (idx !== undefined && row[idx] !== undefined) ? row[idx] : "";
+          const normalized = normalizeHeader(header);
+          const headerInfo = normalizedHeaderMap.get(normalized);
+          
+          if (headerInfo) {
+            // Use the standardized header name as key, value from matched Excel column
+            rowObj[header] = (row[headerInfo.index] !== undefined) ? row[headerInfo.index] : "";
+          } else {
+            // Header not found in Excel, set empty string
+            rowObj[header] = "";
+          }
         });
         return rowObj;
       });
