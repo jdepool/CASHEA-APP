@@ -46,7 +46,11 @@ The application follows a client-server architecture with a React frontend and a
 
 **Feature Specifications**:
 - **File Upload**: Drag & drop or file selection with client-side validation (type, size). Separate upload zones for orders and payment records.
-- **Data Persistence**: All uploaded and processed data automatically saved to PostgreSQL, with the latest upload overwriting previous data. Data is reloaded automatically on app start.
+- **Data Persistence**: All uploaded and processed data automatically saved to PostgreSQL. Data is reloaded automatically on app start.
+- **Duplicate Prevention**: 
+    - **Orders**: Uploading orders with existing Order Numbers (Orden) replaces the old data with new data. Unique identifier: `Orden`
+    - **Payment Records**: Uploading payment records skips duplicates based on the combination of Order Number (# Orden) and Installment Number (# Cuota Pagada). Unique identifier: `(# Orden, # Cuota Pagada)`
+    - **User Feedback**: Toast notifications show statistics for each upload (X added, Y updated/skipped, Z total)
 - **Weekly View**: `CUOTAS SEMANAL` tab filters installments for the current week (Monday-Sunday) and calculates "expected income" to Friday.
     - **Hybrid Filtering Logic**: Paid installments appear in the week they were *effectively paid*; unpaid installments appear in their *scheduled week*.
     - **Date Prioritization**: Payment date from payment records > payment date from order file > scheduled installment date.
