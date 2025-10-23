@@ -51,10 +51,11 @@ The application follows a client-server architecture with a React frontend and a
         - Payments zone requires: payment headers ("Fecha de Transaccion"/"# Orden"/"# Cuota Pagada") and rejects order-specific headers
         - Clear error messages guide users to the correct upload zone if wrong file type is detected
 - **Data Persistence**: All uploaded and processed data automatically saved to PostgreSQL. Data is reloaded automatically on app start.
-- **Duplicate Prevention**: 
+- **Duplicate Handling**: 
     - **Orders**: Uploading orders with existing Order Numbers (Orden) replaces the old data with new data. Unique identifier: `Orden`
-    - **Payment Records**: Uploading payment records skips duplicates based on the combination of Order Number (# Orden) and Installment Number (# Cuota Pagada). Unique identifier: `(# Orden, # Cuota Pagada)`
-    - **User Feedback**: Toast notifications show statistics for each upload (X added, Y updated/skipped, Z total)
+    - **Payment Records**: Uploading payment records **updates** existing records based on the combination of Order Number (# Orden) and Installment Number (# Cuota Pagada). This allows correcting or refreshing payment data. Unique identifier: `(# Orden, # Cuota Pagada)`
+    - **Duplicate Detection**: Records with duplicate Order# + Installment# within the same upload file are skipped (only the first occurrence is processed)
+    - **User Feedback**: Toast notifications show detailed statistics for each upload (X nuevos, Y actualizados, Z omitidos, Total in database)
 - **Weekly View**: `CUOTAS SEMANAL` tab filters installments for the current week (Monday-Sunday) and calculates "expected income" to Friday.
     - **Hybrid Filtering Logic**: Paid installments appear in the week they were *effectively paid*; unpaid installments appear in their *scheduled week*.
     - **Date Prioritization**: Payment date from payment records > payment date from order file > scheduled installment date.
