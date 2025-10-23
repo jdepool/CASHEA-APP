@@ -135,8 +135,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           rowObj[header] = (row[idx] !== undefined) ? row[idx] : "";
         });
         return rowObj;
+      }).filter(row => {
+        // Filter out empty rows (rows without critical fields)
+        const orden = row['# Orden'];
+        return orden != null && orden !== '' && String(orden).trim() !== '';
       });
 
+      console.log(`Filtered ${jsonData.length - 1 - rows.length} empty rows from payment records`);
       console.log('Payment records processed:', {
         fileName: req.file.originalname,
         headers: allHeaders,
@@ -359,7 +364,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
         return rowObj;
+      }).filter(row => {
+        // Filter out empty rows (rows without an Orden number)
+        const orden = row['Orden'];
+        return orden != null && orden !== '' && String(orden).trim() !== '';
       });
+
+      console.log(`Filtered ${jsonData.length - 1 - rows.length} empty rows from Excel data`);
+      console.log(`Processing ${rows.length} valid order rows`);
 
       // Merge with existing orders (upsert by Orden)
       const mergeResult = await storage.mergeOrders(rows, req.file.originalname, requiredHeaders);

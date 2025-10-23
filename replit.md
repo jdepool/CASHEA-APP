@@ -60,7 +60,8 @@ The application follows a client-server architecture with a React frontend and a
     - **Hybrid Filtering Logic**: Paid installments appear in the week they were *effectively paid*; unpaid installments appear in their *scheduled week*.
     - **Date Prioritization**: Payment date from payment records > payment date from order file > scheduled installment date.
 - **Payment Records View**: `PAGO DE CUOTAS` tab allows uploading and viewing payment transaction files with flexible column headers and auto-detection/formatting of 'VES' and 'USD' currency columns.
-    - **Partial Payment Detection**: Payment records are compared against expected installment amounts from the orders data. Rows where the paid amount is less than the expected amount are highlighted in **red bold text** for easy identification.
+    - **Partial Payment Detection**: Payment records are compared against expected installment amounts from the orders data. Rows where the paid amount is less than the expected amount (by more than $0.25) are highlighted in **red bold text** for easy identification.
+    - **Multi-Installment Payments**: Supports comma-separated cuota values (e.g., "4,5") where a single payment covers multiple installments. Expected amounts are summed for comparison.
     - **Currency Formatting**: All currency values are parsed using locale-aware number normalization and displayed using proper currency formatting (es-ES locale).
 - **Data Export**: Export current table view to Excel.
 - **Date Handling**: Automatic conversion of Excel serial dates and various date formats (DD/MM/YYYY, ISO).
@@ -72,9 +73,10 @@ The application follows a client-server architecture with a React frontend and a
 - **Modularity**: Use of reusable components and utility functions (`dateUtils.ts`, `installmentUtils.ts`, `numberUtils.ts`).
 - **Locale-aware Number Parsing**: Created `shared/numberUtils.ts` with intelligent number normalization that handles:
     - Multiple separator formats (US: 1,200.50, European: 1.200,50)
-    - Ambiguous cases with 3 digits after separator (treats "1.200" as 1,200 for payment data, but "0.123" as 0.123)
+    - Ambiguous cases with 3 digits after separator: Only treats as thousand separator if value ≥ 100 (e.g., "100.200" → 100,200 but "57.375" → 57.375)
     - Invalid values return NaN instead of silent coercion to 0
     - Used consistently across backend (duplicate detection) and frontend (display, comparison)
+- **Empty Row Filtering**: Both orders and payment records uploads now filter out empty rows (rows without "Orden" or "# Orden" respectively) to prevent Excel phantom rows from inflating record counts
 
 ## External Dependencies
 - **Database**: PostgreSQL (specifically Neon for serverless capabilities).
