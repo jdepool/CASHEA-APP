@@ -287,13 +287,17 @@ export class DatabaseStorage implements IStorage {
       // Find records in database but not in file
       const inDBNotInFile = existingKeysArray.filter(key => !processedKeys.has(key));
       if (inDBNotInFile.length > 0) {
-        console.log(`\nRegistros en BD pero NO en archivo: ${inDBNotInFile.length}`);
-        inDBNotInFile.slice(0, 10).forEach(key => {
-          console.log(`  - ${key}`);
+        console.log(`\n=== REGISTROS EN LA BASE DE DATOS QUE NO ESTÁN EN SU ARCHIVO ===`);
+        console.log(`Total: ${inDBNotInFile.length} registros`);
+        console.log(`Estos registros están en la tabla pero NO en su archivo Excel actual:\n`);
+        inDBNotInFile.forEach((key, index) => {
+          const [orden, cuota] = key.split('_');
+          console.log(`${index + 1}. Orden: ${orden}, Cuota: ${cuota}`);
         });
-        if (inDBNotInFile.length > 10) {
-          console.log(`  ... y ${inDBNotInFile.length - 10} más`);
-        }
+        console.log(`\nEstos ${inDBNotInFile.length} registros permanecen en la base de datos.`);
+        console.log('=================================================================\n');
+      } else {
+        console.log(`\nTodos los registros en la base de datos están en su archivo.`);
       }
       console.log('==============================\n');
       
