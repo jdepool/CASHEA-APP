@@ -88,10 +88,14 @@ export function normalizeNumber(value: any): number {
         // Keep as is
       } else if (beforeSep.length > 0 && beforeSep.length <= 3 && /^\d+$/.test(beforeSep)) {
         // 1-3 non-zero digits before, digits after not all zeros
-        // Ambiguous but likely thousand separator in payment data (e.g., "1.200" → 1200)
-        // Note: This will convert "123.456" → 123456, which is acceptable for payment/currency data
-        // where 3-decimal-place amounts are rare
-        cleaned = cleaned.replace(/\./g, '');
+        // Only treat as thousand separator if result would be >= 1000
+        // This prevents "57.375" from becoming 57375 (clearly a decimal, not a thousand)
+        const beforeNum = parseInt(beforeSep);
+        if (beforeNum >= 100) {
+          // e.g., "100.200" → 100200, "999.999" → 999999
+          cleaned = cleaned.replace(/\./g, '');
+        }
+        // else: keep as decimal (e.g., "57.375" stays 57.375)
       } else {
         // Otherwise keep as decimal (e.g., "1234.567" with 4+ digits before)
         // Keep as is
@@ -121,8 +125,15 @@ export function normalizeNumber(value: any): number {
         cleaned = cleaned.replace(',', '.');
       } else if (beforeSep.length > 0 && beforeSep.length <= 3 && /^\d+$/.test(beforeSep)) {
         // 1-3 non-zero digits before, digits after not all zeros
-        // Ambiguous but likely thousand separator in payment data (e.g., "1,200" → 1200)
-        cleaned = cleaned.replace(/,/g, '');
+        // Only treat as thousand separator if result would be >= 1000
+        const beforeNum = parseInt(beforeSep);
+        if (beforeNum >= 100) {
+          // e.g., "100,200" → 100200, "999,999" → 999999
+          cleaned = cleaned.replace(/,/g, '');
+        } else {
+          // else: treat as decimal (e.g., "57,375" → "57.375")
+          cleaned = cleaned.replace(',', '.');
+        }
       } else {
         // Otherwise treat as decimal (e.g., "0,123" → "0.123")
         cleaned = cleaned.replace(',', '.');
