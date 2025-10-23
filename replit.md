@@ -46,6 +46,10 @@ The application follows a client-server architecture with a React frontend and a
 
 **Feature Specifications**:
 - **File Upload**: Drag & drop or file selection with client-side validation (type, size). Separate upload zones for orders and payment records.
+    - **File Type Validation**: Backend validates that files contain the expected headers before processing:
+        - Orders zone requires: "Orden" + ("Venta total" OR installment columns) and rejects payment-specific headers
+        - Payments zone requires: payment headers ("Fecha de Transaccion"/"# Orden"/"# Cuota Pagada") and rejects order-specific headers
+        - Clear error messages guide users to the correct upload zone if wrong file type is detected
 - **Data Persistence**: All uploaded and processed data automatically saved to PostgreSQL. Data is reloaded automatically on app start.
 - **Duplicate Prevention**: 
     - **Orders**: Uploading orders with existing Order Numbers (Orden) replaces the old data with new data. Unique identifier: `Orden`
