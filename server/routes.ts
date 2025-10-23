@@ -148,6 +148,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Merge with existing payment records (skip duplicates by Orden + Cuota)
       const mergeResult = await storage.mergePaymentRecords(rows, req.file.originalname, allHeaders);
 
+      // Log summary of the merge operation
+      console.log('\n=== RESUMEN DE CARGA DE PAGOS ===');
+      console.log(`Archivo: ${req.file.originalname}`);
+      console.log(`Registros en archivo: ${rows.length}`);
+      console.log(`Nuevos agregados: ${mergeResult.added}`);
+      console.log(`Omitidos: ${mergeResult.skipped}`);
+      console.log(`Total en base de datos: ${mergeResult.total}`);
+      if (mergeResult.skipped > 0 && mergeResult.skippedRecords) {
+        console.log(`\nDetalle: Ver arriba los ${mergeResult.skippedRecords.length} registros omitidos`);
+      }
+      console.log('==================================\n');
+
       res.json({
         success: true,
         data: {

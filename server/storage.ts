@@ -12,11 +12,19 @@ import {
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
 
+export interface SkippedRecord {
+  orden: string;
+  cuota: string;
+  reason: string;
+  rowData?: any;
+}
+
 export interface MergeResult {
   added: number;
   updated: number;
   skipped: number;
   total: number;
+  skippedRecords?: SkippedRecord[];
 }
 
 export interface IStorage {
@@ -198,23 +206,51 @@ export class DatabaseStorage implements IStorage {
       let added = 0;
       let skipped = 0;
       const rowsToAdd: any[] = [];
+      const skippedRecords: SkippedRecord[] = [];
       
       // Filter new records: skip duplicates, add new ones
-      newRecords.forEach((newRow: any) => {
+      newRecords.forEach((newRow: any, index: number) => {
         const orden = newRow['# Orden'] || '';
         const cuota = newRow['# Cuota Pagada'] || '';
         const key = `${orden}_${cuota}`;
         
-        if (orden && cuota && existingKeys.has(key)) {
+        if (!orden || !cuota) {
+          // Skip records with missing Order# or Installment#
           skipped++;
+          skippedRecords.push({
+            orden: orden || '(vacío)',
+            cuota: cuota || '(vacío)',
+            reason: 'Falta número de orden o cuota',
+            rowData: newRow
+          });
+        } else if (existingKeys.has(key)) {
+          // Skip duplicate records
+          skipped++;
+          skippedRecords.push({
+            orden,
+            cuota,
+            reason: 'Duplicado (ya existe en la base de datos)',
+            rowData: newRow
+          });
         } else {
           added++;
           rowsToAdd.push(newRow);
-          if (orden && cuota) {
-            existingKeys.add(key); // Track to prevent duplicates within same upload
-          }
+          existingKeys.add(key); // Track to prevent duplicates within same upload
         }
       });
+      
+      // Log skipped records details
+      if (skippedRecords.length > 0) {
+        console.log('\n=== REGISTROS DE PAGO OMITIDOS ===');
+        console.log(`Total omitidos: ${skippedRecords.length}`);
+        skippedRecords.forEach((record, index) => {
+          console.log(`\n${index + 1}. Orden: ${record.orden}, Cuota: ${record.cuota}`);
+          console.log(`   Razón: ${record.reason}`);
+          console.log(`   Fecha: ${record.rowData['Fecha de Transaccion'] || 'N/A'}`);
+          console.log(`   Monto: ${record.rowData['Monto asignado'] || 'N/A'}`);
+        });
+        console.log('\n=================================\n');
+      }
       
       // Merge: existing rows + new non-duplicate rows
       const mergedRows = [...existingRows, ...rowsToAdd];
@@ -236,7 +272,8 @@ export class DatabaseStorage implements IStorage {
         added,
         updated: 0,
         skipped,
-        total: mergedRows.length
+        total: mergedRows.length,
+        skippedRecords
       };
     });
   }
