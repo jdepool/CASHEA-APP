@@ -264,6 +264,7 @@ export default function Home() {
                         selectedFile={selectedFile}
                         onClearFile={handleClearFile}
                         onInvalidFile={handleInvalidFile}
+                        inputId="file-upload-orders"
                       />
                     </div>
                   </div>
@@ -295,6 +296,7 @@ export default function Home() {
                           selectedFile={selectedPaymentFile}
                           onClearFile={handleClearPaymentFile}
                           onInvalidFile={handleInvalidFile}
+                          inputId="file-upload-payments"
                         />
                       )}
                     </div>

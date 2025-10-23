@@ -8,9 +8,10 @@ interface FileUploadProps {
   selectedFile: File | null;
   onClearFile: () => void;
   onInvalidFile?: (message: string) => void;
+  inputId?: string;
 }
 
-export function FileUpload({ onFileSelect, selectedFile, onClearFile, onInvalidFile }: FileUploadProps) {
+export function FileUpload({ onFileSelect, selectedFile, onClearFile, onInvalidFile, inputId = "file-upload" }: FileUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
 
   const validateFile = useCallback((file: File): boolean => {
@@ -94,7 +95,7 @@ export function FileUpload({ onFileSelect, selectedFile, onClearFile, onInvalidF
       onDrop={handleDrop}
     >
       <label
-        htmlFor="file-upload"
+        htmlFor={inputId}
         className="cursor-pointer block p-4 text-center"
         data-testid="label-upload-zone"
       >
@@ -106,7 +107,7 @@ export function FileUpload({ onFileSelect, selectedFile, onClearFile, onInvalidF
           Formatos: .xlsx, .xls (máx 10MB)
         </p>
         <input
-          id="file-upload"
+          id={inputId}
           type="file"
           accept=".xlsx,.xls"
           onChange={handleFileInput}
