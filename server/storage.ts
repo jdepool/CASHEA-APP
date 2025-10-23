@@ -264,6 +264,39 @@ export class DatabaseStorage implements IStorage {
         console.log('\n=====================================================\n');
       }
       
+      // Log comparison of file vs database
+      const uniqueKeysInFile = Array.from(processedKeys);
+      const existingKeysArray = Array.from(existingKeysMap.keys());
+      
+      console.log('\n=== ANÁLISIS DE REGISTROS ===');
+      console.log(`Registros únicos en su archivo: ${uniqueKeysInFile.length}`);
+      console.log(`Registros en base de datos antes de cargar: ${existingRows.length}`);
+      console.log(`Registros en base de datos después de cargar: ${updatedRows.length}`);
+      console.log(`Registros nuevos agregados: ${added}`);
+      console.log(`Registros actualizados: ${updated}`);
+      
+      // Find records in file but not in database (should be the 'added' ones)
+      const inFileNotInDB = uniqueKeysInFile.filter(key => !existingKeysMap.has(key));
+      if (inFileNotInDB.length > 0) {
+        console.log(`\nRegistros en archivo pero NO en BD (nuevos): ${inFileNotInDB.length}`);
+        inFileNotInDB.slice(0, 10).forEach(key => {
+          console.log(`  - ${key}`);
+        });
+      }
+      
+      // Find records in database but not in file
+      const inDBNotInFile = existingKeysArray.filter(key => !processedKeys.has(key));
+      if (inDBNotInFile.length > 0) {
+        console.log(`\nRegistros en BD pero NO en archivo: ${inDBNotInFile.length}`);
+        inDBNotInFile.slice(0, 10).forEach(key => {
+          console.log(`  - ${key}`);
+        });
+        if (inDBNotInFile.length > 10) {
+          console.log(`  ... y ${inDBNotInFile.length - 10} más`);
+        }
+      }
+      console.log('==============================\n');
+      
       // Delete all and insert merged data
       await tx.delete(paymentRecords);
       
