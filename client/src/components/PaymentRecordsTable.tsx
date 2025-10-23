@@ -53,8 +53,8 @@ export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRec
     // Skip if amount failed to parse
     if (isNaN(paidAmount)) return false;
     
-    // Consider partial if paid amount is less than expected by at least $0.01
-    return paidAmount < (expectedAmount - 0.01);
+    // Consider partial if paid amount is less than expected by more than $0.25 tolerance
+    return paidAmount < (expectedAmount - 0.25);
   };
 
   const formatValue = (value: any, header: string) => {
