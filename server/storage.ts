@@ -199,18 +199,12 @@ export class DatabaseStorage implements IStorage {
       existingRows.forEach((row: any) => {
         const orden = row['# Orden'];
         const cuota = row['# Cuota Pagada'];
-        const montoRaw = row['Monto asignado'];
+        const referencia = row['# Referencia'];
         
         // Skip if critical fields are null/undefined
-        if (orden == null || cuota == null || montoRaw == null) return;
+        if (orden == null || cuota == null || referencia == null) return;
         
-        // Normalize amount using locale-aware parser
-        const monto = normalizeNumberForKey(montoRaw);
-        
-        // Skip if amount is invalid (empty string from NaN)
-        if (!monto) return;
-        
-        const key = `${orden}_${cuota}_${monto}`;
+        const key = `${orden}_${cuota}_${referencia}`;
         
         // Only keep first occurrence of each key (removes duplicates)
         if (!deduplicatedMap.has(key)) {
@@ -234,36 +228,21 @@ export class DatabaseStorage implements IStorage {
       newRecords.forEach((newRow: any, rowIndex: number) => {
         const orden = newRow['# Orden'];
         const cuota = newRow['# Cuota Pagada'];
-        const montoRaw = newRow['Monto asignado'];
+        const referencia = newRow['# Referencia'];
         
-        // Skip records with missing Order#, Installment#, or Amount (null/undefined only, 0 is valid)
-        if (orden == null || cuota == null || montoRaw == null) {
+        // Skip records with missing Order#, Installment#, or Reference# (null/undefined only)
+        if (orden == null || cuota == null || referencia == null) {
           skipped++;
           skippedRecords.push({
             orden: orden ?? '(vacío)',
             cuota: cuota ?? '(vacío)',
-            reason: 'Falta número de orden, cuota o monto',
+            reason: 'Falta número de orden, cuota o referencia',
             rowData: { ...newRow, _fileRow: rowIndex + 2 } // +2 because Excel row (header is row 1)
           });
           return;
         }
         
-        // Normalize amount using locale-aware parser
-        const monto = normalizeNumberForKey(montoRaw);
-        
-        // Skip if amount is invalid (empty string from NaN)
-        if (!monto) {
-          skipped++;
-          skippedRecords.push({
-            orden: String(orden),
-            cuota: String(cuota),
-            reason: 'Monto inválido o no se pudo parsear',
-            rowData: { ...newRow, _fileRow: rowIndex + 2 }
-          });
-          return;
-        }
-        
-        const key = `${orden}_${cuota}_${monto}`;
+        const key = `${orden}_${cuota}_${referencia}`;
         
         if (processedKeys.has(key)) {
           // Skip duplicate within the same upload (second+ occurrence)

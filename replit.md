@@ -53,9 +53,8 @@ The application follows a client-server architecture with a React frontend and a
 - **Data Persistence**: All uploaded and processed data automatically saved to PostgreSQL. Data is reloaded automatically on app start.
 - **Duplicate Handling**: 
     - **Orders**: Uploading orders with existing Order Numbers (Orden) replaces the old data with new data. Unique identifier: `Orden`
-    - **Payment Records**: Uploading payment records **updates** existing records based on the combination of Order Number (# Orden), Installment Number (# Cuota Pagada), AND Amount Paid (Monto Pagado). This allows multiple payment records for the same order and installment if the amounts differ. Unique identifier: `(# Orden, # Cuota Pagada, Monto Pagado)`
-    - **Duplicate Detection**: Records with duplicate (Order#, Installment#, Amount) within the same upload file are skipped (only the first occurrence is processed). Different amounts for the same Order# + Installment# are kept as separate records.
-    - **Locale-aware Number Handling**: Amounts are normalized using intelligent locale detection supporting both US format (1,200.50) and European format (1.200,50). Duplicate detection compares normalized amounts to 8 decimal precision.
+    - **Payment Records**: Uploading payment records **updates** existing records based on the combination of Order Number (# Orden), Installment Number (# Cuota Pagada), AND Reference Number (# Referencia). This allows multiple payment records for the same order and installment if they have different reference numbers. Unique identifier: `(# Orden, # Cuota Pagada, # Referencia)`
+    - **Duplicate Detection**: Records with duplicate (Order#, Installment#, Reference#) within the same upload file are skipped (only the first occurrence is processed). Different reference numbers for the same Order# + Installment# are kept as separate records.
     - **User Feedback**: Toast notifications show detailed statistics for each upload (X nuevos, Y actualizados, Z omitidos, Total in database)
 - **Weekly View**: `CUOTAS SEMANAL` tab filters installments for the current week (Monday-Sunday) and calculates "expected income" to Friday.
     - **Hybrid Filtering Logic**: Paid installments appear in the week they were *effectively paid*; unpaid installments appear in their *scheduled week*.
