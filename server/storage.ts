@@ -211,7 +211,7 @@ export class DatabaseStorage implements IStorage {
       const processedKeys = new Set<string>(); // Track keys processed in this upload
       
       // Process new records: update existing, add new ones, skip invalid
-      newRecords.forEach((newRow: any) => {
+      newRecords.forEach((newRow: any, rowIndex: number) => {
         const orden = newRow['# Orden'] || '';
         const cuota = newRow['# Cuota Pagada'] || '';
         const key = `${orden}_${cuota}`;
@@ -223,7 +223,7 @@ export class DatabaseStorage implements IStorage {
             orden: orden || '(vacío)',
             cuota: cuota || '(vacío)',
             reason: 'Falta número de orden o cuota',
-            rowData: newRow
+            rowData: { ...newRow, _fileRow: rowIndex + 2 } // +2 because Excel row (header is row 1)
           });
         } else if (processedKeys.has(key)) {
           // Skip duplicate within the same upload (second+ occurrence)
@@ -232,7 +232,7 @@ export class DatabaseStorage implements IStorage {
             orden,
             cuota,
             reason: 'Duplicado dentro del mismo archivo',
-            rowData: newRow
+            rowData: { ...newRow, _fileRow: rowIndex + 2 }
           });
         } else {
           processedKeys.add(key);
@@ -252,15 +252,16 @@ export class DatabaseStorage implements IStorage {
       
       // Log skipped records details
       if (skippedRecords.length > 0) {
-        console.log('\n=== REGISTROS DE PAGO OMITIDOS ===');
-        console.log(`Total omitidos: ${skippedRecords.length}`);
+        console.log('\n=== REGISTROS DEL ARCHIVO QUE NO FUERON PROCESADOS ===');
+        console.log(`Total de filas omitidas en su archivo: ${skippedRecords.length}`);
+        console.log('Estas son las filas de su Excel que NO están en la base de datos:\n');
         skippedRecords.forEach((record, index) => {
-          console.log(`\n${index + 1}. Orden: ${record.orden}, Cuota: ${record.cuota}`);
+          console.log(`${index + 1}. FILA EXCEL #${record.rowData._fileRow} - Orden: ${record.orden}, Cuota: ${record.cuota}`);
           console.log(`   Razón: ${record.reason}`);
           console.log(`   Fecha: ${record.rowData['Fecha de Transaccion'] || 'N/A'}`);
           console.log(`   Monto: ${record.rowData['Monto asignado'] || 'N/A'}`);
         });
-        console.log('\n=================================\n');
+        console.log('\n=====================================================\n');
       }
       
       // Delete all and insert merged data
