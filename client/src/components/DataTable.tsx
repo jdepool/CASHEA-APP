@@ -112,8 +112,7 @@ export function DataTable({ data, headers }: DataTableProps) {
                 key={idx}
                 className={`px-4 py-3 text-left font-semibold text-xs uppercase tracking-wide border-b whitespace-nowrap ${
                   isNumericColumn(header) ? 'text-right' : ''
-                } ${idx < 2 ? 'sticky left-0 z-20 bg-muted' : ''}`}
-                style={idx === 0 ? { left: 0 } : idx === 1 ? { left: '120px' } : {}}
+                } ${idx === 0 ? 'sticky left-0 z-20 bg-muted' : ''}`}
                 data-testid={`header-${idx}`}
               >
                 {header}
@@ -133,10 +132,9 @@ export function DataTable({ data, headers }: DataTableProps) {
                   key={colIdx}
                   className={`px-4 py-3 whitespace-nowrap ${
                     isNumericColumn(header) ? 'text-right' : ''
-                  } ${colIdx < 2 ? 'sticky left-0 z-10' : ''} ${
+                  } ${colIdx === 0 ? 'sticky left-0 z-10' : ''} ${
                     rowIdx % 2 === 0 ? 'bg-background' : 'bg-card'
                   }`}
-                  style={colIdx === 0 ? { left: 0 } : colIdx === 1 ? { left: '120px' } : {}}
                   data-testid={`cell-${rowIdx}-${colIdx}`}
                 >
                   {formatValue(row[header], header, row)}
