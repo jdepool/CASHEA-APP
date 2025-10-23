@@ -100,6 +100,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Validate this is a payment records file, not an orders file
+      const headersLower = allHeaders.map(h => h.toLowerCase());
+      const hasPaymentHeaders = headersLower.some(h => 
+        h.includes('fecha') && h.includes('transac')
+      ) || headersLower.some(h => 
+        h.includes('#') && h.includes('orden')
+      ) || headersLower.some(h => 
+        h.includes('#') && h.includes('cuota') && h.includes('pagada')
+      );
+      
+      const hasOrderHeaders = headersLower.some(h => 
+        h.includes('cuota 1') || h.includes('cuota 2') || h.includes('cuota 3')
+      ) || headersLower.some(h => 
+        h.includes('venta') && h.includes('total')
+      );
+
+      if (!hasPaymentHeaders) {
+        return res.status(400).json({
+          error: 'Este archivo no parece ser un archivo de pagos. Por favor, asegúrese de cargar el archivo correcto en la zona de "Pago de Cuotas".'
+        });
+      }
+
+      if (hasOrderHeaders) {
+        return res.status(400).json({
+          error: 'Este parece ser un archivo de órdenes, no de pagos. Por favor, cárguelo en la zona de "Órdenes y Cuotas".'
+        });
+      }
+
       // Use all headers from the file as-is
       const rows = jsonData.slice(1).map(row => {
         const rowObj: any = {};
@@ -205,6 +233,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!allHeaders || allHeaders.length === 0) {
         return res.status(400).json({
           error: 'El archivo no contiene encabezados válidos'
+        });
+      }
+
+      // Validate this is an orders file, not a payment records file
+      const headersLower = allHeaders.map(h => h.toLowerCase());
+      const hasOrderHeaders = headersLower.some(h => 
+        h.includes('orden') && !h.includes('#')
+      ) && (headersLower.some(h => 
+        h.includes('venta') && h.includes('total')
+      ) || headersLower.some(h => 
+        h.includes('cuota 1') || h.includes('cuota 2')
+      ));
+      
+      const hasPaymentHeaders = headersLower.some(h => 
+        h.includes('fecha') && h.includes('transac')
+      ) || headersLower.some(h => 
+        h.includes('#') && h.includes('cuota') && h.includes('pagada')
+      );
+
+      if (!hasOrderHeaders) {
+        return res.status(400).json({
+          error: 'Este archivo no parece ser un archivo de órdenes. Por favor, asegúrese de cargar el archivo correcto en la zona de "Órdenes y Cuotas".'
+        });
+      }
+
+      if (hasPaymentHeaders) {
+        return res.status(400).json({
+          error: 'Este parece ser un archivo de pagos, no de órdenes. Por favor, cárguelo en la zona de "Pago de Cuotas".'
         });
       }
 
