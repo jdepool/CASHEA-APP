@@ -103,9 +103,9 @@ export function DataTable({ data, headers }: DataTableProps) {
   }
 
   return (
-    <div className="relative w-full overflow-auto border rounded-md">
+    <div className="relative w-full border rounded-md overflow-auto" style={{ maxHeight: '70vh' }}>
       <table className="w-full border-collapse text-sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
-        <thead className="sticky top-0 z-10 bg-muted">
+        <thead className="sticky top-0 z-10 bg-muted shadow-sm">
           <tr>
             {headers.map((header, idx) => (
               <th
@@ -133,7 +133,7 @@ export function DataTable({ data, headers }: DataTableProps) {
                   key={colIdx}
                   className={`px-4 py-3 whitespace-nowrap ${
                     isNumericColumn(header) ? 'text-right' : ''
-                  } ${colIdx < 2 ? 'sticky left-0 z-10 bg-background' : ''} ${
+                  } ${colIdx < 2 ? 'sticky left-0 z-10' : ''} ${
                     rowIdx % 2 === 0 ? 'bg-background' : 'bg-card'
                   }`}
                   style={colIdx === 0 ? { left: 0 } : colIdx === 1 ? { left: '120px' } : {}}

@@ -113,16 +113,17 @@ export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRec
   }
 
   return (
-    <div className="relative w-full overflow-auto border rounded-md">
+    <div className="relative w-full border rounded-md overflow-auto" style={{ maxHeight: '70vh' }}>
       <table className="w-full border-collapse text-sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
-        <thead className="sticky top-0 z-10 bg-muted">
+        <thead className="sticky top-0 z-10 bg-muted shadow-sm">
           <tr>
             {headers.map((header, idx) => (
               <th
                 key={idx}
                 className={`px-4 py-3 font-semibold text-xs uppercase tracking-wide border-b whitespace-nowrap ${
                   isNumericColumn(header) ? 'text-right' : 'text-left'
-                }`}
+                } ${idx < 2 ? 'sticky left-0 z-20 bg-muted' : ''}`}
+                style={idx === 0 ? { left: 0 } : idx === 1 ? { left: '150px' } : {}}
                 data-testid={`header-${idx}`}
               >
                 {header}
@@ -144,7 +145,8 @@ export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRec
                     key={colIdx}
                     className={`px-4 py-3 whitespace-nowrap ${
                       isNumericColumn(header) ? 'text-right font-mono' : ''
-                    }`}
+                    } ${colIdx < 2 ? 'sticky left-0 z-10 bg-card' : ''}`}
+                    style={colIdx === 0 ? { left: 0 } : colIdx === 1 ? { left: '150px' } : {}}
                     data-testid={`cell-${rowIdx}-${colIdx}`}
                   >
                     {formatValue(record[header], header)}
