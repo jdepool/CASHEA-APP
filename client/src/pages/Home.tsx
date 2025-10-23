@@ -186,11 +186,11 @@ export default function Home() {
                 <TabsTrigger value="all" data-testid="tab-all">
                   TODAS LAS ÓRDENES
                 </TabsTrigger>
-                <TabsTrigger value="weekly" data-testid="tab-weekly">
-                  CUOTAS SEMANAL
-                </TabsTrigger>
                 <TabsTrigger value="payments" data-testid="tab-payments">
                   PAGO DE CUOTAS
+                </TabsTrigger>
+                <TabsTrigger value="weekly" data-testid="tab-weekly">
+                  CUOTAS SEMANAL
                 </TabsTrigger>
               </TabsList>
 
@@ -208,12 +208,12 @@ export default function Home() {
                 <DataTable data={tableData} headers={headers} />
               </TabsContent>
 
-              <TabsContent value="weekly">
-                <WeeklyPayments tableData={tableData} />
-              </TabsContent>
-
               <TabsContent value="payments">
                 <PaymentRecords />
+              </TabsContent>
+
+              <TabsContent value="weekly">
+                <WeeklyPayments tableData={tableData} />
               </TabsContent>
             </Tabs>
           )}
