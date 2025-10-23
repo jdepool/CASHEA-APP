@@ -35,7 +35,8 @@ export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRec
   const isPartialPayment = (record: PaymentRecord): boolean => {
     const ordenNum = record['# Orden'];
     const cuotaNum = record['# Cuota Pagada'];
-    const amountPaidRaw = record['Monto asignado'];
+    // Use "Monto Pagado en USD" (actual amount paid in USD) for comparison
+    const amountPaidRaw = record['Monto Pagado en USD'];
     
     // Skip only if critical fields are null/undefined (0 is valid)
     if (ordenNum == null || cuotaNum == null || amountPaidRaw == null) return false;
