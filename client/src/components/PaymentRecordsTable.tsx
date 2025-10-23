@@ -150,8 +150,7 @@ export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRec
                 key={idx}
                 className={`px-4 py-3 font-semibold text-xs uppercase tracking-wide border-b whitespace-nowrap ${
                   isNumericColumn(header) ? 'text-right' : 'text-left'
-                } ${idx < 2 ? 'sticky left-0 z-20 bg-muted' : ''}`}
-                style={idx === 0 ? { left: 0 } : idx === 1 ? { left: '150px' } : {}}
+                } ${idx === 0 ? 'sticky left-0 z-20 bg-muted' : ''}`}
                 data-testid={`header-${idx}`}
               >
                 {header}
@@ -173,8 +172,7 @@ export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRec
                     key={colIdx}
                     className={`px-4 py-3 whitespace-nowrap ${
                       isNumericColumn(header) ? 'text-right font-mono' : ''
-                    } ${colIdx < 2 ? 'sticky left-0 z-10 bg-card' : ''}`}
-                    style={colIdx === 0 ? { left: 0 } : colIdx === 1 ? { left: '150px' } : {}}
+                    } ${colIdx === 0 ? 'sticky left-0 z-10 bg-card' : ''}`}
                     data-testid={`cell-${rowIdx}-${colIdx}`}
                   >
                     {formatValue(record[header], header)}
