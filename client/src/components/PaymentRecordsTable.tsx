@@ -41,11 +41,25 @@ export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRec
     // Skip only if critical fields are null/undefined (0 is valid)
     if (ordenNum == null || cuotaNum == null || amountPaidRaw == null) return false;
     
-    const key = `${ordenNum}_${cuotaNum}`;
-    const expectedAmount = expectedAmountsMap.get(key);
+    // Parse comma-separated cuota numbers (e.g., "4,5" means cuotas 4 AND 5)
+    const cuotaNumbers = String(cuotaNum).split(',').map(c => c.trim()).filter(c => c);
     
-    // If no expected amount found, can't determine if partial
-    if (expectedAmount == null) return false;
+    // Calculate total expected amount by summing all cuotas in this payment
+    let totalExpectedAmount = 0;
+    let foundAtLeastOne = false;
+    
+    for (const cuota of cuotaNumbers) {
+      const key = `${ordenNum}_${cuota}`;
+      const expectedAmount = expectedAmountsMap.get(key);
+      
+      if (expectedAmount != null) {
+        totalExpectedAmount += expectedAmount;
+        foundAtLeastOne = true;
+      }
+    }
+    
+    // If no expected amounts found, can't determine if partial
+    if (!foundAtLeastOne) return false;
     
     // Normalize payment amount using locale-aware parser
     const paidAmount = normalizeNumber(amountPaidRaw);
@@ -54,7 +68,7 @@ export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRec
     if (isNaN(paidAmount)) return false;
     
     // Consider partial if paid amount is less than expected by more than $0.25 tolerance
-    return paidAmount < (expectedAmount - 0.25);
+    return paidAmount < (totalExpectedAmount - 0.25);
   };
 
   const formatValue = (value: any, header: string) => {
