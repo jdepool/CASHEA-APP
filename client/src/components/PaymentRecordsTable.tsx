@@ -11,6 +11,34 @@ interface PaymentRecordsTableProps {
 }
 
 export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRecordsTableProps) {
+  // Define the desired column order and which columns to show
+  const desiredOrder = [
+    '# Orden',
+    '# Cuota Pagada',
+    'Monto Pagado en VES',
+    'Referencia',
+    'Metodo de Pago',
+    'Monto Pagado en USD',
+    'Tasa de Cambio',
+    'Fecha Tasa de Cambio'
+  ];
+  
+  // Columns to hide
+  const hiddenColumns = ['Factura', 'Sucursal', 'Monto Asignado'];
+  
+  // Filter out hidden columns and reorder based on desired order
+  const visibleHeaders = desiredOrder.filter(col => 
+    headers.some(h => h.toLowerCase() === col.toLowerCase())
+  );
+  
+  // Add any extra columns that might be in the data but not in our desired order
+  const extraColumns = headers.filter(h => 
+    !hiddenColumns.some(hidden => hidden.toLowerCase() === h.toLowerCase()) &&
+    !desiredOrder.some(desired => desired.toLowerCase() === h.toLowerCase())
+  );
+  
+  const orderedHeaders = [...visibleHeaders, ...extraColumns];
+
   // Build a map of expected installment amounts: (Order#, Installment#) => Expected Amount
   const expectedAmountsMap = new Map<string, number>();
   
@@ -117,7 +145,7 @@ export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRec
       <table className="w-full border-collapse text-sm" style={{ fontVariantNumeric: 'tabular-nums' }}>
         <thead className="sticky top-0 z-10 bg-muted shadow-sm">
           <tr>
-            {headers.map((header, idx) => (
+            {orderedHeaders.map((header, idx) => (
               <th
                 key={idx}
                 className={`px-4 py-3 font-semibold text-xs uppercase tracking-wide border-b whitespace-nowrap ${
@@ -140,7 +168,7 @@ export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRec
                 className={`border-b hover-elevate ${isPartial ? 'text-red-600 dark:text-red-400 font-bold' : ''}`}
                 data-testid={`row-${rowIdx}`}
               >
-                {headers.map((header, colIdx) => (
+                {orderedHeaders.map((header, colIdx) => (
                   <td
                     key={colIdx}
                     className={`px-4 py-3 whitespace-nowrap ${
