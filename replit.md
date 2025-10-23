@@ -53,13 +53,16 @@ The application follows a client-server architecture with a React frontend and a
 - **Data Persistence**: All uploaded and processed data automatically saved to PostgreSQL. Data is reloaded automatically on app start.
 - **Duplicate Handling**: 
     - **Orders**: Uploading orders with existing Order Numbers (Orden) replaces the old data with new data. Unique identifier: `Orden`
-    - **Payment Records**: Uploading payment records **updates** existing records based on the combination of Order Number (# Orden) and Installment Number (# Cuota Pagada). This allows correcting or refreshing payment data. Unique identifier: `(# Orden, # Cuota Pagada)`
-    - **Duplicate Detection**: Records with duplicate Order# + Installment# within the same upload file are skipped (only the first occurrence is processed)
+    - **Payment Records**: Uploading payment records **updates** existing records based on the combination of Order Number (# Orden), Installment Number (# Cuota Pagada), AND Amount Paid (Monto Pagado). This allows multiple payment records for the same order and installment if the amounts differ. Unique identifier: `(# Orden, # Cuota Pagada, Monto Pagado)`
+    - **Duplicate Detection**: Records with duplicate (Order#, Installment#, Amount) within the same upload file are skipped (only the first occurrence is processed). Different amounts for the same Order# + Installment# are kept as separate records.
+    - **Locale-aware Number Handling**: Amounts are normalized using intelligent locale detection supporting both US format (1,200.50) and European format (1.200,50). Duplicate detection compares normalized amounts to 8 decimal precision.
     - **User Feedback**: Toast notifications show detailed statistics for each upload (X nuevos, Y actualizados, Z omitidos, Total in database)
 - **Weekly View**: `CUOTAS SEMANAL` tab filters installments for the current week (Monday-Sunday) and calculates "expected income" to Friday.
     - **Hybrid Filtering Logic**: Paid installments appear in the week they were *effectively paid*; unpaid installments appear in their *scheduled week*.
     - **Date Prioritization**: Payment date from payment records > payment date from order file > scheduled installment date.
 - **Payment Records View**: `PAGO DE CUOTAS` tab allows uploading and viewing payment transaction files with flexible column headers and auto-detection/formatting of 'VES' and 'USD' currency columns.
+    - **Partial Payment Detection**: Payment records are compared against expected installment amounts from the orders data. Rows where the paid amount is less than the expected amount are highlighted in **red bold text** for easy identification.
+    - **Currency Formatting**: All currency values are parsed using locale-aware number normalization and displayed using proper currency formatting (es-ES locale).
 - **Data Export**: Export current table view to Excel.
 - **Date Handling**: Automatic conversion of Excel serial dates and various date formats (DD/MM/YYYY, ISO).
 - **Installment Extraction**: Converts wide-format Excel installment data into a long format for easier processing and filtering.
@@ -67,7 +70,12 @@ The application follows a client-server architecture with a React frontend and a
 **System Design Choices**:
 - **Robust Error Handling**: Comprehensive validation on both frontend (file type, size) and backend (file structure, headers, parsing errors) with clear user feedback.
 - **Separation of Concerns**: Clear distinction between frontend and backend responsibilities.
-- **Modularity**: Use of reusable components and utility functions (`dateUtils.ts`, `installmentUtils.ts`).
+- **Modularity**: Use of reusable components and utility functions (`dateUtils.ts`, `installmentUtils.ts`, `numberUtils.ts`).
+- **Locale-aware Number Parsing**: Created `shared/numberUtils.ts` with intelligent number normalization that handles:
+    - Multiple separator formats (US: 1,200.50, European: 1.200,50)
+    - Ambiguous cases with 3 digits after separator (treats "1.200" as 1,200 for payment data, but "0.123" as 0.123)
+    - Invalid values return NaN instead of silent coercion to 0
+    - Used consistently across backend (duplicate detection) and frontend (display, comparison)
 
 ## External Dependencies
 - **Database**: PostgreSQL (specifically Neon for serverless capabilities).
