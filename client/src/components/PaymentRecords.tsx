@@ -1,105 +1,23 @@
-import { useState, useEffect } from "react";
-import { FileUpload } from "./FileUpload";
 import { PaymentRecordsTable } from "./PaymentRecordsTable";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, FileSpreadsheet } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 export function PaymentRecords() {
-  const [paymentData, setPaymentData] = useState<any[]>([]);
-  const [headers, setHeaders] = useState<string[]>([]);
-  const [fileName, setFileName] = useState<string>("");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { toast } = useToast();
 
-  // Fetch persisted payment records on mount
+  // Fetch persisted payment records
   const { data: paymentRecordsData, isLoading: isLoadingPayments } = useQuery({
     queryKey: ['/api/payment-records'],
     refetchOnWindowFocus: false,
   });
 
-  // Load persisted data when query succeeds
-  useEffect(() => {
-    if (paymentRecordsData) {
-      const data = paymentRecordsData as any;
-      if (data.data) {
-        setPaymentData(data.data.rows || []);
-        setHeaders(data.data.headers || []);
-        setFileName(data.data.fileName || "");
-      }
-    }
-  }, [paymentRecordsData]);
-
-  const uploadMutation = useMutation({
-    mutationFn: async (file: File) => {
-      const formData = new FormData();
-      formData.append('file', file);
-      
-      const response = await fetch('/api/upload-payment-records', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Error al cargar el archivo');
-      }
-
-      return response.json();
-    },
-    onSuccess: async (data) => {
-      // Refetch to get the complete merged data
-      const paymentResponse = await fetch('/api/payment-records');
-      const paymentResult = await paymentResponse.json();
-      
-      if (paymentResult.success && paymentResult.data) {
-        setPaymentData(paymentResult.data.rows || []);
-        setHeaders(paymentResult.data.headers || []);
-        setFileName(paymentResult.data.fileName || "");
-      }
-      
-      // Show merge statistics
-      const mergeInfo = data.merge;
-      if (mergeInfo) {
-        toast({
-          title: "Archivo cargado exitosamente",
-          description: mergeInfo.message,
-        });
-      } else {
-        toast({
-          title: "Archivo cargado exitosamente",
-          description: `${data.data.rowCount} registros de pago importados`,
-        });
-      }
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error al cargar el archivo",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleFileSelect = (file: File) => {
-    setSelectedFile(file);
-    uploadMutation.mutate(file);
-  };
-
-  const handleClearFile = () => {
-    setSelectedFile(null);
-  };
-
-  const handleInvalidFile = (message: string) => {
-    toast({
-      title: "Archivo inválido",
-      description: message,
-      variant: "destructive",
-    });
-  };
+  // Derive data directly from query result
+  const data = paymentRecordsData as any;
+  const paymentData = data?.data?.rows || [];
+  const headers = data?.data?.headers || [];
 
   const handleExport = () => {
     if (paymentData.length === 0) {
@@ -121,28 +39,46 @@ export function PaymentRecords() {
     });
   };
 
+  if (isLoadingPayments) {
+    return (
+      <div className="text-center py-8">
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
+        <p className="mt-2 text-sm text-muted-foreground">Cargando datos...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      <div className="space-y-3">
-        {uploadMutation.isPending ? (
-          <div className="flex items-center justify-center py-8 border-2 border-dashed rounded-md">
-            <div className="text-center">
-              <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
-              <p className="text-xs text-muted-foreground">Procesando archivo...</p>
+      {paymentData.length > 0 ? (
+        <>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold">Registros de Pago</h3>
+              <p className="text-sm text-muted-foreground">
+                {paymentData.length} {paymentData.length === 1 ? 'registro' : 'registros'} de pago
+              </p>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              data-testid="button-export-payments"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Exportar
+            </Button>
           </div>
-        ) : (
-          <FileUpload 
-            onFileSelect={handleFileSelect}
-            selectedFile={selectedFile}
-            onClearFile={handleClearFile}
-            onInvalidFile={handleInvalidFile}
-          />
-        )}
-      </div>
-
-      {paymentData.length > 0 && (
-        <PaymentRecordsTable records={paymentData} headers={headers} />
+          <PaymentRecordsTable records={paymentData} headers={headers} />
+        </>
+      ) : (
+        <div className="text-center py-12">
+          <FileSpreadsheet className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">No hay registros de pago</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Carga un archivo de pagos desde la pestaña "CARGAR DATOS"
+          </p>
+        </div>
       )}
     </div>
   );
