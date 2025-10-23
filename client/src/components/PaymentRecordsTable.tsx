@@ -11,33 +11,42 @@ interface PaymentRecordsTableProps {
 }
 
 export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRecordsTableProps) {
-  // Define the desired column order and which columns to show
-  const desiredOrder = [
-    '# Orden',
-    '# Cuota Pagada',
-    'Monto Pagado en VES',
-    'Referencia',
-    'Metodo de Pago',
-    'Monto Pagado en USD',
-    'Tasa de Cambio',
-    'Fecha Tasa de Cambio'
+  // Define the desired column order patterns (case-insensitive)
+  const desiredOrderPatterns = [
+    { pattern: /^#\s*orden$/i, display: '# Orden' },
+    { pattern: /^#\s*cuota\s*pagada$/i, display: '# Cuota Pagada' },
+    { pattern: /^monto\s*pagado\s*en\s*ves$/i, display: 'Monto Pagado en VES' },
+    { pattern: /^#\s*referencia$/i, display: '# Referencia' },
+    { pattern: /^m[eé]todo\s*de\s*pago$/i, display: 'Método de Pago' },
+    { pattern: /^monto\s*pagado\s*en\s*usd$/i, display: 'Monto Pagado en USD' },
+    { pattern: /^tasa\s*de\s*cambio$/i, display: 'Tasa de Cambio' },
+    { pattern: /^fecha\s*tasa\s*de\s*cambio$/i, display: 'Fecha Tasa de Cambio' }
   ];
   
-  // Columns to hide
-  const hiddenColumns = ['Factura', 'Sucursal', 'Monto Asignado'];
+  // Columns to hide (case-insensitive)
+  const hiddenPatterns = [/factura/i, /sucursal/i, /monto\s*asignado/i];
   
-  // Filter out hidden columns and reorder based on desired order
-  const visibleHeaders = desiredOrder.filter(col => 
-    headers.some(h => h.toLowerCase() === col.toLowerCase())
-  );
+  // Helper function to find header by pattern
+  const findHeaderByPattern = (pattern: RegExp) => {
+    return headers.find(h => pattern.test(h));
+  };
   
-  // Add any extra columns that might be in the data but not in our desired order
+  // Build ordered headers by finding actual headers that match patterns
+  const orderedHeaders: string[] = [];
+  desiredOrderPatterns.forEach(({ pattern }) => {
+    const matchedHeader = findHeaderByPattern(pattern);
+    if (matchedHeader) {
+      orderedHeaders.push(matchedHeader);
+    }
+  });
+  
+  // Add any extra columns that don't match desired or hidden patterns
   const extraColumns = headers.filter(h => 
-    !hiddenColumns.some(hidden => hidden.toLowerCase() === h.toLowerCase()) &&
-    !desiredOrder.some(desired => desired.toLowerCase() === h.toLowerCase())
+    !hiddenPatterns.some(hidden => hidden.test(h)) &&
+    !desiredOrderPatterns.some(({ pattern }) => pattern.test(h))
   );
   
-  const orderedHeaders = [...visibleHeaders, ...extraColumns];
+  orderedHeaders.push(...extraColumns);
 
   // Build a map of expected installment amounts: (Order#, Installment#) => Expected Amount
   const expectedAmountsMap = new Map<string, number>();
