@@ -1,9 +1,11 @@
+import { useMemo } from "react";
 import { PaymentRecordsTable } from "./PaymentRecordsTable";
 import { Button } from "@/components/ui/button";
 import { Download, FileSpreadsheet } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
+import { parseExcelDate } from "@/lib/dateUtils";
 
 export function PaymentRecords() {
   const { toast } = useToast();
@@ -16,8 +18,32 @@ export function PaymentRecords() {
 
   // Derive data directly from query result
   const data = paymentRecordsData as any;
-  const paymentData = data?.data?.rows || [];
+  const rawPaymentData = data?.data?.rows || [];
   const headers = data?.data?.headers || [];
+
+  // Sort payment data by transaction date (newest to oldest)
+  const paymentData = useMemo(() => {
+    if (!rawPaymentData.length || !headers.length) return rawPaymentData;
+
+    // Find the transaction date header (case-insensitive, flexible matching)
+    const transactionDateHeader = headers.find((h: string) => 
+      h.toLowerCase().includes('fecha') && h.toLowerCase().includes('transac')
+    );
+
+    if (!transactionDateHeader) return rawPaymentData;
+
+    // Sort by transaction date in descending order (newest first)
+    return [...rawPaymentData].sort((a, b) => {
+      const dateA = parseExcelDate(a[transactionDateHeader]);
+      const dateB = parseExcelDate(b[transactionDateHeader]);
+
+      if (!dateA && !dateB) return 0;
+      if (!dateA) return 1;
+      if (!dateB) return -1;
+
+      return dateB.getTime() - dateA.getTime();
+    });
+  }, [rawPaymentData, headers]);
 
   const handleExport = () => {
     if (paymentData.length === 0) {
