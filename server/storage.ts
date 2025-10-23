@@ -194,9 +194,9 @@ export class DatabaseStorage implements IStorage {
       
       const existingRows = existingRecord?.rows || [];
       
-      // Create a map of existing (Orden, Cuota, Monto) → row index for updates
-      const existingKeysMap = new Map<string, number>();
-      existingRows.forEach((row: any, index: number) => {
+      // First, deduplicate existing records by keeping only the first occurrence of each unique key
+      const deduplicatedMap = new Map<string, any>();
+      existingRows.forEach((row: any) => {
         const orden = row['# Orden'];
         const cuota = row['# Cuota Pagada'];
         const montoRaw = row['Monto asignado'];
@@ -210,14 +210,24 @@ export class DatabaseStorage implements IStorage {
         // Skip if amount is invalid (empty string from NaN)
         if (!monto) return;
         
-        existingKeysMap.set(`${orden}_${cuota}_${monto}`, index);
+        const key = `${orden}_${cuota}_${monto}`;
+        
+        // Only keep first occurrence of each key (removes duplicates)
+        if (!deduplicatedMap.has(key)) {
+          deduplicatedMap.set(key, row);
+        }
       });
+      
+      // Start with deduplicated rows
+      const deduplicatedRows = Array.from(deduplicatedMap.values());
+      
+      // Create a map of existing (Orden, Cuota, Monto) → row for updates
+      const existingKeysMap = new Map<string, any>(deduplicatedMap);
       
       let added = 0;
       let updated = 0;
       let skipped = 0;
       const skippedRecords: SkippedRecord[] = [];
-      const updatedRows = [...existingRows]; // Copy existing rows
       const processedKeys = new Set<string>(); // Track keys processed in this upload
       
       // Process new records: update existing, add new ones, skip invalid
@@ -269,16 +279,18 @@ export class DatabaseStorage implements IStorage {
           
           if (existingKeysMap.has(key)) {
             // Update existing record
-            const existingIndex = existingKeysMap.get(key)!;
-            updatedRows[existingIndex] = newRow;
+            existingKeysMap.set(key, newRow);
             updated++;
           } else {
             // Add new record
-            updatedRows.push(newRow);
+            existingKeysMap.set(key, newRow);
             added++;
           }
         }
       });
+      
+      // Convert map to final array
+      const finalRows = Array.from(existingKeysMap.values());
       
       // Log skipped records details
       if (skippedRecords.length > 0) {
@@ -301,7 +313,7 @@ export class DatabaseStorage implements IStorage {
       console.log('\n=== ANÁLISIS DE REGISTROS ===');
       console.log(`Registros únicos en su archivo: ${uniqueKeysInFile.length}`);
       console.log(`Registros en base de datos antes de cargar: ${existingRows.length}`);
-      console.log(`Registros en base de datos después de cargar: ${updatedRows.length}`);
+      console.log(`Registros en base de datos después de cargar: ${finalRows.length}`);
       console.log(`Registros nuevos agregados: ${added}`);
       console.log(`Registros actualizados: ${updated}`);
       
@@ -339,8 +351,8 @@ export class DatabaseStorage implements IStorage {
         .values({
           fileName,
           headers: headers as any,
-          rows: updatedRows as any,
-          rowCount: String(updatedRows.length),
+          rows: finalRows as any,
+          rowCount: String(finalRows.length),
         })
         .returning();
       
@@ -348,7 +360,7 @@ export class DatabaseStorage implements IStorage {
         added,
         updated,
         skipped,
-        total: updatedRows.length,
+        total: finalRows.length,
         skippedRecords
       };
     });
