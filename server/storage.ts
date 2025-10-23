@@ -193,23 +193,25 @@ export class DatabaseStorage implements IStorage {
       
       const existingRows = existingRecord?.rows || [];
       
-      // Create a set of existing (Orden, Cuota) combinations
-      const existingKeys = new Set<string>();
-      existingRows.forEach((row: any) => {
+      // Create a map of existing (Orden, Cuota) → row index for updates
+      const existingKeysMap = new Map<string, number>();
+      existingRows.forEach((row: any, index: number) => {
         const orden = row['# Orden'] || '';
         const cuota = row['# Cuota Pagada'] || '';
         if (orden && cuota) {
-          existingKeys.add(`${orden}_${cuota}`);
+          existingKeysMap.set(`${orden}_${cuota}`, index);
         }
       });
       
       let added = 0;
+      let updated = 0;
       let skipped = 0;
-      const rowsToAdd: any[] = [];
       const skippedRecords: SkippedRecord[] = [];
+      const updatedRows = [...existingRows]; // Copy existing rows
+      const processedKeys = new Set<string>(); // Track keys processed in this upload
       
-      // Filter new records: skip duplicates, add new ones
-      newRecords.forEach((newRow: any, index: number) => {
+      // Process new records: update existing, add new ones, skip invalid
+      newRecords.forEach((newRow: any) => {
         const orden = newRow['# Orden'] || '';
         const cuota = newRow['# Cuota Pagada'] || '';
         const key = `${orden}_${cuota}`;
@@ -223,19 +225,28 @@ export class DatabaseStorage implements IStorage {
             reason: 'Falta número de orden o cuota',
             rowData: newRow
           });
-        } else if (existingKeys.has(key)) {
-          // Skip duplicate records
+        } else if (processedKeys.has(key)) {
+          // Skip duplicate within the same upload (second+ occurrence)
           skipped++;
           skippedRecords.push({
             orden,
             cuota,
-            reason: 'Duplicado (ya existe en la base de datos)',
+            reason: 'Duplicado dentro del mismo archivo',
             rowData: newRow
           });
         } else {
-          added++;
-          rowsToAdd.push(newRow);
-          existingKeys.add(key); // Track to prevent duplicates within same upload
+          processedKeys.add(key);
+          
+          if (existingKeysMap.has(key)) {
+            // Update existing record
+            const existingIndex = existingKeysMap.get(key)!;
+            updatedRows[existingIndex] = newRow;
+            updated++;
+          } else {
+            // Add new record
+            updatedRows.push(newRow);
+            added++;
+          }
         }
       });
       
@@ -252,9 +263,6 @@ export class DatabaseStorage implements IStorage {
         console.log('\n=================================\n');
       }
       
-      // Merge: existing rows + new non-duplicate rows
-      const mergedRows = [...existingRows, ...rowsToAdd];
-      
       // Delete all and insert merged data
       await tx.delete(paymentRecords);
       
@@ -263,16 +271,16 @@ export class DatabaseStorage implements IStorage {
         .values({
           fileName,
           headers: headers as any,
-          rows: mergedRows as any,
-          rowCount: String(mergedRows.length),
+          rows: updatedRows as any,
+          rowCount: String(updatedRows.length),
         })
         .returning();
       
       return {
         added,
-        updated: 0,
+        updated,
         skipped,
-        total: mergedRows.length,
+        total: updatedRows.length,
         skippedRecords
       };
     });

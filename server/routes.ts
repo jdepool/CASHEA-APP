@@ -153,6 +153,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Archivo: ${req.file.originalname}`);
       console.log(`Registros en archivo: ${rows.length}`);
       console.log(`Nuevos agregados: ${mergeResult.added}`);
+      console.log(`Actualizados: ${mergeResult.updated}`);
       console.log(`Omitidos: ${mergeResult.skipped}`);
       console.log(`Total en base de datos: ${mergeResult.total}`);
       if (mergeResult.skipped > 0 && mergeResult.skippedRecords) {
@@ -170,9 +171,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         merge: {
           added: mergeResult.added,
+          updated: mergeResult.updated,
           skipped: mergeResult.skipped,
           total: mergeResult.total,
-          message: `${mergeResult.added} nuevos pagos agregados, ${mergeResult.skipped} pagos duplicados omitidos. Total: ${mergeResult.total} pagos.`
+          message: `${mergeResult.added} nuevos, ${mergeResult.updated} actualizados, ${mergeResult.skipped} omitidos. Total: ${mergeResult.total} pagos.`
         }
       });
     } catch (error) {
