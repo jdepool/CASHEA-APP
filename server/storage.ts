@@ -9,6 +9,7 @@ import {
   orders,
   paymentRecords
 } from "@shared/schema";
+import { normalizeNumberForKey } from "@shared/numberUtils";
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
 
@@ -193,14 +194,23 @@ export class DatabaseStorage implements IStorage {
       
       const existingRows = existingRecord?.rows || [];
       
-      // Create a map of existing (Orden, Cuota) → row index for updates
+      // Create a map of existing (Orden, Cuota, Monto) → row index for updates
       const existingKeysMap = new Map<string, number>();
       existingRows.forEach((row: any, index: number) => {
-        const orden = row['# Orden'] || '';
-        const cuota = row['# Cuota Pagada'] || '';
-        if (orden && cuota) {
-          existingKeysMap.set(`${orden}_${cuota}`, index);
-        }
+        const orden = row['# Orden'];
+        const cuota = row['# Cuota Pagada'];
+        const montoRaw = row['Monto asignado'];
+        
+        // Skip if critical fields are null/undefined
+        if (orden == null || cuota == null || montoRaw == null) return;
+        
+        // Normalize amount using locale-aware parser
+        const monto = normalizeNumberForKey(montoRaw);
+        
+        // Skip if amount is invalid (empty string from NaN)
+        if (!monto) return;
+        
+        existingKeysMap.set(`${orden}_${cuota}_${monto}`, index);
       });
       
       let added = 0;
@@ -212,20 +222,40 @@ export class DatabaseStorage implements IStorage {
       
       // Process new records: update existing, add new ones, skip invalid
       newRecords.forEach((newRow: any, rowIndex: number) => {
-        const orden = newRow['# Orden'] || '';
-        const cuota = newRow['# Cuota Pagada'] || '';
-        const key = `${orden}_${cuota}`;
+        const orden = newRow['# Orden'];
+        const cuota = newRow['# Cuota Pagada'];
+        const montoRaw = newRow['Monto asignado'];
         
-        if (!orden || !cuota) {
-          // Skip records with missing Order# or Installment#
+        // Skip records with missing Order#, Installment#, or Amount (null/undefined only, 0 is valid)
+        if (orden == null || cuota == null || montoRaw == null) {
           skipped++;
           skippedRecords.push({
-            orden: orden || '(vacío)',
-            cuota: cuota || '(vacío)',
-            reason: 'Falta número de orden o cuota',
+            orden: orden ?? '(vacío)',
+            cuota: cuota ?? '(vacío)',
+            reason: 'Falta número de orden, cuota o monto',
             rowData: { ...newRow, _fileRow: rowIndex + 2 } // +2 because Excel row (header is row 1)
           });
-        } else if (processedKeys.has(key)) {
+          return;
+        }
+        
+        // Normalize amount using locale-aware parser
+        const monto = normalizeNumberForKey(montoRaw);
+        
+        // Skip if amount is invalid (empty string from NaN)
+        if (!monto) {
+          skipped++;
+          skippedRecords.push({
+            orden: String(orden),
+            cuota: String(cuota),
+            reason: 'Monto inválido o no se pudo parsear',
+            rowData: { ...newRow, _fileRow: rowIndex + 2 }
+          });
+          return;
+        }
+        
+        const key = `${orden}_${cuota}_${monto}`;
+        
+        if (processedKeys.has(key)) {
           // Skip duplicate within the same upload (second+ occurrence)
           skipped++;
           skippedRecords.push({
@@ -291,8 +321,8 @@ export class DatabaseStorage implements IStorage {
         console.log(`Total: ${inDBNotInFile.length} registros`);
         console.log(`Estos registros están en la tabla pero NO en su archivo Excel actual:\n`);
         inDBNotInFile.forEach((key, index) => {
-          const [orden, cuota] = key.split('_');
-          console.log(`${index + 1}. Orden: ${orden}, Cuota: ${cuota}`);
+          const [orden, cuota, monto] = key.split('_');
+          console.log(`${index + 1}. Orden: ${orden}, Cuota: ${cuota}, Monto: ${monto}`);
         });
         console.log(`\nEstos ${inDBNotInFile.length} registros permanecen en la base de datos.`);
         console.log('=================================================================\n');

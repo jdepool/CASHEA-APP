@@ -16,10 +16,19 @@ export function PaymentRecords() {
     refetchOnWindowFocus: false,
   });
 
+  // Fetch orders data to compare expected vs actual payment amounts
+  const { data: ordersData, isLoading: isLoadingOrders } = useQuery({
+    queryKey: ['/api/orders'],
+    refetchOnWindowFocus: false,
+  });
+
   // Derive data directly from query result
   const data = paymentRecordsData as any;
   const rawPaymentData = data?.data?.rows || [];
   const headers = data?.data?.headers || [];
+
+  // Extract orders data for comparing expected installment amounts
+  const ordersTableData = (ordersData as any)?.data?.rows || [];
 
   // Sort payment data by transaction date (newest to oldest)
   const paymentData = useMemo(() => {
@@ -65,7 +74,7 @@ export function PaymentRecords() {
     });
   };
 
-  if (isLoadingPayments) {
+  if (isLoadingPayments || isLoadingOrders) {
     return (
       <div className="text-center py-8">
         <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
@@ -95,7 +104,7 @@ export function PaymentRecords() {
               Exportar
             </Button>
           </div>
-          <PaymentRecordsTable records={paymentData} headers={headers} />
+          <PaymentRecordsTable records={paymentData} headers={headers} ordersData={ordersTableData} />
         </>
       ) : (
         <div className="text-center py-12">
