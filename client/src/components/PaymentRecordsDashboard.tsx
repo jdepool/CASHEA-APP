@@ -62,6 +62,12 @@ export function PaymentRecordsDashboard({ data, headers }: PaymentRecordsDashboa
       }
     });
 
+    console.log('Payment Records Dashboard metrics:', {
+      totalRecords: data.length,
+      totalCuotasPagadas: uniqueCuotas.size,
+      totalPagado,
+    });
+
     return {
       totalCuotasPagadas: uniqueCuotas.size,
       totalPagado,
