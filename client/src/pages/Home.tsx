@@ -28,6 +28,7 @@ export default function Home() {
   const [ordenFilter, setOrdenFilter] = useState<string>("");
   const [referenciaFilter, setReferenciaFilter] = useState<string>("");
   const [estadoCuotaFilter, setEstadoCuotaFilter] = useState<string>("all");
+  const [showFilters, setShowFilters] = useState<boolean>(false);
   const { toast } = useToast();
 
   // Fetch persisted orders on mount
@@ -383,96 +384,7 @@ export default function Home() {
               <TabsContent value="all" className="space-y-4">
                 {tableData.length > 0 ? (
                   <>
-                    <div className="bg-card border rounded-lg p-6 space-y-4">
-                      <div className="flex items-center gap-2 mb-4">
-                        <Filter className="h-5 w-5 text-primary" />
-                        <h3 className="text-lg font-semibold">Filtros</h3>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="date-from">Fecha Desde</Label>
-                          <Input
-                            id="date-from"
-                            type="date"
-                            value={dateFrom}
-                            onChange={(e) => setDateFrom(e.target.value)}
-                            className="w-full"
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="date-to">Fecha Hasta</Label>
-                          <Input
-                            id="date-to"
-                            type="date"
-                            value={dateTo}
-                            onChange={(e) => setDateTo(e.target.value)}
-                            className="w-full"
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="orden-filter">Orden</Label>
-                          <Input
-                            id="orden-filter"
-                            type="text"
-                            placeholder="Buscar orden..."
-                            value={ordenFilter}
-                            onChange={(e) => setOrdenFilter(e.target.value)}
-                            className="w-full"
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="referencia-filter">Referencia</Label>
-                          <Input
-                            id="referencia-filter"
-                            type="text"
-                            placeholder="Buscar referencia..."
-                            value={referenciaFilter}
-                            onChange={(e) => setReferenciaFilter(e.target.value)}
-                            className="w-full"
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label htmlFor="estado-filter">Estado Cuota</Label>
-                          <Select value={estadoCuotaFilter} onValueChange={setEstadoCuotaFilter}>
-                            <SelectTrigger id="estado-filter" className="w-full">
-                              <SelectValue placeholder="Todos los estados" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">Todos</SelectItem>
-                              <SelectItem value="done">Done</SelectItem>
-                              <SelectItem value="pendiente">Pendiente</SelectItem>
-                              <SelectItem value="vencido">Vencido</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      
-                      {(dateFrom || dateTo || ordenFilter || referenciaFilter || (estadoCuotaFilter && estadoCuotaFilter !== 'all')) && (
-                        <div className="flex justify-end pt-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setDateFrom("");
-                              setDateTo("");
-                              setOrdenFilter("");
-                              setReferenciaFilter("");
-                              setEstadoCuotaFilter("all");
-                            }}
-                            data-testid="button-clear-filters"
-                          >
-                            Limpiar filtros
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-4">
                       <div>
                         <h3 className="text-lg font-semibold">
                           Datos de Cuotas
@@ -481,7 +393,105 @@ export default function Home() {
                           {filteredTableData.length} de {tableData.length} {filteredTableData.length === 1 ? 'registro' : 'registros'}
                         </p>
                       </div>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setShowFilters(!showFilters)}
+                        data-testid="button-toggle-filters"
+                      >
+                        <Filter className="h-4 w-4" />
+                      </Button>
                     </div>
+
+                    {showFilters && (
+                      <div className="bg-card border rounded-lg p-6 space-y-4 mb-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="date-from">Fecha Desde</Label>
+                            <Input
+                              id="date-from"
+                              type="date"
+                              value={dateFrom}
+                              onChange={(e) => setDateFrom(e.target.value)}
+                              className="w-full"
+                              data-testid="input-date-from"
+                            />
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="date-to">Fecha Hasta</Label>
+                            <Input
+                              id="date-to"
+                              type="date"
+                              value={dateTo}
+                              onChange={(e) => setDateTo(e.target.value)}
+                              className="w-full"
+                              data-testid="input-date-to"
+                            />
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="orden-filter">Orden</Label>
+                            <Input
+                              id="orden-filter"
+                              type="text"
+                              placeholder="Buscar orden..."
+                              value={ordenFilter}
+                              onChange={(e) => setOrdenFilter(e.target.value)}
+                              className="w-full"
+                              data-testid="input-orden-filter"
+                            />
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="referencia-filter">Referencia</Label>
+                            <Input
+                              id="referencia-filter"
+                              type="text"
+                              placeholder="Buscar referencia..."
+                              value={referenciaFilter}
+                              onChange={(e) => setReferenciaFilter(e.target.value)}
+                              className="w-full"
+                              data-testid="input-referencia-filter"
+                            />
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="estado-filter">Estado Cuota</Label>
+                            <Select value={estadoCuotaFilter} onValueChange={setEstadoCuotaFilter}>
+                              <SelectTrigger id="estado-filter" className="w-full" data-testid="select-estado-filter">
+                                <SelectValue placeholder="Todos los estados" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">Todos</SelectItem>
+                                <SelectItem value="done">Done</SelectItem>
+                                <SelectItem value="pendiente">Pendiente</SelectItem>
+                                <SelectItem value="vencido">Vencido</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        
+                        {(dateFrom || dateTo || ordenFilter || referenciaFilter || (estadoCuotaFilter && estadoCuotaFilter !== 'all')) && (
+                          <div className="flex justify-end pt-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setDateFrom("");
+                                setDateTo("");
+                                setOrdenFilter("");
+                                setReferenciaFilter("");
+                                setEstadoCuotaFilter("all");
+                              }}
+                              data-testid="button-clear-filters"
+                            >
+                              Limpiar filtros
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <DataTable data={filteredTableData} headers={headers} />
                   </>
                 ) : (
