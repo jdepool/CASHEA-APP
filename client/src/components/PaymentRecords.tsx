@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { PaymentRecordsTable } from "./PaymentRecordsTable";
+import { PaymentRecordsDashboard } from "./PaymentRecordsDashboard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -146,6 +147,8 @@ export function PaymentRecords() {
     <div className="space-y-4">
       {sortedPaymentData.length > 0 ? (
         <>
+          <PaymentRecordsDashboard data={paymentData} headers={headers} />
+          
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-lg font-semibold">Registros de Pago</h3>
