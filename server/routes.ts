@@ -290,12 +290,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Headers containing "Venta":', allHeaders.filter(h => h.toLowerCase().includes('venta')));
       console.log('Headers containing "Cuota 1":', allHeaders.filter(h => h.includes('1')).slice(0, 5));
 
+      // Map output header names to possible input header names
+      const headerMapping: { [key: string]: string[] } = {
+        "PAGO INICIAL": ["Pago en Caja", "Pago en caja", "PAGO EN CAJA"],
+      };
+
       const requiredHeaders = [
         "Orden",
         "Nombre del comprador",
         "Venta total",
         "Fecha de compra",
         "Tipo orden",
+        "PAGO INICIAL",
         "Estado pago inicial",
         "Fecha cuota 1", "Cuota 1", "Pagado de cuota 1", "Estado cuota 1", "Fecha de pago cuota 1",
         "Fecha cuota 2", "Cuota 2", "Pagado de cuota 2", "Estado cuota 2", "Fecha de pago cuota 2",
@@ -352,8 +358,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const rows = jsonData.slice(1).map(row => {
         const rowObj: any = {};
         requiredHeaders.forEach(header => {
-          const normalized = normalizeHeader(header);
-          const headerInfo = normalizedHeaderMap.get(normalized);
+          let headerInfo = normalizedHeaderMap.get(normalizeHeader(header));
+          
+          // If not found and header has mapping alternatives, try those
+          if (!headerInfo && headerMapping[header]) {
+            for (const alternative of headerMapping[header]) {
+              headerInfo = normalizedHeaderMap.get(normalizeHeader(alternative));
+              if (headerInfo) break;
+            }
+          }
           
           if (headerInfo) {
             // Use the standardized header name as key, value from matched Excel column

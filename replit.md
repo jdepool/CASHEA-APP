@@ -66,6 +66,15 @@ The application follows a client-server architecture with a React frontend and a
 - **Data Export**: Export current table view to Excel.
 - **Date Handling**: Automatic conversion of Excel serial dates and various date formats (DD/MM/YYYY, ISO).
 - **Installment Extraction**: Converts wide-format Excel installment data into a long format for easier processing and filtering.
+- **Column Mapping**: Flexible header mapping system allows display names to differ from Excel column names:
+    - "PAGO INICIAL" column maps to "Pago en Caja" from uploaded Excel files
+    - Positioned between "Tipo Orden" and "Estado Pago Inicial"
+    - Formatted as currency (USD) with right alignment
+- **Filtering**: Both TODAS LAS ÓRDENES and PAGO DE CUOTAS tabs feature collapsible filter panels with toggle buttons:
+    - TODAS LAS ÓRDENES: Date range, Orden, Referencia, Estado Cuota
+    - PAGO DE CUOTAS: Date range, Orden, # Referencia
+    - Shows "X de Y registros" count with active filters
+    - One-click "Limpiar filtros" button to reset all filters
 
 **System Design Choices**:
 - **Robust Error Handling**: Comprehensive validation on both frontend (file type, size) and backend (file structure, headers, parsing errors) with clear user feedback.

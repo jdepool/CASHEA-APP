@@ -70,7 +70,8 @@ export function DataTable({ data, headers }: DataTableProps) {
     if (typeof value === 'number' && (
       header.toLowerCase().includes('venta') || 
       header.toLowerCase().includes('cuota') ||
-      header.toLowerCase().includes('pagado')
+      header.toLowerCase().includes('pagado') ||
+      header.toLowerCase().includes('pago inicial')
     )) {
       return new Intl.NumberFormat('es-ES', {
         style: 'currency',
@@ -91,7 +92,8 @@ export function DataTable({ data, headers }: DataTableProps) {
   const isNumericColumn = (header: string) => {
     return header.toLowerCase().includes('venta') || 
            header.toLowerCase().includes('cuota') ||
-           header.toLowerCase().includes('pagado');
+           header.toLowerCase().includes('pagado') ||
+           header.toLowerCase().includes('pago inicial');
   };
 
   if (!data || data.length === 0) {
