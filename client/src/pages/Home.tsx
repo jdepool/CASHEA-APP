@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { FileUpload } from "@/components/FileUpload";
 import { DataTable } from "@/components/DataTable";
 import { EmptyState } from "@/components/EmptyState";
@@ -7,7 +7,10 @@ import { WeeklyPayments } from "@/components/WeeklyPayments";
 import { PaymentRecords } from "@/components/PaymentRecords";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Download, FileSpreadsheet, Upload } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Download, FileSpreadsheet, Upload, Filter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -20,6 +23,11 @@ export default function Home() {
   const [tableData, setTableData] = useState<any[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
+  const [ordenFilter, setOrdenFilter] = useState<string>("");
+  const [referenciaFilter, setReferenciaFilter] = useState<string>("");
+  const [estadoCuotaFilter, setEstadoCuotaFilter] = useState<string>("");
   const { toast } = useToast();
 
   // Fetch persisted orders on mount
@@ -179,6 +187,74 @@ export default function Home() {
     setSelectedPaymentFile(null);
   }, []);
 
+  // Filter logic for TODAS LAS ORDENES tab
+  const filteredTableData = useMemo(() => {
+    if (!tableData || tableData.length === 0) return [];
+
+    return tableData.filter((row) => {
+      // Date range filter
+      if (dateFrom || dateTo) {
+        const fechaCompraHeader = headers.find(h => h.toLowerCase().includes('fecha de compra'));
+        if (fechaCompraHeader) {
+          const fechaValue = row[fechaCompraHeader];
+          let rowDate: Date | null = null;
+          
+          if (typeof fechaValue === 'number') {
+            const utcDays = Math.floor(fechaValue - 25569);
+            const utcValue = utcDays * 86400;
+            rowDate = new Date(utcValue * 1000);
+          } else if (fechaValue) {
+            rowDate = new Date(fechaValue);
+          }
+
+          if (rowDate && !isNaN(rowDate.getTime())) {
+            if (dateFrom) {
+              const fromDate = new Date(dateFrom);
+              if (rowDate < fromDate) return false;
+            }
+            if (dateTo) {
+              const toDate = new Date(dateTo);
+              toDate.setHours(23, 59, 59, 999);
+              if (rowDate > toDate) return false;
+            }
+          }
+        }
+      }
+
+      // Orden filter
+      if (ordenFilter) {
+        const ordenHeader = headers.find(h => h.toLowerCase() === 'orden');
+        if (ordenHeader) {
+          const ordenValue = String(row[ordenHeader] || '').toLowerCase();
+          if (!ordenValue.includes(ordenFilter.toLowerCase())) return false;
+        }
+      }
+
+      // Referencia filter
+      if (referenciaFilter) {
+        const referenciaHeader = headers.find(h => h.toLowerCase().includes('referencia'));
+        if (referenciaHeader) {
+          const referenciaValue = String(row[referenciaHeader] || '').toLowerCase();
+          if (!referenciaValue.includes(referenciaFilter.toLowerCase())) return false;
+        }
+      }
+
+      // Estado Cuota filter
+      if (estadoCuotaFilter) {
+        const estadoHeaders = headers.filter(h => h.toLowerCase().includes('estado cuota'));
+        if (estadoHeaders.length > 0) {
+          const hasMatchingStatus = estadoHeaders.some(header => {
+            const estadoValue = String(row[header] || '').toLowerCase();
+            return estadoValue === estadoCuotaFilter.toLowerCase();
+          });
+          if (!hasMatchingStatus) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [tableData, headers, dateFrom, dateTo, ordenFilter, referenciaFilter, estadoCuotaFilter]);
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -230,7 +306,7 @@ export default function Home() {
                   PAGO DE CUOTAS
                 </TabsTrigger>
                 <TabsTrigger value="weekly" data-testid="tab-weekly">
-                  CUOTAS SEMANAL
+                  CONCILIACION DE CUOTAS
                 </TabsTrigger>
               </TabsList>
 
@@ -307,17 +383,105 @@ export default function Home() {
               <TabsContent value="all" className="space-y-4">
                 {tableData.length > 0 ? (
                   <>
+                    <div className="bg-card border rounded-lg p-6 space-y-4">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Filter className="h-5 w-5 text-primary" />
+                        <h3 className="text-lg font-semibold">Filtros</h3>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="date-from">Fecha Desde</Label>
+                          <Input
+                            id="date-from"
+                            type="date"
+                            value={dateFrom}
+                            onChange={(e) => setDateFrom(e.target.value)}
+                            className="w-full"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="date-to">Fecha Hasta</Label>
+                          <Input
+                            id="date-to"
+                            type="date"
+                            value={dateTo}
+                            onChange={(e) => setDateTo(e.target.value)}
+                            className="w-full"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="orden-filter">Orden</Label>
+                          <Input
+                            id="orden-filter"
+                            type="text"
+                            placeholder="Buscar orden..."
+                            value={ordenFilter}
+                            onChange={(e) => setOrdenFilter(e.target.value)}
+                            className="w-full"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="referencia-filter">Referencia</Label>
+                          <Input
+                            id="referencia-filter"
+                            type="text"
+                            placeholder="Buscar referencia..."
+                            value={referenciaFilter}
+                            onChange={(e) => setReferenciaFilter(e.target.value)}
+                            className="w-full"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="estado-filter">Estado Cuota</Label>
+                          <Select value={estadoCuotaFilter} onValueChange={setEstadoCuotaFilter}>
+                            <SelectTrigger id="estado-filter" className="w-full">
+                              <SelectValue placeholder="Todos los estados" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="">Todos</SelectItem>
+                              <SelectItem value="done">Done</SelectItem>
+                              <SelectItem value="pendiente">Pendiente</SelectItem>
+                              <SelectItem value="vencido">Vencido</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      
+                      {(dateFrom || dateTo || ordenFilter || referenciaFilter || estadoCuotaFilter) && (
+                        <div className="flex justify-end pt-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setDateFrom("");
+                              setDateTo("");
+                              setOrdenFilter("");
+                              setReferenciaFilter("");
+                              setEstadoCuotaFilter("");
+                            }}
+                          >
+                            Limpiar filtros
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                    
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="text-lg font-semibold">
                           Datos de Cuotas
                         </h3>
                         <p className="text-sm text-muted-foreground">
-                          {tableData.length} {tableData.length === 1 ? 'registro' : 'registros'} encontrados
+                          {filteredTableData.length} de {tableData.length} {filteredTableData.length === 1 ? 'registro' : 'registros'}
                         </p>
                       </div>
                     </div>
-                    <DataTable data={tableData} headers={headers} />
+                    <DataTable data={filteredTableData} headers={headers} />
                   </>
                 ) : (
                   <div className="text-center py-12">
