@@ -77,9 +77,16 @@ The application follows a client-server architecture with a React frontend and a
     - Formatted as currency (USD) with right alignment
 - **Filtering**: Both TODAS LAS ÓRDENES and PAGO DE CUOTAS tabs feature collapsible filter panels with toggle buttons:
     - TODAS LAS ÓRDENES: Date range, Orden, Referencia, Estado Cuota
+        - **"Solo activas" Toggle**: Button that filters out fully paid orders (saldo ≤ $0.01), showing only orders with outstanding payments
+        - Button text changes: "Solo activas" → "Mostrar todas" when active
+        - Visual feedback: default variant when active, outline when inactive
     - PAGO DE CUOTAS: Date range, Orden, # Referencia
     - Shows "X de Y registros" count with active filters
     - One-click "Limpiar filtros" button to reset all filters
+- **Dynamic Dashboard Metrics**: Dashboard updates in real-time based on active filters
+    - Metrics reflect filtered data only, not all data
+    - Works with all filter types: date range, orden, referencia, estado cuota, and "solo activas" toggle
+    - Provides accurate financial visibility for filtered subsets of orders
 
 **System Design Choices**:
 - **Robust Error Handling**: Comprehensive validation on both frontend (file type, size) and backend (file structure, headers, parsing errors) with clear user feedback.
