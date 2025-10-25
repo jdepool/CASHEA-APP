@@ -21,6 +21,7 @@ export function Dashboard({ data, headers }: DashboardProps) {
     let totalOrdenesActivas = 0;
     let montoVentas = 0;
     let totalPagos = 0;
+    let saldoPendiente = 0; // Sum of individual positive saldos only
 
     data.forEach((row, index) => {
       // Get Venta Total
@@ -49,39 +50,26 @@ export function Dashboard({ data, headers }: DashboardProps) {
 
       totalPagos += totalPagadoRow;
 
-      // Check if order is "Activa" (has outstanding payments)
+      // Calculate individual saldo for this order
       const saldoRow = ventaTotal - totalPagadoRow;
       
-      // Debug first few rows
-      if (index < 3) {
-        console.log(`Row ${index}:`, {
-          ventaTotal,
-          totalPagadoRow,
-          saldoRow,
-          isActive: saldoRow > 0.01
-        });
+      // Only add positive saldos to the pending balance
+      // This ensures overpayments don't reduce the total pending amount
+      if (saldoRow > 0) {
+        saldoPendiente += saldoRow;
       }
       
+      // Check if order is "Activa" (has outstanding payments)
       if (saldoRow > 0.01) { // Consider active if saldo > $0.01
         totalOrdenesActivas++;
       }
     });
 
-    console.log('Dashboard metrics:', {
-      totalRecords: data.length,
-      totalOrdenesActivas,
-      montoVentas,
-      totalPagos,
-      saldo: montoVentas - totalPagos
-    });
-
-    const saldo = montoVentas - totalPagos;
-
     return {
       totalOrdenesActivas,
       montoVentas,
       totalPagos,
-      saldo,
+      saldo: saldoPendiente,
     };
   }, [data]);
 
