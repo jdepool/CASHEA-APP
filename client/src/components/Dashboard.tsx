@@ -22,28 +22,57 @@ export function Dashboard({ data, headers }: DashboardProps) {
     let montoVentas = 0;
     let totalPagos = 0;
 
-    data.forEach((row) => {
+    data.forEach((row, index) => {
       // Get Venta Total
-      const ventaTotal = parseFloat(row["Venta total"] || 0);
-      montoVentas += ventaTotal;
+      const ventaTotalStr = row["Venta total"];
+      const ventaTotal = parseFloat(ventaTotalStr || 0);
+      
+      if (!ventaTotalStr || isNaN(ventaTotal)) {
+        montoVentas += 0;
+      } else {
+        montoVentas += ventaTotal;
+      }
 
       // Get PAGO INICIAL
-      const pagoInicial = parseFloat(row["PAGO INICIAL"] || 0);
-      let totalPagadoRow = pagoInicial;
+      const pagoInicialStr = row["PAGO INICIAL"];
+      const pagoInicial = parseFloat(pagoInicialStr || 0);
+      let totalPagadoRow = isNaN(pagoInicial) ? 0 : pagoInicial;
 
       // Sum all "Pagado de cuota N" values
       for (let i = 1; i <= 14; i++) {
-        const pagadoCuota = parseFloat(row[`Pagado de cuota ${i}`] || 0);
-        totalPagadoRow += pagadoCuota;
+        const pagadoCuotaStr = row[`Pagado de cuota ${i}`];
+        const pagadoCuota = parseFloat(pagadoCuotaStr || 0);
+        if (!isNaN(pagadoCuota)) {
+          totalPagadoRow += pagadoCuota;
+        }
       }
 
       totalPagos += totalPagadoRow;
 
       // Check if order is "Activa" (has outstanding payments)
       const saldoRow = ventaTotal - totalPagadoRow;
+      
+      // Debug first few rows
+      if (index < 3) {
+        console.log(`Row ${index}:`, {
+          ventaTotal,
+          totalPagadoRow,
+          saldoRow,
+          isActive: saldoRow > 0.01
+        });
+      }
+      
       if (saldoRow > 0.01) { // Consider active if saldo > $0.01
         totalOrdenesActivas++;
       }
+    });
+
+    console.log('Dashboard metrics:', {
+      totalRecords: data.length,
+      totalOrdenesActivas,
+      montoVentas,
+      totalPagos,
+      saldo: montoVentas - totalPagos
     });
 
     const saldo = montoVentas - totalPagos;
