@@ -4,7 +4,7 @@ import { DataTable } from "@/components/DataTable";
 import { Dashboard } from "@/components/Dashboard";
 import { EmptyState } from "@/components/EmptyState";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { WeeklyPayments } from "@/components/WeeklyPayments";
+import { AllInstallments } from "@/components/AllInstallments";
 import { PaymentRecords } from "@/components/PaymentRecords";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -547,7 +547,7 @@ export default function Home() {
 
               <TabsContent value="weekly">
                 {tableData.length > 0 ? (
-                  <WeeklyPayments tableData={tableData} />
+                  <AllInstallments tableData={tableData} />
                 ) : (
                   <div className="text-center py-12">
                     <FileSpreadsheet className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
