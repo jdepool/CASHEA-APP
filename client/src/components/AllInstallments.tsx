@@ -99,13 +99,17 @@ export function AllInstallments({ tableData }: AllInstallmentsProps) {
             normalizedInstallmentDate.setHours(0, 0, 0, 0);
             
             if (dateFrom) {
-              const fromDate = new Date(dateFrom);
-              fromDate.setHours(0, 0, 0, 0);
+              // Parse date as local date (YYYY-MM-DD) to avoid timezone issues
+              const [year, month, day] = dateFrom.split('-').map(Number);
+              const fromDate = new Date(year, month - 1, day, 0, 0, 0, 0);
+              
               if (normalizedInstallmentDate < fromDate) return false;
             }
             if (dateTo) {
-              const toDate = new Date(dateTo);
-              toDate.setHours(23, 59, 59, 999);
+              // Parse date as local date (YYYY-MM-DD) to avoid timezone issues
+              const [year, month, day] = dateTo.split('-').map(Number);
+              const toDate = new Date(year, month - 1, day, 23, 59, 59, 999);
+              
               if (normalizedInstallmentDate > toDate) return false;
             }
           }
