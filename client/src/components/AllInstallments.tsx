@@ -94,15 +94,19 @@ export function AllInstallments({ tableData }: AllInstallmentsProps) {
           const installmentDate = typeof effectiveDate === 'string' ? parseExcelDate(effectiveDate) : effectiveDate;
           
           if (installmentDate) {
+            // Normalize installment date to midnight for date-only comparison
+            const normalizedInstallmentDate = new Date(installmentDate);
+            normalizedInstallmentDate.setHours(0, 0, 0, 0);
+            
             if (dateFrom) {
               const fromDate = new Date(dateFrom);
               fromDate.setHours(0, 0, 0, 0);
-              if (installmentDate < fromDate) return false;
+              if (normalizedInstallmentDate < fromDate) return false;
             }
             if (dateTo) {
               const toDate = new Date(dateTo);
               toDate.setHours(23, 59, 59, 999);
-              if (installmentDate > toDate) return false;
+              if (normalizedInstallmentDate > toDate) return false;
             }
           }
         }
