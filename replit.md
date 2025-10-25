@@ -64,9 +64,11 @@ The application follows a client-server architecture with a React frontend and a
 - **Installments View**: `CONCILIACION DE CUOTAS` tab shows all installments with filtering and dashboard:
     - **All Dates**: Displays all installments (not limited to current week)
     - **Collapsible Filters**: Date range (from-to), Orden with toggle button
-    - **InstallmentsDashboard**: Shows 2 key metrics that update based on active filters:
-        - **Total Cuotas**: Count of installments shown
-        - **Monto Total**: Sum of all installment amounts in filtered view
+    - **InstallmentsDashboard**: Shows 4 status-based metrics that update based on active filters:
+        - **Cuotas Pagadas**: Count of installments with status "Done"
+        - **Cuotas Programadas**: Count of installments with status "Scheduled" + "Graced"
+        - **Cuotas Atrasadas**: Count of installments with status "Delayed"
+        - **Cuotas Canceladas**: Count of installments with status "Cancelled"
     - **Date Prioritization**: Payment date from payment records > payment date from order file > scheduled installment date
     - Shows "X de Y cuotas" count when filters are active
     - One-click "Limpiar filtros" button to reset all filters
