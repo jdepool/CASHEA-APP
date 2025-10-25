@@ -27,7 +27,7 @@ export default function Home() {
   const [dateTo, setDateTo] = useState<string>("");
   const [ordenFilter, setOrdenFilter] = useState<string>("");
   const [referenciaFilter, setReferenciaFilter] = useState<string>("");
-  const [estadoCuotaFilter, setEstadoCuotaFilter] = useState<string>("");
+  const [estadoCuotaFilter, setEstadoCuotaFilter] = useState<string>("all");
   const { toast } = useToast();
 
   // Fetch persisted orders on mount
@@ -240,7 +240,7 @@ export default function Home() {
       }
 
       // Estado Cuota filter
-      if (estadoCuotaFilter) {
+      if (estadoCuotaFilter && estadoCuotaFilter !== 'all') {
         const estadoHeaders = headers.filter(h => h.toLowerCase().includes('estado cuota'));
         if (estadoHeaders.length > 0) {
           const hasMatchingStatus = estadoHeaders.some(header => {
@@ -443,7 +443,7 @@ export default function Home() {
                               <SelectValue placeholder="Todos los estados" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">Todos</SelectItem>
+                              <SelectItem value="all">Todos</SelectItem>
                               <SelectItem value="done">Done</SelectItem>
                               <SelectItem value="pendiente">Pendiente</SelectItem>
                               <SelectItem value="vencido">Vencido</SelectItem>
@@ -452,7 +452,7 @@ export default function Home() {
                         </div>
                       </div>
                       
-                      {(dateFrom || dateTo || ordenFilter || referenciaFilter || estadoCuotaFilter) && (
+                      {(dateFrom || dateTo || ordenFilter || referenciaFilter || (estadoCuotaFilter && estadoCuotaFilter !== 'all')) && (
                         <div className="flex justify-end pt-2">
                           <Button
                             variant="outline"
@@ -462,8 +462,9 @@ export default function Home() {
                               setDateTo("");
                               setOrdenFilter("");
                               setReferenciaFilter("");
-                              setEstadoCuotaFilter("");
+                              setEstadoCuotaFilter("all");
                             }}
+                            data-testid="button-clear-filters"
                           >
                             Limpiar filtros
                           </Button>
