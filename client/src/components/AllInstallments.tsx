@@ -4,6 +4,7 @@ import { InstallmentsDashboard } from "./InstallmentsDashboard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Filter, X } from "lucide-react";
 import { extractInstallments, filterInstallmentsByDateRange } from "@/lib/installmentUtils";
 import { parseExcelDate } from "@/lib/dateUtils";
@@ -18,6 +19,7 @@ export function AllInstallments({ tableData }: AllInstallmentsProps) {
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
   const [ordenFilter, setOrdenFilter] = useState<string>("");
+  const [estadoCuotaFilter, setEstadoCuotaFilter] = useState<string>("all");
 
   // Fetch payment records to cross-reference
   const { data: paymentRecordsData } = useQuery({
@@ -122,17 +124,24 @@ export function AllInstallments({ tableData }: AllInstallmentsProps) {
         if (!ordenValue.includes(ordenFilter.toLowerCase())) return false;
       }
 
+      // Estado Cuota filter
+      if (estadoCuotaFilter && estadoCuotaFilter !== 'all') {
+        const estado = (installment.estadoCuota || '').trim().toLowerCase();
+        if (estado !== estadoCuotaFilter.toLowerCase()) return false;
+      }
+
       return true;
     });
-  }, [allInstallments, dateFrom, dateTo, ordenFilter]);
+  }, [allInstallments, dateFrom, dateTo, ordenFilter, estadoCuotaFilter]);
 
   const clearFilters = () => {
     setDateFrom("");
     setDateTo("");
     setOrdenFilter("");
+    setEstadoCuotaFilter("all");
   };
 
-  const hasActiveFilters = dateFrom || dateTo || ordenFilter;
+  const hasActiveFilters = dateFrom || dateTo || ordenFilter || (estadoCuotaFilter !== 'all');
 
   return (
     <div className="space-y-6">
@@ -157,7 +166,7 @@ export function AllInstallments({ tableData }: AllInstallmentsProps) {
 
         {showFilters && (
           <div className="bg-muted/50 border rounded-lg p-4 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="installment-date-from">Fecha Desde</Label>
                 <Input
@@ -190,6 +199,22 @@ export function AllInstallments({ tableData }: AllInstallmentsProps) {
                   placeholder="Buscar orden..."
                   data-testid="input-installment-orden-filter"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="installment-estado-filter">Estado Cuota</Label>
+                <Select value={estadoCuotaFilter} onValueChange={setEstadoCuotaFilter}>
+                  <SelectTrigger id="installment-estado-filter" data-testid="select-installment-estado-filter">
+                    <SelectValue placeholder="Todos los estados" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los estados</SelectItem>
+                    <SelectItem value="done">Done (Pagadas)</SelectItem>
+                    <SelectItem value="scheduled">Scheduled (Programadas)</SelectItem>
+                    <SelectItem value="graced">Graced (En gracia)</SelectItem>
+                    <SelectItem value="delayed">Delayed (Atrasadas)</SelectItem>
+                    <SelectItem value="cancelled">Cancelled (Canceladas)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             {hasActiveFilters && (

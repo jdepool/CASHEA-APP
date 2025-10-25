@@ -63,7 +63,7 @@ The application follows a client-server architecture with a React frontend and a
     - **User Feedback**: Toast notifications show detailed statistics for each upload (X nuevos, Y actualizados, Z omitidos, Total in database)
 - **Installments View**: `CONCILIACION DE CUOTAS` tab shows all installments with filtering and dashboard:
     - **All Dates**: Displays all installments (not limited to current week)
-    - **Collapsible Filters**: Date range (from-to), Orden with toggle button
+    - **Collapsible Filters**: Date range (from-to), Orden, Estado Cuota with toggle button
     - **InstallmentsDashboard**: Shows 6 metrics in two sections that update based on active filters:
         - **Status-Based Metrics** (4 cards with count + amount):
             - **Cuotas Pagadas**: Count and total amount of installments with status "Done"
@@ -95,7 +95,7 @@ The application follows a client-server architecture with a React frontend and a
         - **"Solo activas" Toggle**: Button that filters out fully paid orders (saldo ≤ $0.01), showing only orders with outstanding payments
         - Button text changes: "Solo activas" → "Mostrar todas" when active
         - Visual feedback: default variant when active, outline when inactive
-    - CONCILIACION DE CUOTAS: Date range, Orden
+    - CONCILIACION DE CUOTAS: Date range, Orden, Estado Cuota (dropdown)
     - PAGO DE CUOTAS: Date range, Orden, # Referencia
     - Shows "X de Y registros/cuotas" count with active filters
     - One-click "Limpiar filtros" button to reset all filters
