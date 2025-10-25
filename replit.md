@@ -20,6 +20,11 @@ The application follows a client-server architecture with a React frontend and a
 - **Theming**: Dark/light mode toggle with persistence using `localStorage`.
 - **Layout**: Tabbed navigation (`TODAS LAS ÓRDENES`, `CUOTAS SEMANAL`, `PAGO DE CUOTAS`) for clear separation of concerns.
 - **Data Presentation**:
+    - `Dashboard` showing key metrics at the top of TODAS LAS ÓRDENES:
+        - **Órdenes Activas**: Count of orders with outstanding payments (saldo > $0.01)
+        - **Monto de Ventas**: Sum of all "Venta total" values
+        - **Pagos Recibidos**: Sum of "PAGO INICIAL" + all "Pagado de cuota N" values
+        - **Saldo Pendiente**: Total sales minus total payments received
     - `DataTable` for displaying main order data with over 60 columns, sticky headers, and horizontal scroll.
     - `WeeklyPaymentsTable` for a summarized view of weekly installments.
     - `PaymentRecordsTable` for payment transaction records, dynamically adjusting to input columns.

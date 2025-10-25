@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { FileUpload } from "@/components/FileUpload";
 import { DataTable } from "@/components/DataTable";
+import { Dashboard } from "@/components/Dashboard";
 import { EmptyState } from "@/components/EmptyState";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { WeeklyPayments } from "@/components/WeeklyPayments";
@@ -384,6 +385,8 @@ export default function Home() {
               <TabsContent value="all" className="space-y-4">
                 {tableData.length > 0 ? (
                   <>
+                    <Dashboard data={tableData} headers={headers} />
+                    
                     <div className="flex items-center justify-between mb-4">
                       <div>
                         <h3 className="text-lg font-semibold">
