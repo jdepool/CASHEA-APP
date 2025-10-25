@@ -18,7 +18,7 @@ The application follows a client-server architecture with a React frontend and a
 **UI/UX Decisions**:
 - **Design System**: Professional and clean UI using Tailwind CSS for styling and Shadcn UI for accessible components.
 - **Theming**: Dark/light mode toggle with persistence using `localStorage`.
-- **Layout**: Tabbed navigation (`TODAS LAS ÓRDENES`, `CUOTAS SEMANAL`, `PAGO DE CUOTAS`) for clear separation of concerns.
+- **Layout**: Tabbed navigation (`CARGAR DATOS`, `TODAS LAS ÓRDENES`, `CONCILIACION DE CUOTAS`, `PAGO DE CUOTAS`) for clear separation of concerns.
 - **Data Presentation**:
     - `Dashboard` showing key metrics at the top of TODAS LAS ÓRDENES:
         - **Órdenes Activas**: Count of orders with outstanding payments (saldo > $0.01)
@@ -26,7 +26,7 @@ The application follows a client-server architecture with a React frontend and a
         - **Pagos Recibidos**: Sum of "PAGO INICIAL" + all "Pagado de cuota N" values
         - **Saldo Pendiente**: Total sales minus total payments received
     - `DataTable` for displaying main order data with over 60 columns, sticky headers, and horizontal scroll.
-    - `WeeklyPaymentsTable` for a summarized view of weekly installments.
+    - `WeeklyPaymentsTable` (reused in AllInstallments) for displaying all installments with filtering.
     - `PaymentRecordsTable` for payment transaction records, dynamically adjusting to input columns.
     - Semantic colored badges (`StatusBadge`) for payment statuses (Paid/Pending/Overdue).
 - **User Feedback**: Toast notifications for user actions and error messages, animated spinners for loading states, and clear empty states.
@@ -61,9 +61,15 @@ The application follows a client-server architecture with a React frontend and a
     - **Payment Records**: Uploading payment records **updates** existing records based on the combination of Order Number (# Orden), Installment Number (# Cuota Pagada), AND Reference Number (# Referencia). This allows multiple payment records for the same order and installment if they have different reference numbers. Unique identifier: `(# Orden, # Cuota Pagada, # Referencia)`
     - **Duplicate Detection**: Records with duplicate (Order#, Installment#, Reference#) within the same upload file are skipped (only the first occurrence is processed). Different reference numbers for the same Order# + Installment# are kept as separate records.
     - **User Feedback**: Toast notifications show detailed statistics for each upload (X nuevos, Y actualizados, Z omitidos, Total in database)
-- **Weekly View**: `CUOTAS SEMANAL` tab filters installments for the current week (Monday-Sunday) and calculates "expected income" to Friday.
-    - **Hybrid Filtering Logic**: Paid installments appear in the week they were *effectively paid*; unpaid installments appear in their *scheduled week*.
-    - **Date Prioritization**: Payment date from payment records > payment date from order file > scheduled installment date.
+- **Installments View**: `CONCILIACION DE CUOTAS` tab shows all installments with filtering and dashboard:
+    - **All Dates**: Displays all installments (not limited to current week)
+    - **Collapsible Filters**: Date range (from-to), Orden with toggle button
+    - **InstallmentsDashboard**: Shows 2 key metrics that update based on active filters:
+        - **Total Cuotas**: Count of installments shown
+        - **Monto Total**: Sum of all installment amounts in filtered view
+    - **Date Prioritization**: Payment date from payment records > payment date from order file > scheduled installment date
+    - Shows "X de Y cuotas" count when filters are active
+    - One-click "Limpiar filtros" button to reset all filters
 - **Payment Records View**: `PAGO DE CUOTAS` tab allows uploading and viewing payment transaction files with flexible column headers and auto-detection/formatting of 'VES' and 'USD' currency columns.
     - **Payment Records Dashboard**: Shows 2 key metrics that update based on active filters:
         - **Total Cuotas Pagadas**: Count of unique installments paid, handling multi-installment payments (e.g., "4,5,6" counts as 3 cuotas) and split payments (same order + same cuota = 1 cuota)
@@ -78,13 +84,14 @@ The application follows a client-server architecture with a React frontend and a
     - "PAGO INICIAL" column maps to "Pago en Caja" from uploaded Excel files
     - Positioned between "Tipo Orden" and "Estado Pago Inicial"
     - Formatted as currency (USD) with right alignment
-- **Filtering**: Both TODAS LAS ÓRDENES and PAGO DE CUOTAS tabs feature collapsible filter panels with toggle buttons:
+- **Filtering**: All three main tabs (TODAS LAS ÓRDENES, CONCILIACION DE CUOTAS, PAGO DE CUOTAS) feature collapsible filter panels with toggle buttons:
     - TODAS LAS ÓRDENES: Date range, Orden, Referencia, Estado Cuota
         - **"Solo activas" Toggle**: Button that filters out fully paid orders (saldo ≤ $0.01), showing only orders with outstanding payments
         - Button text changes: "Solo activas" → "Mostrar todas" when active
         - Visual feedback: default variant when active, outline when inactive
+    - CONCILIACION DE CUOTAS: Date range, Orden
     - PAGO DE CUOTAS: Date range, Orden, # Referencia
-    - Shows "X de Y registros" count with active filters
+    - Shows "X de Y registros/cuotas" count with active filters
     - One-click "Limpiar filtros" button to reset all filters
 - **Dynamic Dashboard Metrics**: Dashboard updates in real-time based on active filters
     - Metrics reflect filtered data only, not all data
