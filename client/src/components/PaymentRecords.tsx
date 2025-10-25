@@ -1,7 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { PaymentRecordsTable } from "./PaymentRecordsTable";
 import { Button } from "@/components/ui/button";
-import { Download, FileSpreadsheet } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Download, FileSpreadsheet, Filter } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
@@ -9,6 +11,11 @@ import { parseExcelDate } from "@/lib/dateUtils";
 
 export function PaymentRecords() {
   const { toast } = useToast();
+  const [showFilters, setShowFilters] = useState<boolean>(false);
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
+  const [ordenFilter, setOrdenFilter] = useState<string>("");
+  const [referenciaFilter, setReferenciaFilter] = useState<string>("");
 
   // Fetch persisted payment records
   const { data: paymentRecordsData, isLoading: isLoadingPayments } = useQuery({
@@ -31,7 +38,7 @@ export function PaymentRecords() {
   const ordersTableData = (ordersData as any)?.data?.rows || [];
 
   // Sort payment data by transaction date (newest to oldest)
-  const paymentData = useMemo(() => {
+  const sortedPaymentData = useMemo(() => {
     if (!rawPaymentData.length || !headers.length) return rawPaymentData;
 
     // Find the transaction date header (case-insensitive, flexible matching)
@@ -53,6 +60,58 @@ export function PaymentRecords() {
       return dateB.getTime() - dateA.getTime();
     });
   }, [rawPaymentData, headers]);
+
+  // Apply filters
+  const paymentData = useMemo(() => {
+    return sortedPaymentData.filter((row: any) => {
+      // Date filter
+      if (dateFrom || dateTo) {
+        const transactionDateHeader = headers.find((h: string) => 
+          h.toLowerCase().includes('fecha') && h.toLowerCase().includes('transac')
+        );
+        
+        if (transactionDateHeader) {
+          const rowDate = parseExcelDate(row[transactionDateHeader]);
+          if (rowDate) {
+            if (dateFrom) {
+              const fromDate = new Date(dateFrom);
+              fromDate.setHours(0, 0, 0, 0);
+              if (rowDate < fromDate) return false;
+            }
+            if (dateTo) {
+              const toDate = new Date(dateTo);
+              toDate.setHours(23, 59, 59, 999);
+              if (rowDate > toDate) return false;
+            }
+          }
+        }
+      }
+
+      // Orden filter
+      if (ordenFilter) {
+        const ordenHeader = headers.find((h: string) => 
+          h.toLowerCase().includes('orden') && !h.toLowerCase().includes('cuota')
+        );
+        if (ordenHeader) {
+          const ordenValue = String(row[ordenHeader] || '').toLowerCase();
+          if (!ordenValue.includes(ordenFilter.toLowerCase())) return false;
+        }
+      }
+
+      // Referencia filter
+      if (referenciaFilter) {
+        const referenciaHeader = headers.find((h: string) => 
+          h.toLowerCase().includes('referencia')
+        );
+        if (referenciaHeader) {
+          const referenciaValue = String(row[referenciaHeader] || '').toLowerCase();
+          if (!referenciaValue.includes(referenciaFilter.toLowerCase())) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [sortedPaymentData, headers, dateFrom, dateTo, ordenFilter, referenciaFilter]);
 
   const handleExport = () => {
     if (paymentData.length === 0) {
@@ -85,25 +144,110 @@ export function PaymentRecords() {
 
   return (
     <div className="space-y-4">
-      {paymentData.length > 0 ? (
+      {sortedPaymentData.length > 0 ? (
         <>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-lg font-semibold">Registros de Pago</h3>
               <p className="text-sm text-muted-foreground">
-                {paymentData.length} {paymentData.length === 1 ? 'registro' : 'registros'} de pago
+                {paymentData.length} de {sortedPaymentData.length} {paymentData.length === 1 ? 'registro' : 'registros'}
               </p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExport}
-              data-testid="button-export-payments"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Exportar
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setShowFilters(!showFilters)}
+                data-testid="button-toggle-payment-filters"
+              >
+                <Filter className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExport}
+                data-testid="button-export-payments"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Exportar
+              </Button>
+            </div>
           </div>
+
+          {showFilters && (
+            <div className="bg-card border rounded-lg p-6 space-y-4 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="payment-date-from">Fecha Desde</Label>
+                  <Input
+                    id="payment-date-from"
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="w-full"
+                    data-testid="input-payment-date-from"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="payment-date-to">Fecha Hasta</Label>
+                  <Input
+                    id="payment-date-to"
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="w-full"
+                    data-testid="input-payment-date-to"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="payment-orden-filter">Orden</Label>
+                  <Input
+                    id="payment-orden-filter"
+                    type="text"
+                    placeholder="Buscar orden..."
+                    value={ordenFilter}
+                    onChange={(e) => setOrdenFilter(e.target.value)}
+                    className="w-full"
+                    data-testid="input-payment-orden-filter"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="payment-referencia-filter"># Referencia</Label>
+                  <Input
+                    id="payment-referencia-filter"
+                    type="text"
+                    placeholder="Buscar referencia..."
+                    value={referenciaFilter}
+                    onChange={(e) => setReferenciaFilter(e.target.value)}
+                    className="w-full"
+                    data-testid="input-payment-referencia-filter"
+                  />
+                </div>
+              </div>
+              
+              {(dateFrom || dateTo || ordenFilter || referenciaFilter) && (
+                <div className="flex justify-end pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setDateFrom("");
+                      setDateTo("");
+                      setOrdenFilter("");
+                      setReferenciaFilter("");
+                    }}
+                    data-testid="button-clear-payment-filters"
+                  >
+                    Limpiar filtros
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
           <PaymentRecordsTable records={paymentData} headers={headers} ordersData={ordersTableData} />
         </>
       ) : (
