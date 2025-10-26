@@ -24,7 +24,7 @@ export function AllInstallments({ tableData }: AllInstallmentsProps) {
   const [dateTo, setDateTo] = useState<string>("");
   const [ordenFilter, setOrdenFilter] = useState<string>("");
   const [estadoCuotaFilter, setEstadoCuotaFilter] = useState<string>("all");
-  const [dateFieldFilter, setDateFieldFilter] = useState<string>("fechaPago"); // "fechaCuota" or "fechaPago"
+  const [dateFieldFilter, setDateFieldFilter] = useState<string>("fechaCuota"); // "fechaCuota" or "fechaPago"
 
   // Fetch payment records to cross-reference
   const { data: paymentRecordsData } = useQuery({
@@ -157,7 +157,7 @@ export function AllInstallments({ tableData }: AllInstallmentsProps) {
     setDateTo("");
     setOrdenFilter("");
     setEstadoCuotaFilter("all");
-    setDateFieldFilter("fechaPago");
+    setDateFieldFilter("fechaCuota");
   };
 
   const hasActiveFilters = dateFrom || dateTo || ordenFilter || (estadoCuotaFilter !== 'all');
