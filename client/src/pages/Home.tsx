@@ -465,15 +465,6 @@ export default function Home() {
                         >
                           <Filter className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleExportOrders}
-                          data-testid="button-export-orders"
-                        >
-                          <Download className="h-4 w-4 mr-2" />
-                          Exportar
-                        </Button>
                       </div>
                     </div>
 
