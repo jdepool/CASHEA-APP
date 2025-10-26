@@ -92,23 +92,24 @@ export function AllInstallments({ tableData }: AllInstallmentsProps) {
     
     installments = installments.map((installment) => {
       const paymentDateRaw = installment.fechaPagoReal || installment.fechaPago;
-      const isScheduled = (installment.estadoCuota || '').trim().toLowerCase() === 'scheduled';
+      const estadoLower = (installment.estadoCuota || '').trim().toLowerCase();
+      const isScheduledOrGraced = estadoLower === 'scheduled' || estadoLower === 'graced';
       const fechaCuota = installment.fechaCuota;
       
       // Parse payment date to handle Excel formats and string dates
       const paymentDate = paymentDateRaw ? parseExcelDate(paymentDateRaw) : null;
       
-      // Rule 1: If Scheduled AND has valid payment date before scheduled date, mark as "Done"
-      if (isScheduled && paymentDate && fechaCuota) {
+      // Rule 1: If (Scheduled OR Graced) AND has valid payment date <= scheduled date, mark as "Done"
+      if (isScheduledOrGraced && paymentDate && fechaCuota) {
         const cuotaDate = fechaCuota instanceof Date ? fechaCuota : parseExcelDate(fechaCuota);
         
-        if (cuotaDate && paymentDate < cuotaDate) {
+        if (cuotaDate && paymentDate <= cuotaDate) {
           return { ...installment, estadoCuota: 'Done' };
         }
       }
       
-      // Rule 2: If Scheduled AND overdue (Fecha Cuota < yesterday) AND no payment date, mark as "Delayed"
-      if (fechaCuota && isScheduled && !paymentDate) {
+      // Rule 2: If (Scheduled OR Graced) AND overdue (Fecha Cuota < yesterday) AND no payment date, mark as "Delayed"
+      if (fechaCuota && isScheduledOrGraced && !paymentDate) {
         const cuotaDate = fechaCuota instanceof Date ? new Date(fechaCuota) : parseExcelDate(fechaCuota);
         
         if (cuotaDate) {
