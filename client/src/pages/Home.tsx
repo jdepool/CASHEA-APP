@@ -329,17 +329,6 @@ export default function Home() {
               </h1>
             </div>
             <div className="flex items-center gap-2">
-              {tableData.length > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExport}
-                  data-testid="button-export"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Exportar
-                </Button>
-              )}
               <ThemeToggle />
             </div>
           </div>
