@@ -87,7 +87,13 @@ export function AllInstallments({ tableData }: AllInstallmentsProps) {
   // Apply filters to installments
   const filteredInstallments = useMemo(() => {
     return allInstallments.filter((installment: any) => {
-      // Date filter
+      // When "Fecha de Pago" is selected, only show installments that have a payment date
+      if (dateFieldFilter === 'fechaPago') {
+        const hasPaymentDate = installment.fechaPagoReal || installment.fechaPago;
+        if (!hasPaymentDate) return false;
+      }
+      
+      // Date range filter
       if (dateFrom || dateTo) {
         // Determine the effective date to use for filtering based on user selection
         let effectiveDate;

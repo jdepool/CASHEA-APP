@@ -65,8 +65,8 @@ The application follows a client-server architecture with a React frontend and a
     - **All Dates**: Displays all installments (not limited to current week)
     - **Collapsible Filters**: Date range (from-to), Orden, Estado Cuota with toggle button
     - **Date Field Selector**: Choose whether to filter by "Fecha de Pago" (actual payment date) or "Fecha Cuota" (scheduled date)
-        - **Fecha de Pago**: Uses payment dates from payment records or order file
-        - **Fecha Cuota**: Uses scheduled installment dates
+        - **Fecha de Pago**: Uses payment dates from payment records or order file. **Only shows installments that have a payment date** (excludes installments with only scheduled dates)
+        - **Fecha Cuota**: Uses scheduled installment dates. Shows all installments including those without payment dates
         - Default: Fecha de Pago
     - **InstallmentsDashboard**: Shows 6 metrics in two sections that update based on active filters:
         - **Status-Based Metrics** (4 cards with count + amount):
@@ -77,7 +77,6 @@ The application follows a client-server architecture with a React frontend and a
         - **Total Metrics** (2 cards):
             - **Total Cuotas**: Count of all filtered installments
             - **Monto Total**: Sum of all filtered installment amounts
-    - **Date Prioritization**: Payment date from payment records > payment date from order file > scheduled installment date
     - Shows "X de Y cuotas" count when filters are active
     - One-click "Limpiar filtros" button to reset all filters
 - **Payment Records View**: `PAGO DE CUOTAS` tab allows uploading and viewing payment transaction files with flexible column headers and auto-detection/formatting of 'VES' and 'USD' currency columns.
