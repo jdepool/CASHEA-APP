@@ -12,14 +12,6 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
   const [sortColumn, setSortColumn] = useState<string>('fechaCuota');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
-  if (installments.length === 0) {
-    return (
-      <div className="text-center py-12 text-muted-foreground" data-testid="empty-weekly">
-        No hay cuotas programadas para esta semana
-      </div>
-    );
-  }
-
   const handleSort = (column: string) => {
     if (sortColumn === column) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -48,8 +40,8 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
           break;
         }
         case 'numeroCuota': {
-          const aNum = parseInt(a.numeroCuota) || 0;
-          const bNum = parseInt(b.numeroCuota) || 0;
+          const aNum = Number(a.numeroCuota) || 0;
+          const bNum = Number(b.numeroCuota) || 0;
           comparison = aNum - bNum;
           break;
         }
@@ -78,6 +70,14 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
       return sortDirection === 'asc' ? comparison : -comparison;
     });
   }, [installments, sortColumn, sortDirection]);
+
+  if (installments.length === 0) {
+    return (
+      <div className="text-center py-12 text-muted-foreground" data-testid="empty-weekly">
+        No hay cuotas programadas para esta semana
+      </div>
+    );
+  }
 
   return (
     <div className="border rounded-lg overflow-auto" style={{ maxHeight: '70vh' }}>
