@@ -123,7 +123,24 @@ export function PaymentRecords() {
       return;
     }
 
-    const ws = XLSX.utils.json_to_sheet(paymentData);
+    // Format data for export - convert all date fields to readable format
+    const exportData = paymentData.map((row: any) => {
+      const formattedRow = { ...row };
+      
+      // Convert all date fields using parseExcelDate utility
+      headers.forEach((header: string) => {
+        if (header.toLowerCase().includes('fecha') && formattedRow[header]) {
+          const parsedDate = parseExcelDate(formattedRow[header]);
+          if (parsedDate) {
+            formattedRow[header] = parsedDate.toLocaleDateString('es-ES');
+          }
+        }
+      });
+      
+      return formattedRow;
+    });
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Pagos");
     XLSX.writeFile(wb, `pagos_${new Date().toISOString().split('T')[0]}.xlsx`);

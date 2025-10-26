@@ -5,16 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Filter, X } from "lucide-react";
+import { Filter, X, Download } from "lucide-react";
 import { extractInstallments, filterInstallmentsByDateRange } from "@/lib/installmentUtils";
 import { parseExcelDate } from "@/lib/dateUtils";
 import { useQuery } from "@tanstack/react-query";
+import * as XLSX from "xlsx";
+import { useToast } from "@/hooks/use-toast";
 
 interface AllInstallmentsProps {
   tableData: any[];
 }
 
 export function AllInstallments({ tableData }: AllInstallmentsProps) {
+  const { toast } = useToast();
   const [showFilters, setShowFilters] = useState<boolean>(false);
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
@@ -158,6 +161,50 @@ export function AllInstallments({ tableData }: AllInstallmentsProps) {
 
   const hasActiveFilters = dateFrom || dateTo || ordenFilter || (estadoCuotaFilter !== 'all');
 
+  const handleExport = () => {
+    if (filteredInstallments.length === 0) {
+      toast({
+        title: "No hay datos para exportar",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Convert installments to a format suitable for Excel
+    const exportData = filteredInstallments.map((inst: any) => {
+      // Helper to safely format dates
+      const formatDate = (dateValue: any): string => {
+        if (!dateValue) return '';
+        if (dateValue instanceof Date) {
+          return dateValue.toLocaleDateString('es-ES');
+        }
+        // Try to parse as date if it's a string or number
+        const parsed = parseExcelDate(dateValue);
+        return parsed ? parsed.toLocaleDateString('es-ES') : '';
+      };
+
+      return {
+        'Orden': inst.orden,
+        'Número Cuota': inst.numeroCuota,
+        'Fecha Cuota': formatDate(inst.fechaCuota),
+        'Monto': inst.monto,
+        'Estado': inst.estadoCuota,
+        'Fecha Pago Real': formatDate(inst.fechaPagoReal),
+        'Fecha Pago': formatDate(inst.fechaPago),
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Cuotas");
+    XLSX.writeFile(wb, `cuotas_${new Date().toISOString().split('T')[0]}.xlsx`);
+    
+    toast({
+      title: "Archivo exportado",
+      description: "Los datos se han descargado exitosamente",
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="space-y-4">
@@ -168,15 +215,25 @@ export function AllInstallments({ tableData }: AllInstallmentsProps) {
               Vista completa de cuotas programadas y pagadas
             </p>
           </div>
-          <Button
-            variant={showFilters ? "default" : "outline"}
-            size="sm"
-            onClick={() => setShowFilters(!showFilters)}
-            data-testid="button-toggle-installment-filters"
-          >
-            <Filter className="h-4 w-4 mr-2" />
-            {showFilters ? "Ocultar filtros" : "Mostrar filtros"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setShowFilters(!showFilters)}
+              data-testid="button-toggle-installment-filters"
+            >
+              <Filter className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              data-testid="button-export-installments"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Exportar
+            </Button>
+          </div>
         </div>
 
         {showFilters && (

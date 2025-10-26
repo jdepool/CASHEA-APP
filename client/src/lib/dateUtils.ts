@@ -59,6 +59,15 @@ export function parseExcelDate(value: any): Date | null {
     return value;
   }
 
+  // If it's a string that looks like a number (e.g., "45211"), convert to number first
+  if (typeof value === 'string' && /^\d+(\.\d+)?$/.test(value.trim())) {
+    const numValue = parseFloat(value.trim());
+    if (!isNaN(numValue) && numValue > 100) {
+      // Treat as Excel serial number
+      value = numValue;
+    }
+  }
+
   // If it's an Excel serial number
   if (typeof value === 'number') {
     // Excel serial date starts from December 31, 1899 (serial 1 = January 1, 1900)

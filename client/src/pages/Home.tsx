@@ -17,6 +17,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Loader2 } from "lucide-react";
 import * as XLSX from "xlsx";
+import { parseExcelDate } from "@/lib/dateUtils";
 
 export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -279,6 +280,43 @@ export default function Home() {
     });
   }, [tableData, headers, dateFrom, dateTo, ordenFilter, referenciaFilter, estadoCuotaFilter, hideFullyPaid]);
 
+  const handleExportOrders = () => {
+    if (filteredTableData.length === 0) {
+      toast({
+        title: "No hay datos para exportar",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Format data for export - convert all date fields to readable format
+    const exportData = filteredTableData.map(row => {
+      const formattedRow = { ...row };
+      
+      // Convert all date fields using parseExcelDate utility
+      headers.forEach(header => {
+        if (header.toLowerCase().includes('fecha') && formattedRow[header]) {
+          const parsedDate = parseExcelDate(formattedRow[header]);
+          if (parsedDate) {
+            formattedRow[header] = parsedDate.toLocaleDateString('es-ES');
+          }
+        }
+      });
+      
+      return formattedRow;
+    });
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Ordenes");
+    XLSX.writeFile(wb, `ordenes_${new Date().toISOString().split('T')[0]}.xlsx`);
+    
+    toast({
+      title: "Archivo exportado",
+      description: "Los datos se han descargado exitosamente",
+    });
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -437,6 +475,15 @@ export default function Home() {
                           data-testid="button-toggle-filters"
                         >
                           <Filter className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleExportOrders}
+                          data-testid="button-export-orders"
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Exportar
                         </Button>
                       </div>
                     </div>
