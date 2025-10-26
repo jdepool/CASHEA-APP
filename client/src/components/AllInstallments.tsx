@@ -20,6 +20,7 @@ export function AllInstallments({ tableData }: AllInstallmentsProps) {
   const [dateTo, setDateTo] = useState<string>("");
   const [ordenFilter, setOrdenFilter] = useState<string>("");
   const [estadoCuotaFilter, setEstadoCuotaFilter] = useState<string>("all");
+  const [dateFieldFilter, setDateFieldFilter] = useState<string>("fechaPago"); // "fechaCuota" or "fechaPago"
 
   // Fetch payment records to cross-reference
   const { data: paymentRecordsData } = useQuery({
@@ -88,9 +89,16 @@ export function AllInstallments({ tableData }: AllInstallmentsProps) {
     return allInstallments.filter((installment: any) => {
       // Date filter
       if (dateFrom || dateTo) {
-        // Determine the effective date to use for filtering
-        // Priority: fechaPagoReal (from payment records) > fechaPago (from order file) > fechaCuota (scheduled)
-        const effectiveDate = installment.fechaPagoReal || installment.fechaPago || installment.fechaCuota;
+        // Determine the effective date to use for filtering based on user selection
+        let effectiveDate;
+        
+        if (dateFieldFilter === 'fechaCuota') {
+          // Use scheduled installment date
+          effectiveDate = installment.fechaCuota;
+        } else {
+          // Use payment date (priority: fechaPagoReal from payment records > fechaPago from order file)
+          effectiveDate = installment.fechaPagoReal || installment.fechaPago;
+        }
         
         if (effectiveDate) {
           const installmentDate = typeof effectiveDate === 'string' ? parseExcelDate(effectiveDate) : effectiveDate;
@@ -132,13 +140,14 @@ export function AllInstallments({ tableData }: AllInstallmentsProps) {
 
       return true;
     });
-  }, [allInstallments, dateFrom, dateTo, ordenFilter, estadoCuotaFilter]);
+  }, [allInstallments, dateFrom, dateTo, ordenFilter, estadoCuotaFilter, dateFieldFilter]);
 
   const clearFilters = () => {
     setDateFrom("");
     setDateTo("");
     setOrdenFilter("");
     setEstadoCuotaFilter("all");
+    setDateFieldFilter("fechaPago");
   };
 
   const hasActiveFilters = dateFrom || dateTo || ordenFilter || (estadoCuotaFilter !== 'all');
@@ -166,6 +175,19 @@ export function AllInstallments({ tableData }: AllInstallmentsProps) {
 
         {showFilters && (
           <div className="bg-muted/50 border rounded-lg p-4 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="installment-date-field">Filtrar fechas por</Label>
+              <Select value={dateFieldFilter} onValueChange={setDateFieldFilter}>
+                <SelectTrigger id="installment-date-field" data-testid="select-installment-date-field" className="max-w-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fechaPago">Fecha de Pago (fecha real de pago)</SelectItem>
+                  <SelectItem value="fechaCuota">Fecha Cuota (fecha programada)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="installment-date-from">Fecha Desde</Label>
