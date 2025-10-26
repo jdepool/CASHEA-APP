@@ -319,20 +319,22 @@ export default function Home() {
 
           {!isProcessing && (
             <Tabs defaultValue="upload" className="space-y-4">
-              <TabsList data-testid="tabs-list">
-                <TabsTrigger value="upload" data-testid="tab-upload">
-                  CARGAR DATOS
-                </TabsTrigger>
-                <TabsTrigger value="all" data-testid="tab-all">
-                  TODAS LAS ÓRDENES
-                </TabsTrigger>
-                <TabsTrigger value="payments" data-testid="tab-payments">
-                  PAGO DE CUOTAS
-                </TabsTrigger>
-                <TabsTrigger value="weekly" data-testid="tab-weekly">
-                  CONCILIACION DE CUOTAS
-                </TabsTrigger>
-              </TabsList>
+              <div className="sticky top-[64px] z-20 bg-background pb-4">
+                <TabsList data-testid="tabs-list">
+                  <TabsTrigger value="upload" data-testid="tab-upload">
+                    CARGAR DATOS
+                  </TabsTrigger>
+                  <TabsTrigger value="all" data-testid="tab-all">
+                    TODAS LAS ÓRDENES
+                  </TabsTrigger>
+                  <TabsTrigger value="payments" data-testid="tab-payments">
+                    PAGO DE CUOTAS
+                  </TabsTrigger>
+                  <TabsTrigger value="weekly" data-testid="tab-weekly">
+                    CONCILIACION DE CUOTAS
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
               <TabsContent value="upload" className="space-y-6">
                 <div>
