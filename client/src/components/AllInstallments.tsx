@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Filter, X, Download } from "lucide-react";
+import { Filter, X, Download, Calendar } from "lucide-react";
 import { extractInstallments, filterInstallmentsByDateRange } from "@/lib/installmentUtils";
 import { parseExcelDate, parseDDMMYYYY } from "@/lib/dateUtils";
 import { useQuery } from "@tanstack/react-query";
@@ -254,25 +254,33 @@ export function AllInstallments({ tableData }: AllInstallmentsProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="installment-date-from">Fecha Desde</Label>
-                <Input
-                  id="installment-date-from"
-                  type="text"
-                  placeholder="DD/MM/YYYY"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  data-testid="input-installment-date-from"
-                />
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="installment-date-from"
+                    type="text"
+                    placeholder="DD/MM/YYYY"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="pl-10"
+                    data-testid="input-installment-date-from"
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="installment-date-to">Fecha Hasta</Label>
-                <Input
-                  id="installment-date-to"
-                  type="text"
-                  placeholder="DD/MM/YYYY"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  data-testid="input-installment-date-to"
-                />
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="installment-date-to"
+                    type="text"
+                    placeholder="DD/MM/YYYY"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="pl-10"
+                    data-testid="input-installment-date-to"
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="installment-orden-filter">Orden</Label>

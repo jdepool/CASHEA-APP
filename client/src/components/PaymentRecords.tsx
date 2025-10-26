@@ -4,7 +4,7 @@ import { PaymentRecordsDashboard } from "./PaymentRecordsDashboard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Download, FileSpreadsheet, Filter } from "lucide-react";
+import { Download, FileSpreadsheet, Filter, Calendar } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
@@ -203,28 +203,34 @@ export function PaymentRecords() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="payment-date-from">Fecha Desde</Label>
-                  <Input
-                    id="payment-date-from"
-                    type="text"
-                    placeholder="DD/MM/YYYY"
-                    value={dateFrom}
-                    onChange={(e) => setDateFrom(e.target.value)}
-                    className="w-full"
-                    data-testid="input-payment-date-from"
-                  />
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="payment-date-from"
+                      type="text"
+                      placeholder="DD/MM/YYYY"
+                      value={dateFrom}
+                      onChange={(e) => setDateFrom(e.target.value)}
+                      className="w-full pl-10"
+                      data-testid="input-payment-date-from"
+                    />
+                  </div>
                 </div>
                 
                 <div className="space-y-2">
                   <Label htmlFor="payment-date-to">Fecha Hasta</Label>
-                  <Input
-                    id="payment-date-to"
-                    type="text"
-                    placeholder="DD/MM/YYYY"
-                    value={dateTo}
-                    onChange={(e) => setDateTo(e.target.value)}
-                    className="w-full"
-                    data-testid="input-payment-date-to"
-                  />
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="payment-date-to"
+                      type="text"
+                      placeholder="DD/MM/YYYY"
+                      value={dateTo}
+                      onChange={(e) => setDateTo(e.target.value)}
+                      className="w-full pl-10"
+                      data-testid="input-payment-date-to"
+                    />
+                  </div>
                 </div>
                 
                 <div className="space-y-2">

@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, FileSpreadsheet, Upload, Filter, CheckCircle2 } from "lucide-react";
+import { Download, FileSpreadsheet, Upload, Filter, CheckCircle2, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -467,28 +467,34 @@ export default function Home() {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                           <div className="space-y-2">
                             <Label htmlFor="date-from">Fecha Desde</Label>
-                            <Input
-                              id="date-from"
-                              type="text"
-                              placeholder="DD/MM/YYYY"
-                              value={dateFrom}
-                              onChange={(e) => setDateFrom(e.target.value)}
-                              className="w-full"
-                              data-testid="input-date-from"
-                            />
+                            <div className="relative">
+                              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                id="date-from"
+                                type="text"
+                                placeholder="DD/MM/YYYY"
+                                value={dateFrom}
+                                onChange={(e) => setDateFrom(e.target.value)}
+                                className="w-full pl-10"
+                                data-testid="input-date-from"
+                              />
+                            </div>
                           </div>
                           
                           <div className="space-y-2">
                             <Label htmlFor="date-to">Fecha Hasta</Label>
-                            <Input
-                              id="date-to"
-                              type="text"
-                              placeholder="DD/MM/YYYY"
-                              value={dateTo}
-                              onChange={(e) => setDateTo(e.target.value)}
-                              className="w-full"
-                              data-testid="input-date-to"
-                            />
+                            <div className="relative">
+                              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                id="date-to"
+                                type="text"
+                                placeholder="DD/MM/YYYY"
+                                value={dateTo}
+                                onChange={(e) => setDateTo(e.target.value)}
+                                className="w-full pl-10"
+                                data-testid="input-date-to"
+                              />
+                            </div>
                           </div>
                           
                           <div className="space-y-2">
