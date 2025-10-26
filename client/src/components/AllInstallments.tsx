@@ -85,6 +85,31 @@ export function AllInstallments({ tableData }: AllInstallmentsProps) {
       });
     }
 
+    // Dynamically determine if installments should be marked as "Delayed"
+    // Rule: If Fecha Cuota < yesterday AND Estado = "Scheduled" AND no Fecha de Pago, mark as "Delayed"
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setHours(23, 59, 59, 999);
+    
+    installments = installments.map((installment) => {
+      const hasPaymentDate = installment.fechaPagoReal || installment.fechaPago;
+      const isScheduled = (installment.estadoCuota || '').trim().toLowerCase() === 'scheduled';
+      const fechaCuota = installment.fechaCuota;
+      
+      // Check if installment is overdue
+      if (fechaCuota && isScheduled && !hasPaymentDate) {
+        const cuotaDate = new Date(fechaCuota);
+        cuotaDate.setHours(23, 59, 59, 999);
+        
+        if (cuotaDate < yesterday) {
+          // Override status to "Delayed"
+          return { ...installment, estadoCuota: 'Delayed' };
+        }
+      }
+      
+      return installment;
+    });
+
     return installments;
   }, [tableData, paymentRecordsData]);
 

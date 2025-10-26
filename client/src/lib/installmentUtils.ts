@@ -7,6 +7,7 @@ export interface Installment {
   monto: number;
   estadoCuota: string;
   fechaPago: Date | null;
+  fechaPagoReal?: Date | null;
 }
 
 /**
