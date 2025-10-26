@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Filter, X, Download } from "lucide-react";
 import { extractInstallments, filterInstallmentsByDateRange } from "@/lib/installmentUtils";
-import { parseExcelDate } from "@/lib/dateUtils";
+import { parseExcelDate, parseDDMMYYYY } from "@/lib/dateUtils";
 import { useQuery } from "@tanstack/react-query";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
@@ -118,18 +118,18 @@ export function AllInstallments({ tableData }: AllInstallmentsProps) {
             normalizedInstallmentDate.setHours(0, 0, 0, 0);
             
             if (dateFrom) {
-              // Parse date as local date (YYYY-MM-DD) to avoid timezone issues
-              const [year, month, day] = dateFrom.split('-').map(Number);
-              const fromDate = new Date(year, month - 1, day, 0, 0, 0, 0);
-              
-              if (normalizedInstallmentDate < fromDate) return false;
+              const fromDate = parseDDMMYYYY(dateFrom);
+              if (fromDate) {
+                fromDate.setHours(0, 0, 0, 0);
+                if (normalizedInstallmentDate < fromDate) return false;
+              }
             }
             if (dateTo) {
-              // Parse date as local date (YYYY-MM-DD) to avoid timezone issues
-              const [year, month, day] = dateTo.split('-').map(Number);
-              const toDate = new Date(year, month - 1, day, 23, 59, 59, 999);
-              
-              if (normalizedInstallmentDate > toDate) return false;
+              const toDate = parseDDMMYYYY(dateTo);
+              if (toDate) {
+                toDate.setHours(23, 59, 59, 999);
+                if (normalizedInstallmentDate > toDate) return false;
+              }
             }
           }
         }
@@ -256,10 +256,10 @@ export function AllInstallments({ tableData }: AllInstallmentsProps) {
                 <Label htmlFor="installment-date-from">Fecha Desde</Label>
                 <Input
                   id="installment-date-from"
-                  type="date"
+                  type="text"
+                  placeholder="DD/MM/YYYY"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
-                  placeholder="Fecha desde"
                   data-testid="input-installment-date-from"
                 />
               </div>
@@ -267,10 +267,10 @@ export function AllInstallments({ tableData }: AllInstallmentsProps) {
                 <Label htmlFor="installment-date-to">Fecha Hasta</Label>
                 <Input
                   id="installment-date-to"
-                  type="date"
+                  type="text"
+                  placeholder="DD/MM/YYYY"
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
-                  placeholder="Fecha hasta"
                   data-testid="input-installment-date-to"
                 />
               </div>

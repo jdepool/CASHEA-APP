@@ -120,3 +120,26 @@ export function formatDate(date: Date | string | null): string {
   
   return `${day}/${month}/${year}`;
 }
+
+/**
+ * Parse DD/MM/YYYY format to Date object for filter inputs
+ */
+export function parseDDMMYYYY(dateStr: string): Date | null {
+  if (!dateStr || !dateStr.trim()) return null;
+  
+  const match = dateStr.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!match) return null;
+  
+  const day = parseInt(match[1], 10);
+  const month = parseInt(match[2], 10) - 1; // months are 0-indexed
+  const year = parseInt(match[3], 10);
+  
+  const date = new Date(year, month, day);
+  
+  // Validate the date is valid
+  if (date.getFullYear() !== year || date.getMonth() !== month || date.getDate() !== day) {
+    return null;
+  }
+  
+  return date;
+}

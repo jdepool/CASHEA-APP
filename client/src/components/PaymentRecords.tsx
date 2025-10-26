@@ -8,7 +8,7 @@ import { Download, FileSpreadsheet, Filter } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
-import { parseExcelDate } from "@/lib/dateUtils";
+import { parseExcelDate, parseDDMMYYYY } from "@/lib/dateUtils";
 
 export function PaymentRecords() {
   const { toast } = useToast();
@@ -75,14 +75,18 @@ export function PaymentRecords() {
           const rowDate = parseExcelDate(row[transactionDateHeader]);
           if (rowDate) {
             if (dateFrom) {
-              const fromDate = new Date(dateFrom);
-              fromDate.setHours(0, 0, 0, 0);
-              if (rowDate < fromDate) return false;
+              const fromDate = parseDDMMYYYY(dateFrom);
+              if (fromDate) {
+                fromDate.setHours(0, 0, 0, 0);
+                if (rowDate < fromDate) return false;
+              }
             }
             if (dateTo) {
-              const toDate = new Date(dateTo);
-              toDate.setHours(23, 59, 59, 999);
-              if (rowDate > toDate) return false;
+              const toDate = parseDDMMYYYY(dateTo);
+              if (toDate) {
+                toDate.setHours(23, 59, 59, 999);
+                if (rowDate > toDate) return false;
+              }
             }
           }
         }
@@ -201,7 +205,8 @@ export function PaymentRecords() {
                   <Label htmlFor="payment-date-from">Fecha Desde</Label>
                   <Input
                     id="payment-date-from"
-                    type="date"
+                    type="text"
+                    placeholder="DD/MM/YYYY"
                     value={dateFrom}
                     onChange={(e) => setDateFrom(e.target.value)}
                     className="w-full"
@@ -213,7 +218,8 @@ export function PaymentRecords() {
                   <Label htmlFor="payment-date-to">Fecha Hasta</Label>
                   <Input
                     id="payment-date-to"
-                    type="date"
+                    type="text"
+                    placeholder="DD/MM/YYYY"
                     value={dateTo}
                     onChange={(e) => setDateTo(e.target.value)}
                     className="w-full"

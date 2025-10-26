@@ -17,7 +17,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Loader2 } from "lucide-react";
 import * as XLSX from "xlsx";
-import { parseExcelDate } from "@/lib/dateUtils";
+import { parseExcelDate, parseDDMMYYYY } from "@/lib/dateUtils";
 
 export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -222,25 +222,19 @@ export default function Home() {
         const fechaCompraHeader = headers.find(h => h.toLowerCase().includes('fecha de compra'));
         if (fechaCompraHeader) {
           const fechaValue = row[fechaCompraHeader];
-          let rowDate: Date | null = null;
-          
-          if (typeof fechaValue === 'number') {
-            const utcDays = Math.floor(fechaValue - 25569);
-            const utcValue = utcDays * 86400;
-            rowDate = new Date(utcValue * 1000);
-          } else if (fechaValue) {
-            rowDate = new Date(fechaValue);
-          }
+          const rowDate = parseExcelDate(fechaValue);
 
           if (rowDate && !isNaN(rowDate.getTime())) {
             if (dateFrom) {
-              const fromDate = new Date(dateFrom);
-              if (rowDate < fromDate) return false;
+              const fromDate = parseDDMMYYYY(dateFrom);
+              if (fromDate && rowDate < fromDate) return false;
             }
             if (dateTo) {
-              const toDate = new Date(dateTo);
-              toDate.setHours(23, 59, 59, 999);
-              if (rowDate > toDate) return false;
+              const toDate = parseDDMMYYYY(dateTo);
+              if (toDate) {
+                toDate.setHours(23, 59, 59, 999);
+                if (rowDate > toDate) return false;
+              }
             }
           }
         }
@@ -475,7 +469,8 @@ export default function Home() {
                             <Label htmlFor="date-from">Fecha Desde</Label>
                             <Input
                               id="date-from"
-                              type="date"
+                              type="text"
+                              placeholder="DD/MM/YYYY"
                               value={dateFrom}
                               onChange={(e) => setDateFrom(e.target.value)}
                               className="w-full"
@@ -487,7 +482,8 @@ export default function Home() {
                             <Label htmlFor="date-to">Fecha Hasta</Label>
                             <Input
                               id="date-to"
-                              type="date"
+                              type="text"
+                              placeholder="DD/MM/YYYY"
                               value={dateTo}
                               onChange={(e) => setDateTo(e.target.value)}
                               className="w-full"
