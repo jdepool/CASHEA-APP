@@ -85,25 +85,38 @@ export function AllInstallments({ tableData }: AllInstallmentsProps) {
       });
     }
 
-    // Dynamically determine if installments should be marked as "Delayed"
-    // Rule: If Fecha Cuota < yesterday AND Estado = "Scheduled" AND no Fecha de Pago, mark as "Delayed"
+    // Dynamically determine installment status based on payment dates
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     yesterday.setHours(23, 59, 59, 999);
     
     installments = installments.map((installment) => {
-      const hasPaymentDate = installment.fechaPagoReal || installment.fechaPago;
+      const paymentDateRaw = installment.fechaPagoReal || installment.fechaPago;
       const isScheduled = (installment.estadoCuota || '').trim().toLowerCase() === 'scheduled';
       const fechaCuota = installment.fechaCuota;
       
-      // Check if installment is overdue
-      if (fechaCuota && isScheduled && !hasPaymentDate) {
-        const cuotaDate = new Date(fechaCuota);
-        cuotaDate.setHours(23, 59, 59, 999);
+      // Parse payment date to handle Excel formats and string dates
+      const paymentDate = paymentDateRaw ? parseExcelDate(paymentDateRaw) : null;
+      
+      // Rule 1: If Scheduled AND has valid payment date before scheduled date, mark as "Done"
+      if (isScheduled && paymentDate && fechaCuota) {
+        const cuotaDate = fechaCuota instanceof Date ? fechaCuota : parseExcelDate(fechaCuota);
         
-        if (cuotaDate < yesterday) {
-          // Override status to "Delayed"
-          return { ...installment, estadoCuota: 'Delayed' };
+        if (cuotaDate && paymentDate < cuotaDate) {
+          return { ...installment, estadoCuota: 'Done' };
+        }
+      }
+      
+      // Rule 2: If Scheduled AND overdue (Fecha Cuota < yesterday) AND no payment date, mark as "Delayed"
+      if (fechaCuota && isScheduled && !paymentDate) {
+        const cuotaDate = fechaCuota instanceof Date ? new Date(fechaCuota) : parseExcelDate(fechaCuota);
+        
+        if (cuotaDate) {
+          cuotaDate.setHours(23, 59, 59, 999);
+          
+          if (cuotaDate < yesterday) {
+            return { ...installment, estadoCuota: 'Delayed' };
+          }
         }
       }
       
