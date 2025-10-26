@@ -33,37 +33,36 @@ export function DatePicker({ value, onChange, placeholder = "DD/MM/YYYY", id, "d
   };
 
   return (
-    <div className="relative">
-      <Input
-        id={id}
-        type="text"
-        placeholder={placeholder}
-        value={value}
-        onChange={handleInputChange}
-        className="w-full pl-10"
-        data-testid={dataTestId}
-      />
-      <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen}>
+      <div className="relative">
+        <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <Input
+          id={id}
+          type="text"
+          placeholder={placeholder}
+          value={value}
+          onChange={handleInputChange}
+          className="w-full pl-10"
+          data-testid={dataTestId}
+        />
         <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute left-0 top-0 h-full w-10 hover:bg-transparent"
+          <button
             type="button"
-          >
-            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <DayPicker
-            mode="single"
-            selected={selectedDate}
-            onSelect={handleSelect}
-            initialFocus
-            className="p-3"
+            className="absolute left-0 top-0 h-full w-10 cursor-pointer"
+            style={{ background: 'transparent', border: 'none' }}
+            aria-label="Open calendar"
           />
-        </PopoverContent>
-      </Popover>
-    </div>
+        </PopoverTrigger>
+      </div>
+      <PopoverContent className="w-auto p-0" align="start">
+        <DayPicker
+          mode="single"
+          selected={selectedDate}
+          onSelect={handleSelect}
+          initialFocus
+          className="p-3"
+        />
+      </PopoverContent>
+    </Popover>
   );
 }
