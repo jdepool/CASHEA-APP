@@ -1,5 +1,7 @@
+import { useState, useMemo } from "react";
 import { StatusBadge } from "./StatusBadge";
 import { formatDate } from "@/lib/dateUtils";
+import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import type { Installment } from "@/lib/installmentUtils";
 
 interface WeeklyPaymentsTableProps {
@@ -7,6 +9,9 @@ interface WeeklyPaymentsTableProps {
 }
 
 export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) {
+  const [sortColumn, setSortColumn] = useState<string>('fechaCuota');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
   if (installments.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground" data-testid="empty-weekly">
@@ -15,37 +20,153 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
     );
   }
 
-  // Sort by date, then by order number
-  const sortedInstallments = [...installments].sort((a, b) => {
-    if (a.fechaCuota && b.fechaCuota) {
-      const dateCompare = a.fechaCuota.getTime() - b.fechaCuota.getTime();
-      if (dateCompare !== 0) return dateCompare;
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
     }
-    return a.orden.localeCompare(b.orden);
-  });
+  };
+
+  // Sort installments based on selected column
+  const sortedInstallments = useMemo(() => {
+    return [...installments].sort((a, b) => {
+      let comparison = 0;
+
+      switch (sortColumn) {
+        case 'orden': {
+          const aStr = a.orden || '';
+          const bStr = b.orden || '';
+          comparison = aStr.localeCompare(bStr);
+          break;
+        }
+        case 'fechaCuota': {
+          const aTime = a.fechaCuota?.getTime() || 0;
+          const bTime = b.fechaCuota?.getTime() || 0;
+          comparison = aTime - bTime;
+          break;
+        }
+        case 'numeroCuota': {
+          const aNum = parseInt(a.numeroCuota) || 0;
+          const bNum = parseInt(b.numeroCuota) || 0;
+          comparison = aNum - bNum;
+          break;
+        }
+        case 'monto': {
+          const aVal = a.monto || 0;
+          const bVal = b.monto || 0;
+          comparison = aVal - bVal;
+          break;
+        }
+        case 'estadoCuota': {
+          const aStr = (a.estadoCuota || '').toLowerCase();
+          const bStr = (b.estadoCuota || '').toLowerCase();
+          comparison = aStr.localeCompare(bStr);
+          break;
+        }
+        case 'fechaPagoReal': {
+          const aTime = (a as any).fechaPagoReal?.getTime() || 0;
+          const bTime = (b as any).fechaPagoReal?.getTime() || 0;
+          comparison = aTime - bTime;
+          break;
+        }
+        default:
+          comparison = 0;
+      }
+
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [installments, sortColumn, sortDirection]);
 
   return (
     <div className="border rounded-lg overflow-auto" style={{ maxHeight: '70vh' }}>
       <table className="w-full">
         <thead className="sticky top-0 z-10 bg-muted shadow-sm">
           <tr className="border-b">
-            <th className="text-left py-3 px-4 font-semibold text-sm sticky left-0 z-20 bg-muted" data-testid="header-orden">
-              Orden
+            <th 
+              onClick={() => handleSort('orden')}
+              className="text-left py-3 px-4 font-semibold text-sm sticky left-0 z-20 bg-muted cursor-pointer hover-elevate" 
+              data-testid="header-orden"
+            >
+              <div className="flex items-center gap-1">
+                <span>Orden</span>
+                {sortColumn === 'orden' ? (
+                  sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                ) : (
+                  <ArrowUpDown className="h-3 w-3 opacity-40" />
+                )}
+              </div>
             </th>
-            <th className="text-left py-3 px-4 font-semibold text-sm" data-testid="header-fecha">
-              Fecha Cuota
+            <th 
+              onClick={() => handleSort('fechaCuota')}
+              className="text-left py-3 px-4 font-semibold text-sm cursor-pointer hover-elevate" 
+              data-testid="header-fecha"
+            >
+              <div className="flex items-center gap-1">
+                <span>Fecha Cuota</span>
+                {sortColumn === 'fechaCuota' ? (
+                  sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                ) : (
+                  <ArrowUpDown className="h-3 w-3 opacity-40" />
+                )}
+              </div>
             </th>
-            <th className="text-left py-3 px-4 font-semibold text-sm" data-testid="header-numero">
-              # de Cuota
+            <th 
+              onClick={() => handleSort('numeroCuota')}
+              className="text-left py-3 px-4 font-semibold text-sm cursor-pointer hover-elevate" 
+              data-testid="header-numero"
+            >
+              <div className="flex items-center gap-1">
+                <span># de Cuota</span>
+                {sortColumn === 'numeroCuota' ? (
+                  sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                ) : (
+                  <ArrowUpDown className="h-3 w-3 opacity-40" />
+                )}
+              </div>
             </th>
-            <th className="text-right py-3 px-4 font-semibold text-sm" data-testid="header-monto">
-              Monto
+            <th 
+              onClick={() => handleSort('monto')}
+              className="text-right py-3 px-4 font-semibold text-sm cursor-pointer hover-elevate" 
+              data-testid="header-monto"
+            >
+              <div className="flex items-center gap-1 justify-end">
+                <span>Monto</span>
+                {sortColumn === 'monto' ? (
+                  sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                ) : (
+                  <ArrowUpDown className="h-3 w-3 opacity-40" />
+                )}
+              </div>
             </th>
-            <th className="text-left py-3 px-4 font-semibold text-sm" data-testid="header-estado">
-              Estado Cuota
+            <th 
+              onClick={() => handleSort('estadoCuota')}
+              className="text-left py-3 px-4 font-semibold text-sm cursor-pointer hover-elevate" 
+              data-testid="header-estado"
+            >
+              <div className="flex items-center gap-1">
+                <span>Estado Cuota</span>
+                {sortColumn === 'estadoCuota' ? (
+                  sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                ) : (
+                  <ArrowUpDown className="h-3 w-3 opacity-40" />
+                )}
+              </div>
             </th>
-            <th className="text-left py-3 px-4 font-semibold text-sm" data-testid="header-fecha-pago">
-              Fecha de Pago
+            <th 
+              onClick={() => handleSort('fechaPagoReal')}
+              className="text-left py-3 px-4 font-semibold text-sm cursor-pointer hover-elevate" 
+              data-testid="header-fecha-pago"
+            >
+              <div className="flex items-center gap-1">
+                <span>Fecha de Pago</span>
+                {sortColumn === 'fechaPagoReal' ? (
+                  sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                ) : (
+                  <ArrowUpDown className="h-3 w-3 opacity-40" />
+                )}
+              </div>
             </th>
           </tr>
         </thead>

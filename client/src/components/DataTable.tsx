@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { StatusBadge } from "./StatusBadge";
+import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 
 interface TableRow {
   [key: string]: any;
@@ -11,6 +12,8 @@ interface DataTableProps {
 }
 
 export function DataTable({ data, headers }: DataTableProps) {
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const formatValue = (value: any, header: string, row?: TableRow) => {
     if (value === null || value === undefined || value === "") {
       return "-";
@@ -96,6 +99,58 @@ export function DataTable({ data, headers }: DataTableProps) {
            header.toLowerCase().includes('pago inicial');
   };
 
+  const handleSort = (header: string) => {
+    if (sortColumn === header) {
+      // Toggle direction
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // New column, default to ascending
+      setSortColumn(header);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortedData = useMemo(() => {
+    if (!sortColumn) return data;
+
+    return [...data].sort((a, b) => {
+      let aVal = a[sortColumn];
+      let bVal = b[sortColumn];
+
+      // Handle null/undefined values
+      if (aVal == null && bVal == null) return 0;
+      if (aVal == null) return 1;
+      if (bVal == null) return -1;
+
+      // Handle dates
+      if (sortColumn.toLowerCase().includes('fecha')) {
+        const aDate = typeof aVal === 'number' ? excelDateToJSDate(aVal) : new Date(aVal);
+        const bDate = typeof bVal === 'number' ? excelDateToJSDate(bVal) : new Date(bVal);
+        
+        if (!isNaN(aDate.getTime()) && !isNaN(bDate.getTime())) {
+          return sortDirection === 'asc' 
+            ? aDate.getTime() - bDate.getTime()
+            : bDate.getTime() - aDate.getTime();
+        }
+      }
+
+      // Handle numbers
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+      }
+
+      // Handle strings
+      const aStr = String(aVal).toLowerCase();
+      const bStr = String(bVal).toLowerCase();
+      
+      if (sortDirection === 'asc') {
+        return aStr.localeCompare(bStr);
+      } else {
+        return bStr.localeCompare(aStr);
+      }
+    });
+  }, [data, sortColumn, sortDirection]);
+
   if (!data || data.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -112,18 +167,30 @@ export function DataTable({ data, headers }: DataTableProps) {
             {headers.map((header, idx) => (
               <th
                 key={idx}
-                className={`px-4 py-3 text-left font-semibold text-xs uppercase tracking-wide border-b whitespace-nowrap ${
+                onClick={() => handleSort(header)}
+                className={`px-4 py-3 text-left font-semibold text-xs uppercase tracking-wide border-b whitespace-nowrap cursor-pointer hover-elevate ${
                   isNumericColumn(header) ? 'text-right' : ''
                 } ${idx === 0 ? 'sticky left-0 z-20 bg-muted' : ''}`}
                 data-testid={`header-${idx}`}
               >
-                {header}
+                <div className={`flex items-center gap-1 ${isNumericColumn(header) ? 'justify-end' : 'justify-start'}`}>
+                  <span>{header}</span>
+                  {sortColumn === header ? (
+                    sortDirection === 'asc' ? (
+                      <ArrowUp className="h-3 w-3" />
+                    ) : (
+                      <ArrowDown className="h-3 w-3" />
+                    )
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 opacity-40" />
+                  )}
+                </div>
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {data.map((row, rowIdx) => (
+          {sortedData.map((row, rowIdx) => (
             <tr
               key={rowIdx}
               className="border-b hover-elevate"

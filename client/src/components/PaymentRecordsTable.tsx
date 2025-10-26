@@ -1,4 +1,6 @@
+import { useState, useMemo } from "react";
 import { normalizeNumber } from "@shared/numberUtils";
+import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 
 interface PaymentRecord {
   [key: string]: any;
@@ -11,6 +13,8 @@ interface PaymentRecordsTableProps {
 }
 
 export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRecordsTableProps) {
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   // Define the desired column order patterns (case-insensitive)
   const desiredOrderPatterns = [
     { pattern: /^#\s*orden$/i, display: '# Orden' },
@@ -141,6 +145,49 @@ export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRec
     return headerLower.includes('monto') || headerLower.includes('ves') || headerLower.includes('usd');
   };
 
+  const handleSort = (header: string) => {
+    if (sortColumn === header) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(header);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortedRecords = useMemo(() => {
+    if (!sortColumn) return records;
+
+    return [...records].sort((a, b) => {
+      let aVal = a[sortColumn];
+      let bVal = b[sortColumn];
+
+      // Handle null/undefined values
+      if (aVal == null && bVal == null) return 0;
+      if (aVal == null) return 1;
+      if (bVal == null) return -1;
+
+      // Handle currency values
+      if (isNumericColumn(sortColumn)) {
+        const aNum = normalizeNumber(aVal);
+        const bNum = normalizeNumber(bVal);
+        
+        if (!isNaN(aNum) && !isNaN(bNum)) {
+          return sortDirection === 'asc' ? aNum - bNum : bNum - aNum;
+        }
+      }
+
+      // Handle strings
+      const aStr = String(aVal).toLowerCase();
+      const bStr = String(bVal).toLowerCase();
+      
+      if (sortDirection === 'asc') {
+        return aStr.localeCompare(bStr);
+      } else {
+        return bStr.localeCompare(aStr);
+      }
+    });
+  }, [records, sortColumn, sortDirection]);
+
   if (!records || records.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground" data-testid="empty-state">
@@ -157,18 +204,30 @@ export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRec
             {orderedHeaders.map((header, idx) => (
               <th
                 key={idx}
-                className={`px-4 py-3 font-semibold text-xs uppercase tracking-wide border-b whitespace-nowrap ${
+                onClick={() => handleSort(header)}
+                className={`px-4 py-3 font-semibold text-xs uppercase tracking-wide border-b whitespace-nowrap cursor-pointer hover-elevate ${
                   isNumericColumn(header) ? 'text-right' : 'text-left'
                 } ${idx === 0 ? 'sticky left-0 z-20 bg-muted' : ''}`}
                 data-testid={`header-${idx}`}
               >
-                {header}
+                <div className={`flex items-center gap-1 ${isNumericColumn(header) ? 'justify-end' : 'justify-start'}`}>
+                  <span>{header}</span>
+                  {sortColumn === header ? (
+                    sortDirection === 'asc' ? (
+                      <ArrowUp className="h-3 w-3" />
+                    ) : (
+                      <ArrowDown className="h-3 w-3" />
+                    )
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 opacity-40" />
+                  )}
+                </div>
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {records.map((record, rowIdx) => {
+          {sortedRecords.map((record, rowIdx) => {
             const isPartial = isPartialPayment(record);
             return (
               <tr

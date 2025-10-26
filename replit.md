@@ -87,6 +87,11 @@ The application follows a client-server architecture with a React frontend and a
     - **Multi-Installment Payments**: Supports comma-separated cuota values (e.g., "4,5") where a single payment covers multiple installments. Expected amounts are summed for comparison.
     - **Currency Formatting**: All currency values are parsed using locale-aware number normalization and displayed using proper currency formatting (es-ES locale).
 - **Data Export**: Export current table view to Excel.
+- **Table Sorting**: All tables support column sorting - click any column header to sort ascending (A→Z) or descending (Z→A)
+    - Visual indicators show current sort column and direction (up/down arrows)
+    - Hover effect on column headers indicates clickability
+    - Handles dates, numbers, currency values, and text appropriately
+    - Available in all three main table views: TODAS LAS ÓRDENES, CONCILIACION DE CUOTAS, and PAGO DE CUOTAS
 - **Date Handling**: Automatic conversion of Excel serial dates and various date formats (DD/MM/YYYY, ISO).
 - **Installment Extraction**: Converts wide-format Excel installment data into a long format for easier processing and filtering.
 - **Column Mapping**: Flexible header mapping system allows display names to differ from Excel column names:
