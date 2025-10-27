@@ -94,6 +94,10 @@ The application follows a client-server architecture with a React frontend and a
     - Available in all three main table views: TODAS LAS ÓRDENES, CONCILIACION DE CUOTAS, and PAGO DE CUOTAS
 - **Date Handling**: Automatic conversion of Excel serial dates and various date formats (DD/MM/YYYY, ISO).
 - **Installment Extraction**: Converts wide-format Excel installment data into a long format for easier processing and filtering.
+    - **Cuota 0 Support**: Extracts Cuota 0 (initial payments/PAGO INICIAL) alongside Cuotas 1-14 from orders table
+    - **Synthetic Installments**: Creates installment entries for payment records that don't have matching installments in orders table (especially for Cuota 0)
+    - **Duplicate Prevention**: Prevents duplicate installments when multiple payment records exist for the same orden-cuota combination (different reference numbers)
+    - **Robust Matching**: Uses integer parsing for installment number comparison to handle different string formats
 - **Column Mapping**: Flexible header mapping system allows display names to differ from Excel column names:
     - "PAGO INICIAL" column maps to "Pago en Caja" from uploaded Excel files
     - Positioned between "Tipo Orden" and "Estado Pago Inicial"
