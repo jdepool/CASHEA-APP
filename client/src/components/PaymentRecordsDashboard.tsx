@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Receipt, DollarSign } from "lucide-react";
+import { Receipt, DollarSign, Wallet } from "lucide-react";
 import { normalizeNumber } from "@shared/numberUtils";
 
 interface PaymentRecordsDashboardProps {
@@ -14,6 +14,7 @@ export function PaymentRecordsDashboard({ data, headers }: PaymentRecordsDashboa
       return {
         totalCuotasPagadas: 0,
         totalPagado: 0,
+        totalPagoIniciales: 0,
       };
     }
 
@@ -33,6 +34,7 @@ export function PaymentRecordsDashboard({ data, headers }: PaymentRecordsDashboa
     // Track unique installments: Set of "order_cuota" combinations
     const uniqueCuotas = new Set<string>();
     let totalPagado = 0;
+    let totalPagoIniciales = 0;
 
     data.forEach((row) => {
       // Get order number
@@ -47,6 +49,13 @@ export function PaymentRecordsDashboard({ data, headers }: PaymentRecordsDashboa
       
       if (!isNaN(montoPagado)) {
         totalPagado += montoPagado;
+        
+        // Check if this is an initial payment (cuota exactly equals "0")
+        // Don't count multi-installment payments like "0,1,2"
+        const cuotaNumbers = cuotaValue.split(',').map(c => c.trim()).filter(c => c);
+        if (cuotaNumbers.length === 1 && parseInt(cuotaNumbers[0]) === 0) {
+          totalPagoIniciales += montoPagado;
+        }
       }
 
       // Parse cuota value(s)
@@ -65,6 +74,7 @@ export function PaymentRecordsDashboard({ data, headers }: PaymentRecordsDashboa
     return {
       totalCuotasPagadas: uniqueCuotas.size,
       totalPagado,
+      totalPagoIniciales,
     };
   }, [data, headers]);
 
@@ -77,7 +87,24 @@ export function PaymentRecordsDashboard({ data, headers }: PaymentRecordsDashboa
   };
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 mb-6">
+    <div className="grid gap-4 md:grid-cols-3 mb-6">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">
+            Pago Iniciales
+          </CardTitle>
+          <Wallet className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold" data-testid="metric-pago-iniciales">
+            {formatCurrency(metrics.totalPagoIniciales)}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Suma de cuota 0 en USD
+          </p>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">
