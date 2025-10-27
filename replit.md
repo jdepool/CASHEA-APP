@@ -95,6 +95,7 @@ The application follows a client-server architecture with a React frontend and a
 - **Date Handling**: Automatic conversion of Excel serial dates and various date formats (DD/MM/YYYY, ISO).
 - **Installment Extraction**: Converts wide-format Excel installment data into a long format for easier processing and filtering.
     - **Cuota 0 Support**: Extracts Cuota 0 (initial payments/PAGO INICIAL) alongside Cuotas 1-14 from orders table
+    - **FECHA DE COMPRA Fallback**: When Cuota 0 lacks a "Fecha cuota 0" value, automatically uses "FECHA DE COMPRA" (purchase date) as the scheduled date, since initial payments typically occur at purchase time
     - **Synthetic Installments**: Creates installment entries for payment records that don't have matching installments in orders table (especially for Cuota 0)
     - **Duplicate Prevention**: Prevents duplicate installments when multiple payment records exist for the same orden-cuota combination (different reference numbers)
     - **Robust Matching**: Uses integer parsing for installment number comparison to handle different string formats
