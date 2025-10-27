@@ -23,7 +23,9 @@ The application follows a client-server architecture with a React frontend and a
     - `Dashboard` showing key metrics at the top of TODAS LAS ÓRDENES:
         - **Órdenes Activas**: Count of orders with outstanding payments (saldo > $0.01)
         - **Monto de Ventas**: Sum of all "Venta total" values
-        - **Pagos Recibidos**: Sum of "PAGO INICIAL" + all "Pagado de cuota N" values
+        - **Pago Inicial**: Sum of all "PAGO INICIAL" values
+        - **Cuotas Pagadas**: Sum of all "Pagado de cuota N" values (cuotas 1-14)
+        - **Pagos Recibidos**: Sum of "PAGO INICIAL" + all "Pagado de cuota N" values (total)
         - **Saldo Pendiente**: Total sales minus total payments received
     - `DataTable` for displaying main order data with over 60 columns, sticky headers, and horizontal scroll.
     - `WeeklyPaymentsTable` (reused in AllInstallments) for displaying all installments with filtering.
