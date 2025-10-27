@@ -22,11 +22,28 @@ export function extractInstallments(tableData: any[]): Installment[] {
 
     // Process installments 0-14 (0 = PAGO INICIAL)
     for (let i = 0; i <= 14; i++) {
-      const fechaCuotaKey = `Fecha cuota ${i}`;
-      const cuotaKey = `Cuota ${i}`;
-      const pagadoKey = `Pagado de cuota ${i}`;
-      const estadoCuotaKey = `Estado cuota ${i}`;
-      const fechaPagoKey = `Fecha de pago cuota ${i}`;
+      // Special handling for Cuota 0 (initial payment)
+      let fechaCuotaKey: string;
+      let cuotaKey: string;
+      let pagadoKey: string;
+      let estadoCuotaKey: string;
+      let fechaPagoKey: string;
+
+      if (i === 0) {
+        // For Cuota 0, use specific column names for initial payment
+        fechaCuotaKey = `Fecha cuota ${i}`;
+        cuotaKey = "Pago en Caja"; // Maps to PAGO INICIAL in display
+        pagadoKey = `Pagado de cuota ${i}`;
+        estadoCuotaKey = "Estado pago inicial";
+        fechaPagoKey = `Fecha de pago cuota ${i}`;
+      } else {
+        // For Cuotas 1-14, use standard column names
+        fechaCuotaKey = `Fecha cuota ${i}`;
+        cuotaKey = `Cuota ${i}`;
+        pagadoKey = `Pagado de cuota ${i}`;
+        estadoCuotaKey = `Estado cuota ${i}`;
+        fechaPagoKey = `Fecha de pago cuota ${i}`;
+      }
 
       let fechaCuotaValue = row[fechaCuotaKey];
       const montoValue = row[cuotaKey];
