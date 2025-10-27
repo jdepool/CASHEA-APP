@@ -8,6 +8,13 @@ interface DashboardProps {
 }
 
 export function Dashboard({ data, headers }: DashboardProps) {
+  // Helper function to check if an order is cancelled
+  const isCancelledOrder = (row: any): boolean => {
+    const statusOrden = String(row["STATUS ORDEN"] || "").toLowerCase().trim();
+    // Use substring match to catch variations like "cancelado parcial", "cancelled", etc.
+    return statusOrden.includes("cancel");
+  };
+
   const metrics = useMemo(() => {
     if (!data || data.length === 0) {
       return {
@@ -38,14 +45,21 @@ export function Dashboard({ data, headers }: DashboardProps) {
         montoVentas += ventaTotal;
       }
 
-      // Get PAGO INICIAL
+      // Check if order is cancelled (skip for Pago Inicial and Cuotas Pagadas)
+      const isCancelled = isCancelledOrder(row);
+
+      // Get PAGO INICIAL (exclude cancelled orders)
       const pagoInicialStr = row["PAGO INICIAL"];
       const pagoInicial = parseFloat(pagoInicialStr || 0);
       const pagoInicialValue = isNaN(pagoInicial) ? 0 : pagoInicial;
-      pagoInicialTotal += pagoInicialValue;
+      
+      if (!isCancelled) {
+        pagoInicialTotal += pagoInicialValue;
+      }
+      
       let totalPagadoRow = pagoInicialValue;
 
-      // Sum all "Pagado de cuota N" values
+      // Sum all "Pagado de cuota N" values (exclude cancelled orders)
       let cuotasPagadasRow = 0;
       for (let i = 1; i <= 14; i++) {
         const pagadoCuotaStr = row[`Pagado de cuota ${i}`];
@@ -55,9 +69,11 @@ export function Dashboard({ data, headers }: DashboardProps) {
           totalPagadoRow += pagadoCuota;
         }
       }
-      cuotasPagadasTotal += cuotasPagadasRow;
-
-      totalPagos += totalPagadoRow;
+      
+      if (!isCancelled) {
+        cuotasPagadasTotal += cuotasPagadasRow;
+        totalPagos += totalPagadoRow;
+      }
 
       // Calculate individual saldo for this order
       const saldoRow = ventaTotal - totalPagadoRow;
