@@ -105,6 +105,9 @@ The application follows a client-server architecture with a React frontend and a
     - "PAGO INICIAL" column maps to "Pago en Caja" from uploaded Excel files
     - Positioned between "Tipo Orden" and "Estado Pago Inicial"
     - Formatted as currency (USD) with right alignment
+    - "STATUS ORDEN" column maps to "Estado Orden" from uploaded Excel files
+    - Positioned between "Nombre del comprador" and "Venta total"
+    - Displays order status as text (supports sorting)
 - **Filtering**: All three main tabs (TODAS LAS ÓRDENES, CONCILIACION DE CUOTAS, PAGO DE CUOTAS) feature collapsible filter panels with toggle buttons:
     - TODAS LAS ÓRDENES: Date range, Orden, Referencia, Estado Cuota
         - **"Solo activas" Toggle**: Button that filters out fully paid orders (saldo ≤ $0.01), showing only orders with outstanding payments
