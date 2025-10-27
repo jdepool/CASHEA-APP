@@ -15,16 +15,36 @@ import { useToast } from "@/hooks/use-toast";
 
 interface AllInstallmentsProps {
   tableData: any[];
+  showFilters: boolean;
+  setShowFilters: (show: boolean) => void;
+  dateFrom: string;
+  setDateFrom: (date: string) => void;
+  dateTo: string;
+  setDateTo: (date: string) => void;
+  ordenFilter: string;
+  setOrdenFilter: (orden: string) => void;
+  estadoCuotaFilter: string;
+  setEstadoCuotaFilter: (estado: string) => void;
+  dateFieldFilter: string;
+  setDateFieldFilter: (field: string) => void;
 }
 
-export function AllInstallments({ tableData }: AllInstallmentsProps) {
+export function AllInstallments({ 
+  tableData,
+  showFilters,
+  setShowFilters,
+  dateFrom,
+  setDateFrom,
+  dateTo,
+  setDateTo,
+  ordenFilter,
+  setOrdenFilter,
+  estadoCuotaFilter,
+  setEstadoCuotaFilter,
+  dateFieldFilter,
+  setDateFieldFilter
+}: AllInstallmentsProps) {
   const { toast } = useToast();
-  const [showFilters, setShowFilters] = useState<boolean>(false);
-  const [dateFrom, setDateFrom] = useState<string>("");
-  const [dateTo, setDateTo] = useState<string>("");
-  const [ordenFilter, setOrdenFilter] = useState<string>("");
-  const [estadoCuotaFilter, setEstadoCuotaFilter] = useState<string>("all");
-  const [dateFieldFilter, setDateFieldFilter] = useState<string>("fechaCuota"); // "fechaCuota" or "fechaPago"
 
   // Fetch payment records to cross-reference
   const { data: paymentRecordsData } = useQuery({

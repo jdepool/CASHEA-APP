@@ -11,13 +11,32 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { parseExcelDate, parseDDMMYYYY } from "@/lib/dateUtils";
 
-export function PaymentRecords() {
+interface PaymentRecordsProps {
+  showFilters: boolean;
+  setShowFilters: (show: boolean) => void;
+  dateFrom: string;
+  setDateFrom: (date: string) => void;
+  dateTo: string;
+  setDateTo: (date: string) => void;
+  ordenFilter: string;
+  setOrdenFilter: (orden: string) => void;
+  referenciaFilter: string;
+  setReferenciaFilter: (referencia: string) => void;
+}
+
+export function PaymentRecords({
+  showFilters,
+  setShowFilters,
+  dateFrom,
+  setDateFrom,
+  dateTo,
+  setDateTo,
+  ordenFilter,
+  setOrdenFilter,
+  referenciaFilter,
+  setReferenciaFilter
+}: PaymentRecordsProps) {
   const { toast } = useToast();
-  const [showFilters, setShowFilters] = useState<boolean>(false);
-  const [dateFrom, setDateFrom] = useState<string>("");
-  const [dateTo, setDateTo] = useState<string>("");
-  const [ordenFilter, setOrdenFilter] = useState<string>("");
-  const [referenciaFilter, setReferenciaFilter] = useState<string>("");
 
   // Fetch persisted payment records
   const { data: paymentRecordsData, isLoading: isLoadingPayments } = useQuery({

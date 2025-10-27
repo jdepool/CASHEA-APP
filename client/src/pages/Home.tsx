@@ -26,6 +26,8 @@ export default function Home() {
   const [tableData, setTableData] = useState<any[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // TODAS LAS ORDENES tab filters
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
   const [ordenFilter, setOrdenFilter] = useState<string>("");
@@ -33,6 +35,22 @@ export default function Home() {
   const [estadoCuotaFilter, setEstadoCuotaFilter] = useState<string>("all");
   const [showFilters, setShowFilters] = useState<boolean>(false);
   const [hideFullyPaid, setHideFullyPaid] = useState<boolean>(false);
+  
+  // CONCILIACION DE CUOTAS tab filters
+  const [installmentsShowFilters, setInstallmentsShowFilters] = useState<boolean>(false);
+  const [installmentsDateFrom, setInstallmentsDateFrom] = useState<string>("");
+  const [installmentsDateTo, setInstallmentsDateTo] = useState<string>("");
+  const [installmentsOrdenFilter, setInstallmentsOrdenFilter] = useState<string>("");
+  const [installmentsEstadoCuotaFilter, setInstallmentsEstadoCuotaFilter] = useState<string>("all");
+  const [installmentsDateFieldFilter, setInstallmentsDateFieldFilter] = useState<string>("fechaCuota");
+  
+  // PAGO DE CUOTAS tab filters
+  const [paymentsShowFilters, setPaymentsShowFilters] = useState<boolean>(false);
+  const [paymentsDateFrom, setPaymentsDateFrom] = useState<string>("");
+  const [paymentsDateTo, setPaymentsDateTo] = useState<string>("");
+  const [paymentsOrdenFilter, setPaymentsOrdenFilter] = useState<string>("");
+  const [paymentsReferenciaFilter, setPaymentsReferenciaFilter] = useState<string>("");
+  
   const { toast } = useToast();
 
   // Fetch persisted orders on mount
@@ -562,12 +580,37 @@ export default function Home() {
               </TabsContent>
 
               <TabsContent value="payments">
-                <PaymentRecords />
+                <PaymentRecords 
+                  showFilters={paymentsShowFilters}
+                  setShowFilters={setPaymentsShowFilters}
+                  dateFrom={paymentsDateFrom}
+                  setDateFrom={setPaymentsDateFrom}
+                  dateTo={paymentsDateTo}
+                  setDateTo={setPaymentsDateTo}
+                  ordenFilter={paymentsOrdenFilter}
+                  setOrdenFilter={setPaymentsOrdenFilter}
+                  referenciaFilter={paymentsReferenciaFilter}
+                  setReferenciaFilter={setPaymentsReferenciaFilter}
+                />
               </TabsContent>
 
               <TabsContent value="weekly">
                 {tableData.length > 0 ? (
-                  <AllInstallments tableData={tableData} />
+                  <AllInstallments 
+                    tableData={tableData}
+                    showFilters={installmentsShowFilters}
+                    setShowFilters={setInstallmentsShowFilters}
+                    dateFrom={installmentsDateFrom}
+                    setDateFrom={setInstallmentsDateFrom}
+                    dateTo={installmentsDateTo}
+                    setDateTo={setInstallmentsDateTo}
+                    ordenFilter={installmentsOrdenFilter}
+                    setOrdenFilter={setInstallmentsOrdenFilter}
+                    estadoCuotaFilter={installmentsEstadoCuotaFilter}
+                    setEstadoCuotaFilter={setInstallmentsEstadoCuotaFilter}
+                    dateFieldFilter={installmentsDateFieldFilter}
+                    setDateFieldFilter={setInstallmentsDateFieldFilter}
+                  />
                 ) : (
                   <div className="text-center py-12">
                     <FileSpreadsheet className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
