@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, ShoppingCart, CreditCard, AlertCircle } from "lucide-react";
+import { DollarSign, ShoppingCart, CreditCard, AlertCircle, Wallet, Receipt } from "lucide-react";
 
 interface DashboardProps {
   data: any[];
@@ -13,6 +13,8 @@ export function Dashboard({ data, headers }: DashboardProps) {
       return {
         totalOrdenesActivas: 0,
         montoVentas: 0,
+        pagoInicial: 0,
+        cuotasPagadas: 0,
         totalPagos: 0,
         saldo: 0,
       };
@@ -20,6 +22,8 @@ export function Dashboard({ data, headers }: DashboardProps) {
 
     let totalOrdenesActivas = 0;
     let montoVentas = 0;
+    let pagoInicialTotal = 0;
+    let cuotasPagadasTotal = 0;
     let totalPagos = 0;
     let saldoPendiente = 0; // Sum of individual positive saldos only
 
@@ -37,16 +41,21 @@ export function Dashboard({ data, headers }: DashboardProps) {
       // Get PAGO INICIAL
       const pagoInicialStr = row["PAGO INICIAL"];
       const pagoInicial = parseFloat(pagoInicialStr || 0);
-      let totalPagadoRow = isNaN(pagoInicial) ? 0 : pagoInicial;
+      const pagoInicialValue = isNaN(pagoInicial) ? 0 : pagoInicial;
+      pagoInicialTotal += pagoInicialValue;
+      let totalPagadoRow = pagoInicialValue;
 
       // Sum all "Pagado de cuota N" values
+      let cuotasPagadasRow = 0;
       for (let i = 1; i <= 14; i++) {
         const pagadoCuotaStr = row[`Pagado de cuota ${i}`];
         const pagadoCuota = parseFloat(pagadoCuotaStr || 0);
         if (!isNaN(pagadoCuota)) {
+          cuotasPagadasRow += pagadoCuota;
           totalPagadoRow += pagadoCuota;
         }
       }
+      cuotasPagadasTotal += cuotasPagadasRow;
 
       totalPagos += totalPagadoRow;
 
@@ -68,6 +77,8 @@ export function Dashboard({ data, headers }: DashboardProps) {
     return {
       totalOrdenesActivas,
       montoVentas,
+      pagoInicial: pagoInicialTotal,
+      cuotasPagadas: cuotasPagadasTotal,
       totalPagos,
       saldo: saldoPendiente,
     };
@@ -82,7 +93,7 @@ export function Dashboard({ data, headers }: DashboardProps) {
   };
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">
@@ -113,6 +124,40 @@ export function Dashboard({ data, headers }: DashboardProps) {
           </div>
           <p className="text-xs text-muted-foreground">
             Total vendido
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">
+            Pago Inicial
+          </CardTitle>
+          <Wallet className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold" data-testid="metric-pago-inicial">
+            {formatCurrency(metrics.pagoInicial)}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Suma de pagos iniciales
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">
+            Cuotas Pagadas
+          </CardTitle>
+          <Receipt className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold" data-testid="metric-cuotas-pagadas">
+            {formatCurrency(metrics.cuotasPagadas)}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Suma de todas las cuotas
           </p>
         </CardContent>
       </Card>
