@@ -83,7 +83,8 @@ The application follows a client-server architecture with a React frontend and a
     - Shows "X de Y cuotas" count when filters are active
     - One-click "Limpiar filtros" button to reset all filters
 - **Payment Records View**: `PAGO DE CUOTAS` tab allows uploading and viewing payment transaction files with flexible column headers and auto-detection/formatting of 'VES' and 'USD' currency columns.
-    - **Payment Records Dashboard**: Shows 2 key metrics that update based on active filters:
+    - **Payment Records Dashboard**: Shows 3 key metrics that update based on active filters:
+        - **Pago Iniciales**: Sum of all payment records where "# Cuota Pagada" equals exactly "0" (excludes multi-installment payments like "0,1")
         - **Total Cuotas Pagadas**: Count of unique installments paid, handling multi-installment payments (e.g., "4,5,6" counts as 3 cuotas) and split payments (same order + same cuota = 1 cuota)
         - **Total Pagado**: Sum of "Monto Pagado en USD" across filtered records
     - **Partial Payment Detection**: Payment records are compared against expected installment amounts from the orders data. Rows where the paid amount is less than the expected amount (by more than $0.25) are highlighted in **red bold text** for easy identification.
