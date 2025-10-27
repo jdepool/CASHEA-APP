@@ -63,26 +63,34 @@ export function AllInstallments({
     if (hasPaymentData) {
       const paymentRows = apiData.data.rows;
       
+      // Track which payment records have been matched
+      const matchedPaymentIndices = new Set<number>();
+      
       // Enrich all installments with payment dates from payment records
       installments = installments.map((installment) => {
         // Find matching payment record by order number (and optionally installment number)
-        const matchingPayment = paymentRows.find((payment: any) => {
+        const matchingPaymentIndex = paymentRows.findIndex((payment: any, index: number) => {
           const paymentOrder = String(payment['# Orden'] || payment['#Orden'] || payment['Orden'] || '').trim();
-          const paymentInstallment = String(payment['# Cuota Pagada'] || payment['#CuotaPagada'] || payment['Cuota'] || '').trim();
+          const paymentInstallmentStr = String(payment['# Cuota Pagada'] || payment['#CuotaPagada'] || payment['Cuota'] || '').trim();
           
           // Match by order number first
           const orderMatches = paymentOrder === String(installment.orden).trim();
           
           // If installment number exists in payment record, also match on that
-          if (paymentInstallment) {
-            return orderMatches && paymentInstallment === String(installment.numeroCuota).trim();
+          if (paymentInstallmentStr) {
+            // Parse payment installment number to handle different formats
+            const paymentCuotaNum = parseInt(paymentInstallmentStr, 10);
+            return orderMatches && !isNaN(paymentCuotaNum) && paymentCuotaNum === installment.numeroCuota;
           }
           
           // Otherwise just match by order number
           return orderMatches;
         });
 
-        if (matchingPayment) {
+        if (matchingPaymentIndex !== -1) {
+          matchedPaymentIndices.add(matchingPaymentIndex);
+          const matchingPayment = paymentRows[matchingPaymentIndex];
+          
           // Get the exchange rate date (FECHA TASA DE CAMBIO)
           const fechaTasaCambio = matchingPayment['Fecha Tasa de Cambio'] || 
                                   matchingPayment['FECHA TASA DE CAMBIO'] ||
@@ -102,6 +110,57 @@ export function AllInstallments({
         }
         
         return installment;
+      });
+      
+      // Add unmatched payment records as synthetic installments (especially for Cuota 0)
+      // Track which orden-cuota combinations we've already added to avoid duplicates
+      const syntheticInstallmentKeys = new Set<string>();
+      
+      paymentRows.forEach((payment: any, index: number) => {
+        if (!matchedPaymentIndices.has(index)) {
+          const paymentOrder = String(payment['# Orden'] || payment['#Orden'] || payment['Orden'] || '').trim();
+          const paymentInstallment = String(payment['# Cuota Pagada'] || payment['#CuotaPagada'] || payment['Cuota'] || '').trim();
+          const montoPagado = payment['Monto Pagado en USD'] || payment['MONTO PAGADO EN USD'] || payment['Monto'] || 0;
+          
+          // Get the exchange rate date
+          const fechaTasaCambio = payment['Fecha Tasa de Cambio'] || 
+                                  payment['FECHA TASA DE CAMBIO'] ||
+                                  payment['Fecha de Transaccion'] ||
+                                  payment['FECHA DE TRANSACCION'] ||
+                                  payment['Fecha Tasa Cambio'] ||
+                                  payment['FechaTasaCambio'];
+          
+          const parsedDate = fechaTasaCambio ? parseExcelDate(fechaTasaCambio) : null;
+          
+          // Create synthetic installment if we have at least an order and installment number
+          if (paymentOrder && paymentInstallment) {
+            const cuotaNumber = parseInt(paymentInstallment, 10);
+            
+            if (!isNaN(cuotaNumber)) {
+              const syntheticKey = `${paymentOrder}-${cuotaNumber}`;
+              
+              // Check if an installment with this orden-numeroCuota combination already exists
+              const alreadyExists = installments.some(inst => 
+                String(inst.orden).trim() === paymentOrder && 
+                inst.numeroCuota === cuotaNumber
+              );
+              
+              // Only create synthetic installment if it doesn't already exist and we haven't created one yet
+              if (!alreadyExists && !syntheticInstallmentKeys.has(syntheticKey)) {
+                syntheticInstallmentKeys.add(syntheticKey);
+                installments.push({
+                  orden: paymentOrder,
+                  fechaCuota: null, // No scheduled date since this is payment-only
+                  numeroCuota: cuotaNumber,
+                  monto: typeof montoPagado === 'number' ? montoPagado : parseFloat(String(montoPagado || 0).replace(/[^0-9.-]/g, '')) || 0,
+                  estadoCuota: 'Done', // Since there's a payment, mark as Done
+                  fechaPago: null,
+                  fechaPagoReal: parsedDate // May be null if date is unparseable
+                });
+              }
+            }
+          }
+        }
       });
     }
 
