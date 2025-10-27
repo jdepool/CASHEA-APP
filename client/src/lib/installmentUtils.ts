@@ -32,7 +32,7 @@ export function extractInstallments(tableData: any[]): Installment[] {
       if (i === 0) {
         // For Cuota 0, use specific column names for initial payment
         fechaCuotaKey = `Fecha cuota ${i}`;
-        cuotaKey = "Pago en Caja"; // Maps to PAGO INICIAL in display
+        cuotaKey = "PAGO INICIAL"; // Backend maps "Pago en Caja" to this standardized name
         pagadoKey = `Pagado de cuota ${i}`;
         estadoCuotaKey = "Estado pago inicial";
         fechaPagoKey = `Fecha de pago cuota ${i}`;
