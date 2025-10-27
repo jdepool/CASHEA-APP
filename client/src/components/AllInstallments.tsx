@@ -158,6 +158,7 @@ export function AllInstallments({
                   if (matchingOrder) {
                     const fechaCompra = matchingOrder['FECHA DE COMPRA'] || 
                                        matchingOrder['Fecha de Compra'] || 
+                                       matchingOrder['Fecha de compra'] || 
                                        matchingOrder['Fecha Compra'];
                     if (fechaCompra) {
                       fechaCuotaValue = parseExcelDate(fechaCompra);

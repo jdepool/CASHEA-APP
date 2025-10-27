@@ -35,7 +35,7 @@ export function extractInstallments(tableData: any[]): Installment[] {
 
       // For Cuota 0, if no fecha cuota is provided, use FECHA DE COMPRA as fallback
       if (i === 0 && !fechaCuotaValue) {
-        fechaCuotaValue = row["FECHA DE COMPRA"] || row["Fecha de Compra"] || row["Fecha Compra"];
+        fechaCuotaValue = row["FECHA DE COMPRA"] || row["Fecha de Compra"] || row["Fecha de compra"] || row["Fecha Compra"];
       }
 
       // Only include installments that have at least a date or amount
