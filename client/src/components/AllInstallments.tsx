@@ -148,9 +148,26 @@ export function AllInstallments({
               // Only create synthetic installment if it doesn't already exist and we haven't created one yet
               if (!alreadyExists && !syntheticInstallmentKeys.has(syntheticKey)) {
                 syntheticInstallmentKeys.add(syntheticKey);
+                
+                // For Cuota 0, lookup FECHA DE COMPRA from orders table as the scheduled date
+                let fechaCuotaValue = null;
+                if (cuotaNumber === 0) {
+                  const matchingOrder = tableData.find((row: any) => 
+                    String(row['Orden'] || '').trim() === paymentOrder
+                  );
+                  if (matchingOrder) {
+                    const fechaCompra = matchingOrder['FECHA DE COMPRA'] || 
+                                       matchingOrder['Fecha de Compra'] || 
+                                       matchingOrder['Fecha Compra'];
+                    if (fechaCompra) {
+                      fechaCuotaValue = parseExcelDate(fechaCompra);
+                    }
+                  }
+                }
+                
                 installments.push({
                   orden: paymentOrder,
-                  fechaCuota: null, // No scheduled date since this is payment-only
+                  fechaCuota: fechaCuotaValue, // Use FECHA DE COMPRA for Cuota 0, null otherwise
                   numeroCuota: cuotaNumber,
                   monto: typeof montoPagado === 'number' ? montoPagado : parseFloat(String(montoPagado || 0).replace(/[^0-9.-]/g, '')) || 0,
                   estadoCuota: 'Done', // Since there's a payment, mark as Done
