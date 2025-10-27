@@ -294,11 +294,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const headerMapping: { [key: string]: string[] } = {
         "PAGO INICIAL": ["Pago en Caja", "Pago en caja", "PAGO EN CAJA"],
         "NUMERO DE CUOTAS": ["Tipo orden", "Tipo Orden", "TIPO ORDEN"],
+        "STATUS ORDEN": ["Estado Orden", "Estado orden", "ESTADO ORDEN"],
       };
 
       const requiredHeaders = [
         "Orden",
         "Nombre del comprador",
+        "STATUS ORDEN",
         "Venta total",
         "Fecha de compra",
         "NUMERO DE CUOTAS",
