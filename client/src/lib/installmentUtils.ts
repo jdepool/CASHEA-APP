@@ -20,8 +20,8 @@ export function extractInstallments(tableData: any[]): Installment[] {
   for (const row of tableData) {
     const orden = row["Orden"] || "";
 
-    // Process installments 1-14
-    for (let i = 1; i <= 14; i++) {
+    // Process installments 0-14 (0 = PAGO INICIAL)
+    for (let i = 0; i <= 14; i++) {
       const fechaCuotaKey = `Fecha cuota ${i}`;
       const cuotaKey = `Cuota ${i}`;
       const pagadoKey = `Pagado de cuota ${i}`;
