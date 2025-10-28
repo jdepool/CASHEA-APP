@@ -31,7 +31,16 @@ The application employs a client-server architecture, utilizing a React frontend
 - **Duplicate Handling**: Orders are replaced by new uploads based on `Orden` number. Payment records update based on `(# Orden, # Cuota Pagada, # Referencia)`, allowing multiple payments for the same installment if reference numbers differ.
 - **Installments View (`CONCILIACION DE CUOTAS`)**: Displays all installments with collapsible filters (date range, order, status, date field selector: "Fecha de Pago" vs. "Fecha Cuota") and an `InstallmentsDashboard` showing status-based and total metrics.
 - **Payment Records View (`PAGO DE CUOTAS`)**: Allows uploading and viewing payment transactions with flexible columns, auto-detection/formatting of currencies, and a dashboard. Highlights partial payments and supports multi-installment payments.
-- **Marketplace Orders View (`MARKETPLACE ORDERS`)**: Displays marketplace order data with flexible schema, complete replacement on upload, sorting, and Excel export.
+- **Marketplace Orders View (`MARKETPLACE ORDERS`)**: Displays marketplace order data with flexible schema, complete replacement on upload, sorting, Excel export, and comprehensive filtering.
+    - **Collapsible Filters**: Toggle button to show/hide filter panel with four filter fields:
+        - **Estado**: Dropdown filter for payment status
+        - **Orden**: Text input filter for order number
+        - **Estado de Entrega**: Dropdown filter for delivery status
+        - **# Referencia**: Text input filter for reference number
+    - **Combined Filtering**: All filters work together for precise data filtering
+    - **Filtered Count Display**: Shows "X de Y registros" when filters are active
+    - **Clear Filters**: One-click button to reset all filters
+    - **Flexible Column Detection**: Uses case-insensitive matching to find columns (e.g., "estado pago", "# orden")
 - **Data Export**: Export current table view to Excel.
 - **Table Sorting**: All major tables support column sorting with visual indicators.
 - **Date Handling**: Automatic conversion of Excel serial dates and various date formats.
