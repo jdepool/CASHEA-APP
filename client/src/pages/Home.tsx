@@ -277,6 +277,17 @@ export default function Home() {
     if (!tableData || tableData.length === 0) return [];
 
     return tableData.filter((row) => {
+      // Exclude orders where ESTADO PAGO INICIAL = CANCELLED
+      const estadoPagoInicialHeader = headers.find(h => 
+        h.toLowerCase().includes('estado') && h.toLowerCase().includes('pago inicial')
+      );
+      if (estadoPagoInicialHeader) {
+        const estadoPagoInicial = String(row[estadoPagoInicialHeader] || '').toUpperCase().trim();
+        if (estadoPagoInicial === 'CANCELLED') {
+          return false;
+        }
+      }
+
       // Hide fully paid orders filter
       if (hideFullyPaid) {
         const ventaTotal = parseFloat(row["Venta total"] || 0);
