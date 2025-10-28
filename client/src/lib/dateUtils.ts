@@ -95,7 +95,16 @@ export function parseExcelDate(value: any): Date | null {
       return new Date(year, month, day);
     }
 
-    // Try ISO format or other standard formats
+    // Try YYYY-MM-DD ISO format (convert to local timezone)
+    const isoMatch = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (isoMatch) {
+      const year = parseInt(isoMatch[1], 10);
+      const month = parseInt(isoMatch[2], 10) - 1;
+      const day = parseInt(isoMatch[3], 10);
+      return new Date(year, month, day);
+    }
+
+    // Try other standard formats
     const date = new Date(value);
     if (!isNaN(date.getTime())) {
       return date;
