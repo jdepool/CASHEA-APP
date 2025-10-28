@@ -53,6 +53,13 @@ export default function Home() {
   const [paymentsOrdenFilter, setPaymentsOrdenFilter] = useState<string>("");
   const [paymentsReferenciaFilter, setPaymentsReferenciaFilter] = useState<string>("");
   
+  // MARKETPLACE ORDERS tab filters
+  const [marketplaceShowFilters, setMarketplaceShowFilters] = useState<boolean>(false);
+  const [marketplaceEstadoFilter, setMarketplaceEstadoFilter] = useState<string>("all");
+  const [marketplaceOrdenFilter, setMarketplaceOrdenFilter] = useState<string>("");
+  const [marketplaceEstadoEntregaFilter, setMarketplaceEstadoEntregaFilter] = useState<string>("all");
+  const [marketplaceReferenciaFilter, setMarketplaceReferenciaFilter] = useState<string>("");
+  
   const { toast } = useToast();
 
   // Fetch persisted orders on mount
@@ -717,6 +724,16 @@ export default function Home() {
                     data={(marketplaceData as any).data.rows}
                     headers={(marketplaceData as any).data.headers}
                     fileName={(marketplaceData as any).data.fileName}
+                    showFilters={marketplaceShowFilters}
+                    setShowFilters={setMarketplaceShowFilters}
+                    estadoFilter={marketplaceEstadoFilter}
+                    setEstadoFilter={setMarketplaceEstadoFilter}
+                    ordenFilter={marketplaceOrdenFilter}
+                    setOrdenFilter={setMarketplaceOrdenFilter}
+                    estadoEntregaFilter={marketplaceEstadoEntregaFilter}
+                    setEstadoEntregaFilter={setMarketplaceEstadoEntregaFilter}
+                    referenciaFilter={marketplaceReferenciaFilter}
+                    setReferenciaFilter={setMarketplaceReferenciaFilter}
                   />
                 ) : (
                   <div className="text-center py-12">
