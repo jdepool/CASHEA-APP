@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Download, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Download, ArrowUpDown, ArrowUp, ArrowDown, Filter } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 
@@ -12,14 +14,98 @@ interface MarketplaceOrdersTableProps {
   data: TableRow[];
   headers: string[];
   fileName?: string;
+  showFilters: boolean;
+  setShowFilters: (show: boolean) => void;
+  estadoFilter: string;
+  setEstadoFilter: (estado: string) => void;
+  ordenFilter: string;
+  setOrdenFilter: (orden: string) => void;
+  estadoEntregaFilter: string;
+  setEstadoEntregaFilter: (estado: string) => void;
+  referenciaFilter: string;
+  setReferenciaFilter: (ref: string) => void;
 }
 
 type SortDirection = 'asc' | 'desc' | null;
 
-export function MarketplaceOrdersTable({ data, headers, fileName }: MarketplaceOrdersTableProps) {
+export function MarketplaceOrdersTable({ 
+  data, 
+  headers, 
+  fileName,
+  showFilters,
+  setShowFilters,
+  estadoFilter,
+  setEstadoFilter,
+  ordenFilter,
+  setOrdenFilter,
+  estadoEntregaFilter,
+  setEstadoEntregaFilter,
+  referenciaFilter,
+  setReferenciaFilter
+}: MarketplaceOrdersTableProps) {
   const { toast } = useToast();
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
+
+  // Find the column names (case-insensitive)
+  const findColumn = (name: string) => {
+    return headers.find(h => h.toLowerCase().includes(name.toLowerCase())) || name;
+  };
+
+  const estadoColumn = findColumn("estado pago");
+  const ordenColumn = findColumn("# orden") || findColumn("orden");
+  const estadoEntregaColumn = findColumn("estado de entrega") || findColumn("entrega");
+  const referenciaColumn = findColumn("# referencia") || findColumn("referencia");
+
+  // Get unique values for dropdowns
+  const uniqueEstados = useMemo(() => {
+    const estados = new Set<string>();
+    data.forEach(row => {
+      const estado = row[estadoColumn];
+      if (estado) estados.add(String(estado));
+    });
+    return Array.from(estados).sort();
+  }, [data, estadoColumn]);
+
+  const uniqueEstadosEntrega = useMemo(() => {
+    const estados = new Set<string>();
+    data.forEach(row => {
+      const estado = row[estadoEntregaColumn];
+      if (estado) estados.add(String(estado));
+    });
+    return Array.from(estados).sort();
+  }, [data, estadoEntregaColumn]);
+
+  // Apply filters
+  const filteredData = useMemo(() => {
+    return data.filter(row => {
+      // Estado filter
+      if (estadoFilter !== "all") {
+        const rowEstado = String(row[estadoColumn] || "");
+        if (rowEstado !== estadoFilter) return false;
+      }
+
+      // Orden filter
+      if (ordenFilter) {
+        const rowOrden = String(row[ordenColumn] || "").toLowerCase();
+        if (!rowOrden.includes(ordenFilter.toLowerCase())) return false;
+      }
+
+      // Estado de entrega filter
+      if (estadoEntregaFilter !== "all") {
+        const rowEstadoEntrega = String(row[estadoEntregaColumn] || "");
+        if (rowEstadoEntrega !== estadoEntregaFilter) return false;
+      }
+
+      // Referencia filter
+      if (referenciaFilter) {
+        const rowReferencia = String(row[referenciaColumn] || "").toLowerCase();
+        if (!rowReferencia.includes(referenciaFilter.toLowerCase())) return false;
+      }
+
+      return true;
+    });
+  }, [data, estadoFilter, ordenFilter, estadoEntregaFilter, referenciaFilter, estadoColumn, ordenColumn, estadoEntregaColumn, referenciaColumn]);
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -38,9 +124,9 @@ export function MarketplaceOrdersTable({ data, headers, fileName }: MarketplaceO
   };
 
   const sortedData = useMemo(() => {
-    if (!sortColumn || !sortDirection) return data;
+    if (!sortColumn || !sortDirection) return filteredData;
 
-    return [...data].sort((a, b) => {
+    return [...filteredData].sort((a, b) => {
       const aValue = a[sortColumn];
       const bValue = b[sortColumn];
 
@@ -74,7 +160,7 @@ export function MarketplaceOrdersTable({ data, headers, fileName }: MarketplaceO
         ? aStr.localeCompare(bStr)
         : bStr.localeCompare(aStr);
     });
-  }, [data, sortColumn, sortDirection]);
+  }, [filteredData, sortColumn, sortDirection]);
 
   const formatValue = (value: any, header: string) => {
     if (value === null || value === undefined || value === "") {
@@ -123,26 +209,129 @@ export function MarketplaceOrdersTable({ data, headers, fileName }: MarketplaceO
     });
   };
 
+  const hasActiveFilters = estadoFilter !== "all" || ordenFilter !== "" || estadoEntregaFilter !== "all" || referenciaFilter !== "";
+
+  const handleClearFilters = () => {
+    setEstadoFilter("all");
+    setOrdenFilter("");
+    setEstadoEntregaFilter("all");
+    setReferenciaFilter("");
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">Marketplace Orders</h3>
           <p className="text-sm text-muted-foreground">
-            {sortedData.length} {sortedData.length === 1 ? 'registro' : 'registros'}
+            {hasActiveFilters && sortedData.length !== data.length ? (
+              <>
+                {sortedData.length} de {data.length} {data.length === 1 ? 'registro' : 'registros'}
+              </>
+            ) : (
+              <>
+                {sortedData.length} {sortedData.length === 1 ? 'registro' : 'registros'}
+              </>
+            )}
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleExport}
-          disabled={sortedData.length === 0}
-          data-testid="button-export-marketplace"
-        >
-          <Download className="h-4 w-4 mr-2" />
-          Exportar
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant={showFilters ? "default" : "outline"}
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+            data-testid="button-toggle-filters"
+          >
+            <Filter className="h-4 w-4 mr-2" />
+            Filtros
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            disabled={sortedData.length === 0}
+            data-testid="button-export-marketplace"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Exportar
+          </Button>
+        </div>
       </div>
+
+      {showFilters && (
+        <div className="p-4 border rounded-lg space-y-4 bg-muted/50">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Estado</label>
+              <Select value={estadoFilter} onValueChange={setEstadoFilter}>
+                <SelectTrigger data-testid="select-estado-filter">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {uniqueEstados.map((estado) => (
+                    <SelectItem key={estado} value={estado}>
+                      {estado}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Orden</label>
+              <Input
+                type="text"
+                placeholder="Filtrar por orden..."
+                value={ordenFilter}
+                onChange={(e) => setOrdenFilter(e.target.value)}
+                data-testid="input-orden-filter"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Estado de Entrega</label>
+              <Select value={estadoEntregaFilter} onValueChange={setEstadoEntregaFilter}>
+                <SelectTrigger data-testid="select-estado-entrega-filter">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {uniqueEstadosEntrega.map((estado) => (
+                    <SelectItem key={estado} value={estado}>
+                      {estado}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium"># Referencia</label>
+              <Input
+                type="text"
+                placeholder="Filtrar por referencia..."
+                value={referenciaFilter}
+                onChange={(e) => setReferenciaFilter(e.target.value)}
+                data-testid="input-referencia-filter"
+              />
+            </div>
+          </div>
+
+          {hasActiveFilters && (
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearFilters}
+                data-testid="button-clear-filters"
+              >
+                Limpiar filtros
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="border rounded-lg overflow-auto" style={{ maxHeight: '70vh' }}>
         <table className="w-full">
