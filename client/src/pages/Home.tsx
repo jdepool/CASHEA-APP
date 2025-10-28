@@ -55,6 +55,8 @@ export default function Home() {
   
   // MARKETPLACE ORDERS tab filters
   const [marketplaceShowFilters, setMarketplaceShowFilters] = useState<boolean>(false);
+  const [marketplaceDateFrom, setMarketplaceDateFrom] = useState<string>("");
+  const [marketplaceDateTo, setMarketplaceDateTo] = useState<string>("");
   const [marketplaceEstadoFilter, setMarketplaceEstadoFilter] = useState<string>("all");
   const [marketplaceOrdenFilter, setMarketplaceOrdenFilter] = useState<string>("");
   const [marketplaceEstadoEntregaFilter, setMarketplaceEstadoEntregaFilter] = useState<string>("all");
@@ -726,6 +728,10 @@ export default function Home() {
                     fileName={(marketplaceData as any).data.fileName}
                     showFilters={marketplaceShowFilters}
                     setShowFilters={setMarketplaceShowFilters}
+                    dateFrom={marketplaceDateFrom}
+                    setDateFrom={setMarketplaceDateFrom}
+                    dateTo={marketplaceDateTo}
+                    setDateTo={setMarketplaceDateTo}
                     estadoFilter={marketplaceEstadoFilter}
                     setEstadoFilter={setMarketplaceEstadoFilter}
                     ordenFilter={marketplaceOrdenFilter}

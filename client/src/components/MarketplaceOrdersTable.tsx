@@ -2,9 +2,11 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Download, ArrowUpDown, ArrowUp, ArrowDown, Filter } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
+import { parseDDMMYYYY } from "@/lib/dateUtils";
 
 interface TableRow {
   [key: string]: any;
@@ -16,6 +18,10 @@ interface MarketplaceOrdersTableProps {
   fileName?: string;
   showFilters: boolean;
   setShowFilters: (show: boolean) => void;
+  dateFrom: string;
+  setDateFrom: (date: string) => void;
+  dateTo: string;
+  setDateTo: (date: string) => void;
   estadoFilter: string;
   setEstadoFilter: (estado: string) => void;
   ordenFilter: string;
@@ -34,6 +40,10 @@ export function MarketplaceOrdersTable({
   fileName,
   showFilters,
   setShowFilters,
+  dateFrom,
+  setDateFrom,
+  dateTo,
+  setDateTo,
   estadoFilter,
   setEstadoFilter,
   ordenFilter,
@@ -56,6 +66,8 @@ export function MarketplaceOrdersTable({
   const ordenColumn = findColumn("# orden") || findColumn("orden");
   const estadoEntregaColumn = findColumn("estado de entrega") || findColumn("entrega");
   const referenciaColumn = findColumn("# referencia") || findColumn("referencia");
+  // Find any date column - prioritize common names
+  const dateColumn = findColumn("fecha") || findColumn("date") || headers.find(h => h.toLowerCase().includes("fecha"));
 
   // Get unique values for dropdowns
   const uniqueEstados = useMemo(() => {
@@ -79,6 +91,43 @@ export function MarketplaceOrdersTable({
   // Apply filters
   const filteredData = useMemo(() => {
     return data.filter(row => {
+      // Date filter (if date column exists)
+      if (dateColumn && (dateFrom || dateTo)) {
+        const rowDate = row[dateColumn];
+        if (rowDate) {
+          // Try to parse the row date
+          let rowDateObj: Date | null = null;
+          if (typeof rowDate === 'string') {
+            // Try DD/MM/YYYY format first
+            const parsedDate = parseDDMMYYYY(rowDate);
+            if (parsedDate) {
+              rowDateObj = parsedDate;
+            } else {
+              // Try standard Date parsing
+              rowDateObj = new Date(rowDate);
+              if (isNaN(rowDateObj.getTime())) {
+                rowDateObj = null;
+              }
+            }
+          } else if (rowDate instanceof Date) {
+            rowDateObj = rowDate;
+          } else if (typeof rowDate === 'number') {
+            rowDateObj = new Date(rowDate);
+          }
+
+          if (rowDateObj && !isNaN(rowDateObj.getTime())) {
+            if (dateFrom) {
+              const fromDate = parseDDMMYYYY(dateFrom);
+              if (fromDate && rowDateObj < fromDate) return false;
+            }
+            if (dateTo) {
+              const toDate = parseDDMMYYYY(dateTo);
+              if (toDate && rowDateObj > toDate) return false;
+            }
+          }
+        }
+      }
+
       // Estado filter
       if (estadoFilter !== "all") {
         const rowEstado = String(row[estadoColumn] || "");
@@ -105,7 +154,7 @@ export function MarketplaceOrdersTable({
 
       return true;
     });
-  }, [data, estadoFilter, ordenFilter, estadoEntregaFilter, referenciaFilter, estadoColumn, ordenColumn, estadoEntregaColumn, referenciaColumn]);
+  }, [data, dateFrom, dateTo, estadoFilter, ordenFilter, estadoEntregaFilter, referenciaFilter, dateColumn, estadoColumn, ordenColumn, estadoEntregaColumn, referenciaColumn]);
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -209,9 +258,11 @@ export function MarketplaceOrdersTable({
     });
   };
 
-  const hasActiveFilters = estadoFilter !== "all" || ordenFilter !== "" || estadoEntregaFilter !== "all" || referenciaFilter !== "";
+  const hasActiveFilters = dateFrom !== "" || dateTo !== "" || estadoFilter !== "all" || ordenFilter !== "" || estadoEntregaFilter !== "all" || referenciaFilter !== "";
 
   const handleClearFilters = () => {
+    setDateFrom("");
+    setDateTo("");
     setEstadoFilter("all");
     setOrdenFilter("");
     setEstadoEntregaFilter("all");
@@ -260,7 +311,27 @@ export function MarketplaceOrdersTable({
 
       {showFilters && (
         <div className="p-4 border rounded-lg space-y-4 bg-muted/50">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Fecha Desde (DD/MM/YYYY)</label>
+              <DatePicker
+                id="marketplace-date-from"
+                value={dateFrom}
+                onChange={setDateFrom}
+                placeholder="DD/MM/YYYY"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Fecha Hasta (DD/MM/YYYY)</label>
+              <DatePicker
+                id="marketplace-date-to"
+                value={dateTo}
+                onChange={setDateTo}
+                placeholder="DD/MM/YYYY"
+              />
+            </div>
+
             <div className="space-y-2">
               <label className="text-sm font-medium">Estado</label>
               <Select value={estadoFilter} onValueChange={setEstadoFilter}>
