@@ -51,6 +51,23 @@ export const insertPaymentRecordSchema = createInsertSchema(paymentRecords).omit
 export type InsertPaymentRecord = z.infer<typeof insertPaymentRecordSchema>;
 export type PaymentRecord = typeof paymentRecords.$inferSelect;
 
+export const marketplaceOrders = pgTable("marketplace_orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  fileName: text("file_name").notNull(),
+  headers: jsonb("headers").notNull().$type<string[]>(),
+  rows: jsonb("rows").notNull().$type<ExcelRow[]>(),
+  rowCount: text("row_count").notNull(),
+  uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
+});
+
+export const insertMarketplaceOrderSchema = createInsertSchema(marketplaceOrders).omit({
+  id: true,
+  uploadedAt: true,
+});
+
+export type InsertMarketplaceOrder = z.infer<typeof insertMarketplaceOrderSchema>;
+export type MarketplaceOrder = typeof marketplaceOrders.$inferSelect;
+
 export interface ExcelRow {
   [key: string]: any;
 }
