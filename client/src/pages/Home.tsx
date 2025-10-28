@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AllInstallments } from "@/components/AllInstallments";
 import { PaymentRecords } from "@/components/PaymentRecords";
+import { MarketplaceOrdersTable } from "@/components/MarketplaceOrdersTable";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,7 @@ import { parseExcelDate, parseDDMMYYYY } from "@/lib/dateUtils";
 export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedPaymentFile, setSelectedPaymentFile] = useState<File | null>(null);
+  const [selectedMarketplaceFile, setSelectedMarketplaceFile] = useState<File | null>(null);
   const [tableData, setTableData] = useState<any[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -56,6 +58,12 @@ export default function Home() {
   // Fetch persisted orders on mount
   const { data: ordersData, isLoading: isLoadingOrders } = useQuery({
     queryKey: ['/api/orders'],
+    refetchOnWindowFocus: false,
+  });
+
+  // Fetch persisted marketplace orders on mount
+  const { data: marketplaceData, isLoading: isLoadingMarketplace } = useQuery({
+    queryKey: ['/api/marketplace-orders'],
     refetchOnWindowFocus: false,
   });
 
@@ -208,6 +216,51 @@ export default function Home() {
 
   const handleClearPaymentFile = useCallback(() => {
     setSelectedPaymentFile(null);
+  }, []);
+
+  // Marketplace orders upload mutation
+  const uploadMarketplaceMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('/api/upload-marketplace-orders', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Error al cargar el archivo');
+      }
+
+      return response.json();
+    },
+    onSuccess: async (data) => {
+      // Refetch marketplace orders query
+      await queryClient.refetchQueries({ queryKey: ['/api/marketplace-orders'] });
+      
+      toast({
+        title: "Archivo de marketplace cargado",
+        description: data.message || `${data.data.rowCount} registros importados`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error al cargar el archivo",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleMarketplaceFileSelect = useCallback((file: File) => {
+    setSelectedMarketplaceFile(file);
+    uploadMarketplaceMutation.mutate(file);
+  }, [uploadMarketplaceMutation]);
+
+  const handleClearMarketplaceFile = useCallback(() => {
+    setSelectedMarketplaceFile(null);
   }, []);
 
   // Filter logic for TODAS LAS ORDENES tab
@@ -373,6 +426,9 @@ export default function Home() {
                   <TabsTrigger value="weekly" data-testid="tab-weekly">
                     CONCILIACION DE CUOTAS
                   </TabsTrigger>
+                  <TabsTrigger value="marketplace" data-testid="tab-marketplace">
+                    MARKETPLACE ORDERS
+                  </TabsTrigger>
                 </TabsList>
               </div>
 
@@ -386,7 +442,7 @@ export default function Home() {
                   </p>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-6">
+                <div className="grid md:grid-cols-3 gap-6">
                   {/* Orders Upload Section */}
                   <div className="space-y-4">
                     <div className="bg-card border rounded-lg p-6">
@@ -439,6 +495,39 @@ export default function Home() {
                           onClearFile={handleClearPaymentFile}
                           onInvalidFile={handleInvalidFile}
                           inputId="file-upload-payments"
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Marketplace Orders Upload Section */}
+                  <div className="space-y-4">
+                    <div className="bg-card border rounded-lg p-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2 bg-primary/10 rounded-lg">
+                          <FileSpreadsheet className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold">Marketplace Orders</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Archivo de órdenes de marketplace
+                          </p>
+                        </div>
+                      </div>
+                      {uploadMarketplaceMutation.isPending ? (
+                        <div className="flex items-center justify-center py-8 border-2 border-dashed rounded-lg">
+                          <div className="text-center">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
+                            <p className="text-xs text-muted-foreground">Procesando archivo...</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <FileUpload
+                          onFileSelect={handleMarketplaceFileSelect}
+                          selectedFile={selectedMarketplaceFile}
+                          onClearFile={handleClearMarketplaceFile}
+                          onInvalidFile={handleInvalidFile}
+                          inputId="file-upload-marketplace"
                         />
                       )}
                     </div>
@@ -617,6 +706,24 @@ export default function Home() {
                     <h3 className="text-lg font-semibold mb-2">No hay datos de órdenes</h3>
                     <p className="text-sm text-muted-foreground mb-4">
                       Carga un archivo desde la pestaña "CARGAR DATOS"
+                    </p>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="marketplace">
+                {marketplaceData && (marketplaceData as any).data ? (
+                  <MarketplaceOrdersTable 
+                    data={(marketplaceData as any).data.rows}
+                    headers={(marketplaceData as any).data.headers}
+                    fileName={(marketplaceData as any).data.fileName}
+                  />
+                ) : (
+                  <div className="text-center py-12">
+                    <FileSpreadsheet className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No hay datos de marketplace</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Carga un archivo de marketplace desde la pestaña "CARGAR DATOS"
                     </p>
                   </div>
                 )}

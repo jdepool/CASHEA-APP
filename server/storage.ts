@@ -5,9 +5,12 @@ import {
   type InsertOrder,
   type PaymentRecord,
   type InsertPaymentRecord,
+  type MarketplaceOrder,
+  type InsertMarketplaceOrder,
   users,
   orders,
-  paymentRecords
+  paymentRecords,
+  marketplaceOrders
 } from "@shared/schema";
 import { normalizeNumberForKey } from "@shared/numberUtils";
 import { db } from "./db";
@@ -40,6 +43,9 @@ export interface IStorage {
   createPaymentRecord(paymentRecord: InsertPaymentRecord): Promise<PaymentRecord>;
   mergePaymentRecords(newRecords: any[], fileName: string, headers: string[]): Promise<MergeResult>;
   getLatestPaymentRecord(): Promise<PaymentRecord | undefined>;
+  
+  createMarketplaceOrder(marketplaceOrder: InsertMarketplaceOrder): Promise<MarketplaceOrder>;
+  getLatestMarketplaceOrder(): Promise<MarketplaceOrder | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -343,6 +349,37 @@ export class DatabaseStorage implements IStorage {
         skippedRecords
       };
     });
+  }
+
+  async createMarketplaceOrder(insertMarketplaceOrder: InsertMarketplaceOrder): Promise<MarketplaceOrder> {
+    // Use transaction to ensure atomic delete+insert
+    // If insert fails, delete is rolled back automatically
+    return await db.transaction(async (tx) => {
+      // Delete all existing marketplace orders
+      await tx.delete(marketplaceOrders);
+      
+      // Insert new marketplace order
+      const [marketplaceOrder] = await tx
+        .insert(marketplaceOrders)
+        .values({
+          fileName: insertMarketplaceOrder.fileName,
+          headers: insertMarketplaceOrder.headers as any,
+          rows: insertMarketplaceOrder.rows as any,
+          rowCount: insertMarketplaceOrder.rowCount,
+        })
+        .returning();
+      
+      return marketplaceOrder;
+    });
+  }
+
+  async getLatestMarketplaceOrder(): Promise<MarketplaceOrder | undefined> {
+    const [marketplaceOrder] = await db
+      .select()
+      .from(marketplaceOrders)
+      .orderBy(desc(marketplaceOrders.uploadedAt))
+      .limit(1);
+    return marketplaceOrder || undefined;
   }
 }
 

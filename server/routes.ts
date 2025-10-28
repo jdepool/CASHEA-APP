@@ -476,6 +476,130 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST endpoint for marketplace orders upload
+  app.post('/api/upload-marketplace-orders', (req, res, next) => {
+    upload.single('file')(req, res, (err) => {
+      if (err) {
+        if (err instanceof multer.MulterError) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({ 
+              error: 'El archivo es demasiado grande. Tamaño máximo: 10MB' 
+            });
+          }
+          return res.status(400).json({ 
+            error: `Error al cargar el archivo: ${err.message}` 
+          });
+        }
+        return res.status(400).json({ 
+          error: err.message || 'Solo se permiten archivos Excel (.xlsx, .xls)' 
+        });
+      }
+      next();
+    });
+  }, async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ 
+          error: 'No se proporcionó ningún archivo' 
+        });
+      }
+
+      const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+      
+      if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+        return res.status(400).json({
+          error: 'El archivo Excel no contiene hojas de cálculo'
+        });
+      }
+
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const data: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+      if (data.length < 2) {
+        return res.status(400).json({
+          error: 'El archivo no contiene datos suficientes'
+        });
+      }
+
+      const allHeaders: string[] = data[0].map((h: any) => String(h || '').trim()).filter((h: string) => h !== '');
+      
+      if (allHeaders.length === 0) {
+        return res.status(400).json({
+          error: 'No se encontraron encabezados válidos en el archivo'
+        });
+      }
+
+      // Process rows (skip header row)
+      const rows: any[] = [];
+      for (let i = 1; i < data.length; i++) {
+        const row = data[i];
+        const rowObj: any = {};
+        
+        allHeaders.forEach((header, index) => {
+          rowObj[header] = (row[index] !== undefined) ? row[index] : "";
+        });
+        
+        rows.push(rowObj);
+      }
+
+      // Save to database
+      await storage.createMarketplaceOrder({
+        fileName: req.file.originalname,
+        headers: allHeaders,
+        rows: rows,
+        rowCount: String(rows.length),
+      });
+
+      res.json({
+        success: true,
+        data: {
+          headers: allHeaders,
+          rows,
+          fileName: req.file.originalname,
+          rowCount: rows.length,
+        },
+        message: `${rows.length} registros de marketplace cargados exitosamente.`
+      });
+    } catch (error) {
+      console.error('Error processing marketplace orders file:', error);
+      res.status(500).json({
+        error: 'Error al procesar el archivo de órdenes de marketplace',
+        details: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+
+  // GET endpoint to retrieve latest marketplace orders
+  app.get('/api/marketplace-orders', async (req, res) => {
+    try {
+      const latestMarketplaceOrder = await storage.getLatestMarketplaceOrder();
+      
+      if (!latestMarketplaceOrder) {
+        return res.json({
+          success: true,
+          data: null
+        });
+      }
+
+      res.json({
+        success: true,
+        data: {
+          headers: latestMarketplaceOrder.headers,
+          rows: latestMarketplaceOrder.rows,
+          fileName: latestMarketplaceOrder.fileName,
+          rowCount: parseInt(latestMarketplaceOrder.rowCount, 10),
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching marketplace orders:', error);
+      res.status(500).json({
+        error: 'Error al obtener las órdenes de marketplace',
+        details: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
