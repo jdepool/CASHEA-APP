@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, ShoppingCart, Wallet, Package } from "lucide-react";
-import { parseNumber } from "@shared/numberUtils";
+import { normalizeNumber } from "@shared/numberUtils";
 
 interface MarketplaceDashboardProps {
   data: any[];
@@ -44,8 +44,8 @@ export function MarketplaceDashboard({ data, headers }: MarketplaceDashboardProp
 
     data.forEach((row) => {
       const estadoEntrega = String(row[estadoEntregaColumn] || "").toUpperCase().trim();
-      const totalUsd = parseNumber(row[totalUsdColumn]);
-      const pagoInicial = parseNumber(row[pagoInicialColumn]);
+      const totalUsd = normalizeNumber(row[totalUsdColumn]);
+      const pagoInicial = normalizeNumber(row[pagoInicialColumn]);
 
       // Total Ventas (all orders)
       totalVentas += totalUsd;

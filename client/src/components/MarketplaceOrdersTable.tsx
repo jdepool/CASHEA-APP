@@ -7,6 +7,7 @@ import { Download, ArrowUpDown, ArrowUp, ArrowDown, Filter } from "lucide-react"
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { parseDDMMYYYY, parseExcelDate } from "@/lib/dateUtils";
+import { MarketplaceDashboard } from "@/components/MarketplaceDashboard";
 
 interface TableRow {
   [key: string]: any;
@@ -415,6 +416,9 @@ export function MarketplaceOrdersTable({
           )}
         </div>
       )}
+
+      {/* Dashboard */}
+      <MarketplaceDashboard data={filteredData} headers={headers} />
 
       <div className="border rounded-lg overflow-auto" style={{ maxHeight: '70vh' }}>
         <table className="w-full">
