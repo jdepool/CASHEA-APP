@@ -1,9 +1,7 @@
 # Gestor de Cuotas - Sistema de Gestión de Pagos
 
 ## Overview
-This project is a professional web application designed to manage purchase orders with installment payments. It allows users to import Excel files containing order and payment data, visualize detailed information for up to 14 payment installments, track their statuses, dates, and amounts. The system also supports importing separate payment records, offers a weekly payments view with expected income, and ensures data persistence through a PostgreSQL database.
-
-**Business Vision**: To provide a robust, user-friendly tool for businesses to efficiently track and manage their installment payment plans, improving cash flow visibility and reducing manual data handling.
+This project is a professional web application for managing purchase orders with installment payments. It enables users to import Excel data for orders, payments, and marketplace orders, visualize detailed installment information (up to 14 payments), track statuses, dates, and amounts. The system provides a weekly payments overview, ensures data persistence via PostgreSQL, and aims to offer a robust, user-friendly tool for efficient installment plan management, improving cash flow visibility and reducing manual data handling.
 
 ## User Preferences
 - I prefer clear and detailed explanations.
@@ -13,142 +11,43 @@ This project is a professional web application designed to manage purchase order
 - I need the application to handle flexible Excel formats for payment records, auto-detecting currency and adjusting table columns dynamically.
 
 ## System Architecture
-The application follows a client-server architecture with a React frontend and an Express.js backend.
+The application employs a client-server architecture, utilizing a React frontend and an Express.js backend.
 
 **UI/UX Decisions**:
-- **Design System**: Professional and clean UI using Tailwind CSS for styling and Shadcn UI for accessible components.
-- **Theming**: Dark/light mode toggle with persistence using `localStorage`.
-- **Layout**: Tabbed navigation (`CARGAR DATOS`, `TODAS LAS ÓRDENES`, `CONCILIACION DE CUOTAS`, `PAGO DE CUOTAS`) for clear separation of concerns.
-- **Data Presentation**:
-    - `Dashboard` showing key metrics at the top of TODAS LAS ÓRDENES:
-        - **Órdenes Activas**: Count of orders with outstanding payments (saldo > $0.01)
-        - **Monto de Ventas**: Sum of all "Venta total" values
-        - **Pago Inicial**: Sum of all "PAGO INICIAL" values (excludes cancelled orders)
-        - **Cuotas Pagadas**: Sum of all "Pagado de cuota N" values (cuotas 1-14) (excludes cancelled orders)
-        - **Pagos Recibidos**: Sum of "PAGO INICIAL" + all "Pagado de cuota N" values (total) (excludes cancelled orders)
-        - **Saldo Pendiente**: Total sales minus total payments received
-        - **Cancelled Order Handling**: Orders with STATUS ORDEN containing "cancel" (case-insensitive) are excluded from Pago Inicial, Cuotas Pagadas, and Pagos Recibidos metrics to ensure accurate financial tracking
-    - `DataTable` for displaying main order data with over 60 columns, sticky headers, and horizontal scroll.
-    - `WeeklyPaymentsTable` (reused in AllInstallments) for displaying all installments with filtering.
-    - `PaymentRecordsTable` for payment transaction records, dynamically adjusting to input columns.
-    - Semantic colored badges (`StatusBadge`) for payment statuses (Paid/Pending/Overdue).
-- **User Feedback**: Toast notifications for user actions and error messages, animated spinners for loading states, and clear empty states.
+- **Design System**: Professional and clean UI with Tailwind CSS and Shadcn UI.
+- **Theming**: Dark/light mode toggle with persistence.
+- **Layout**: Tabbed navigation for `CARGAR DATOS`, `TODAS LAS ÓRDENES`, `CONCILIACION DE CUOTAS`, `PAGO DE CUOTAS`, and `MARKETPLACE ORDERS`.
+- **Data Presentation**: Dashboards displaying key metrics (e.g., active orders, total sales, pending balance), DataTables with sticky headers and horizontal scroll for main order data, WeeklyPaymentsTable for installments, and PaymentRecordsTable with dynamic column adjustment. Semantic colored badges are used for payment statuses.
+- **User Feedback**: Toast notifications, animated spinners for loading, and clear empty states.
 
 **Technical Implementations**:
-- **Frontend**:
-    - **Framework**: React with TypeScript.
-    - **State Management**: React Query for data fetching and caching.
-    - **Routing**: Wouter.
-    - **Excel Handling**: SheetJS (xlsx) for client-side import/export.
-- **Backend**:
-    - **Server**: Express.js.
-    - **Database ORM**: Drizzle ORM for type-safe interaction with PostgreSQL.
-    - **File Upload**: Multer for secure and efficient file handling.
-    - **Excel Parsing**: SheetJS (xlsx) for server-side Excel processing.
-- **Database**:
-    - **Provider**: PostgreSQL (Neon-backed).
-    - **Schema**:
-        - `orders`: Stores processed order and installment data (headers and rows as JSONB).
-        - `payment_records`: Stores payment transaction data (headers and rows as JSONB).
-    - **Migrations**: Handled via `drizzle-kit` (`npm run db:push`).
+- **Frontend**: React with TypeScript, React Query for data fetching, Wouter for routing, and SheetJS for client-side Excel handling.
+- **Backend**: Express.js server, Drizzle ORM for PostgreSQL interaction, Multer for file uploads, and SheetJS for server-side Excel processing.
+- **Database**: PostgreSQL (Neon-backed) with `orders`, `payment_records`, and `marketplace_orders` tables storing data as JSONB, managed by `drizzle-kit` for migrations.
 
 **Feature Specifications**:
-- **File Upload**: Drag & drop or file selection with client-side validation (type, size). Separate upload zones for orders and payment records.
-    - **File Type Validation**: Backend validates that files contain the expected headers before processing:
-        - Orders zone requires: "Orden" + ("Venta total" OR installment columns) and rejects payment-specific headers
-        - Payments zone requires: payment headers ("Fecha de Transaccion"/"# Orden"/"# Cuota Pagada") and rejects order-specific headers
-        - Clear error messages guide users to the correct upload zone if wrong file type is detected
-- **Data Persistence**: All uploaded and processed data automatically saved to PostgreSQL. Data is reloaded automatically on app start.
-- **Duplicate Handling**: 
-    - **Orders**: Uploading orders with existing Order Numbers (Orden) replaces the old data with new data. Unique identifier: `Orden`
-    - **Payment Records**: Uploading payment records **updates** existing records based on the combination of Order Number (# Orden), Installment Number (# Cuota Pagada), AND Reference Number (# Referencia). This allows multiple payment records for the same order and installment if they have different reference numbers. Unique identifier: `(# Orden, # Cuota Pagada, # Referencia)`
-    - **Duplicate Detection**: Records with duplicate (Order#, Installment#, Reference#) within the same upload file are skipped (only the first occurrence is processed). Different reference numbers for the same Order# + Installment# are kept as separate records.
-    - **User Feedback**: Toast notifications show detailed statistics for each upload (X nuevos, Y actualizados, Z omitidos, Total in database)
-- **Installments View**: `CONCILIACION DE CUOTAS` tab shows all installments with filtering and dashboard:
-    - **All Dates**: Displays all installments (not limited to current week)
-    - **Collapsible Filters**: Date range (from-to), Orden, Estado Cuota with toggle button
-    - **Date Field Selector**: Choose whether to filter by "Fecha de Pago" (actual payment date) or "Fecha Cuota" (scheduled date)
-        - **Fecha de Pago**: Uses payment dates from payment records or order file. **Only shows installments that have a payment date** (excludes installments with only scheduled dates)
-        - **Fecha Cuota**: Uses scheduled installment dates. Shows all installments including those without payment dates
-        - Default: Fecha de Pago
-    - **InstallmentsDashboard**: Shows 6 metrics in two sections that update based on active filters:
-        - **Status-Based Metrics** (4 cards with count + amount):
-            - **Cuotas Pagadas**: Count and total amount of installments with status "Done"
-            - **Cuotas Programadas**: Count and total amount of installments with status "Scheduled" + "Graced"
-            - **Cuotas Atrasadas**: Count and total amount of installments with status "Delayed"
-            - **Cuotas Canceladas**: Count and total amount of installments with status "Cancelled"
-        - **Total Metrics** (2 cards):
-            - **Total Cuotas**: Count of all filtered installments
-            - **Monto Total**: Sum of all filtered installment amounts
-    - Shows "X de Y cuotas" count when filters are active
-    - One-click "Limpiar filtros" button to reset all filters
-- **Payment Records View**: `PAGO DE CUOTAS` tab allows uploading and viewing payment transaction files with flexible column headers and auto-detection/formatting of 'VES' and 'USD' currency columns.
-    - **Payment Records Dashboard**: Shows 3 key metrics that update based on active filters:
-        - **Pago Iniciales**: Sum of all payment records where "# Cuota Pagada" equals exactly "0" (excludes multi-installment payments like "0,1")
-        - **Total Cuotas Pagadas**: Count of unique installments paid, handling multi-installment payments (e.g., "4,5,6" counts as 3 cuotas) and split payments (same order + same cuota = 1 cuota)
-        - **Total Pagado**: Sum of "Monto Pagado en USD" across filtered records
-    - **Partial Payment Detection**: Payment records are compared against expected installment amounts from the orders data. Rows where the paid amount is less than the expected amount (by more than $0.25) are highlighted in **red bold text** for easy identification.
-    - **Multi-Installment Payments**: Supports comma-separated cuota values (e.g., "4,5") where a single payment covers multiple installments. Expected amounts are summed for comparison.
-    - **Currency Formatting**: All currency values are parsed using locale-aware number normalization and displayed using proper currency formatting (es-ES locale).
+- **File Upload**: Drag & drop or file selection with client-side and backend validation for file types and expected headers for orders, payments, and marketplace orders.
+- **Data Persistence**: All processed data is automatically saved to PostgreSQL and reloaded on app start.
+- **Duplicate Handling**: Orders are replaced by new uploads based on `Orden` number. Payment records update based on `(# Orden, # Cuota Pagada, # Referencia)`, allowing multiple payments for the same installment if reference numbers differ.
+- **Installments View (`CONCILIACION DE CUOTAS`)**: Displays all installments with collapsible filters (date range, order, status, date field selector: "Fecha de Pago" vs. "Fecha Cuota") and an `InstallmentsDashboard` showing status-based and total metrics.
+- **Payment Records View (`PAGO DE CUOTAS`)**: Allows uploading and viewing payment transactions with flexible columns, auto-detection/formatting of currencies, and a dashboard. Highlights partial payments and supports multi-installment payments.
+- **Marketplace Orders View (`MARKETPLACE ORDERS`)**: Displays marketplace order data with flexible schema, complete replacement on upload, sorting, and Excel export.
 - **Data Export**: Export current table view to Excel.
-- **Table Sorting**: All tables support column sorting - click any column header to sort ascending (A→Z) or descending (Z→A)
-    - Visual indicators show current sort column and direction (up/down arrows)
-    - Hover effect on column headers indicates clickability
-    - Handles dates, numbers, currency values, and text appropriately
-    - Available in all three main table views: TODAS LAS ÓRDENES, CONCILIACION DE CUOTAS, and PAGO DE CUOTAS
-- **Date Handling**: Automatic conversion of Excel serial dates and various date formats (DD/MM/YYYY, ISO).
-- **Installment Extraction**: Converts wide-format Excel installment data into a long format for easier processing and filtering.
-    - **Cuota 0 Support**: Extracts Cuota 0 (initial payments/PAGO INICIAL) alongside Cuotas 1-14 from orders table
-        - **Amount Column**: Uses "Pago en Caja" column for Cuota 0 amount (not "Cuota 0")
-        - **Status Column**: Uses "Estado pago inicial" column for Cuota 0 status (not "Estado cuota 0")
-        - **Cuotas 1-14**: Use standard "Cuota N" and "Estado cuota N" column names
-    - **FECHA DE COMPRA Fallback**: When Cuota 0 lacks a "Fecha cuota 0" value, automatically uses "FECHA DE COMPRA" (purchase date) as the scheduled date, since initial payments typically occur at purchase time
-    - **Synthetic Installments**: Creates installment entries for payment records that don't have matching installments in orders table (especially for Cuota 0)
-    - **Duplicate Prevention**: Prevents duplicate installments when multiple payment records exist for the same orden-cuota combination (different reference numbers)
-    - **Robust Matching**: Uses integer parsing for installment number comparison to handle different string formats
-- **Column Mapping**: Flexible header mapping system allows display names to differ from Excel column names:
-    - "PAGO INICIAL" column maps to "Pago en Caja" from uploaded Excel files
-    - Positioned between "Tipo Orden" and "Estado Pago Inicial"
-    - Formatted as currency (USD) with right alignment
-    - "STATUS ORDEN" column maps to "Estado Orden" from uploaded Excel files
-    - Positioned between "Nombre del comprador" and "Venta total"
-    - Displays order status as text (supports sorting)
-- **Filtering**: All three main tabs (TODAS LAS ÓRDENES, CONCILIACION DE CUOTAS, PAGO DE CUOTAS) feature collapsible filter panels with toggle buttons:
-    - TODAS LAS ÓRDENES: Date range, Orden, Referencia, Estado Cuota
-        - **"Solo activas" Toggle**: Button that filters out fully paid orders (saldo ≤ $0.01), showing only orders with outstanding payments
-        - Button text changes: "Solo activas" → "Mostrar todas" when active
-        - Visual feedback: default variant when active, outline when inactive
-    - CONCILIACION DE CUOTAS: Date range, Orden, Estado Cuota (dropdown)
-    - PAGO DE CUOTAS: Date range, Orden, # Referencia
-    - Shows "X de Y registros/cuotas" count with active filters
-    - One-click "Limpiar filtros" button to reset all filters
-- **Dynamic Dashboard Metrics**: Dashboard updates in real-time based on active filters
-    - Metrics reflect filtered data only, not all data
-    - Works with all filter types: date range, orden, referencia, estado cuota, and "solo activas" toggle
-    - Provides accurate financial visibility for filtered subsets of orders
+- **Table Sorting**: All major tables support column sorting with visual indicators.
+- **Date Handling**: Automatic conversion of Excel serial dates and various date formats.
+- **Installment Extraction**: Converts wide-format Excel installment data to long format, supporting "Cuota 0" (initial payments) with specific amount and status columns, using "FECHA DE COMPRA" as a fallback for scheduled dates, and generating synthetic installments for payment records without matching order installments.
+- **Column Mapping**: Flexible header mapping for display names, e.g., "PAGO INICIAL" maps to "Pago en Caja", and "STATUS ORDEN" maps to "Estado Orden".
+- **Filtering**: All main tabs include collapsible filter panels with specific filter options (date range, order, reference, status), including a "Solo activas" toggle for orders.
+- **Dynamic Dashboard Metrics**: All dashboard metrics update in real-time based on active filters.
 
 **System Design Choices**:
-- **Robust Error Handling**: Comprehensive validation on both frontend (file type, size) and backend (file structure, headers, parsing errors) with clear user feedback.
-- **Separation of Concerns**: Clear distinction between frontend and backend responsibilities.
-- **Modularity**: Use of reusable components and utility functions (`dateUtils.ts`, `installmentUtils.ts`, `numberUtils.ts`).
-- **Locale-aware Number Parsing**: Created `shared/numberUtils.ts` with intelligent number normalization that handles:
-    - Multiple separator formats (US: 1,200.50, European: 1.200,50)
-    - Ambiguous cases with 3 digits after separator: Only treats as thousand separator if value ≥ 100 (e.g., "100.200" → 100,200 but "57.375" → 57.375)
-    - Invalid values return NaN instead of silent coercion to 0
-    - Used consistently across backend (duplicate detection) and frontend (display, comparison)
-- **Empty Row Filtering**: Both orders and payment records uploads now filter out empty rows (rows without "Orden" or "# Orden" respectively) to prevent Excel phantom rows from inflating record counts
+- **Robust Error Handling**: Comprehensive frontend and backend validation with clear user feedback.
+- **Separation of Concerns**: Clear distinction between frontend and backend.
+- **Modularity**: Reusable components and utility functions (`dateUtils.ts`, `installmentUtils.ts`, `numberUtils.ts`).
+- **Locale-aware Number Parsing**: `shared/numberUtils.ts` handles various numeric formats and separators, used consistently across the application.
+- **Empty Row Filtering**: Filters out empty rows during uploads to prevent inaccurate record counts.
 
 ## External Dependencies
-- **Database**: PostgreSQL (specifically Neon for serverless capabilities).
-- **Frontend Libraries**:
-    - React
-    - Tailwind CSS
-    - Shadcn UI
-    - SheetJS (xlsx)
-    - Wouter
-    - React Query
-- **Backend Libraries**:
-    - Express.js
-    - Drizzle ORM
-    - Multer
-    - SheetJS (xlsx)
+- **Database**: PostgreSQL (Neon).
+- **Frontend Libraries**: React, Tailwind CSS, Shadcn UI, SheetJS (xlsx), Wouter, React Query.
+- **Backend Libraries**: Express.js, Drizzle ORM, Multer, SheetJS (xlsx).
