@@ -15,7 +15,7 @@ export function MarketplaceDashboard({ data, headers }: MarketplaceDashboardProp
   };
 
   const totalUsdColumn = findColumn("total usd") || findColumn("total");
-  const pagoInicialColumn = findColumn("pago inicial") || findColumn("inicial");
+  const pagoInicialColumn = findColumn("pago inicial") || findColumn("inicial") || findColumn("pago") || findColumn("anticipo") || findColumn("adelanto");
   const estadoEntregaColumn = findColumn("estado de entrega") || findColumn("entrega");
 
   const metrics = useMemo(() => {
@@ -44,8 +44,10 @@ export function MarketplaceDashboard({ data, headers }: MarketplaceDashboardProp
 
     data.forEach((row) => {
       const estadoEntrega = String(row[estadoEntregaColumn] || "").toUpperCase().trim();
-      const totalUsd = normalizeNumber(row[totalUsdColumn]);
-      const pagoInicial = normalizeNumber(row[pagoInicialColumn]);
+      const totalUsdValue = normalizeNumber(row[totalUsdColumn]);
+      const totalUsd = isNaN(totalUsdValue) ? 0 : totalUsdValue;
+      const pagoInicialValue = normalizeNumber(row[pagoInicialColumn]);
+      const pagoInicial = isNaN(pagoInicialValue) ? 0 : pagoInicialValue;
 
       // Total Ventas (all orders)
       totalVentas += totalUsd;
