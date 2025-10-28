@@ -35,18 +35,18 @@ export function Dashboard({ data, headers }: DashboardProps) {
     let saldoPendiente = 0; // Sum of individual positive saldos only
 
     data.forEach((row, index) => {
-      // Get Venta Total
+      // Check if order is cancelled first
+      const isCancelled = isCancelledOrder(row);
+
+      // Get Venta Total (exclude cancelled orders)
       const ventaTotalStr = row["Venta total"];
       const ventaTotal = parseFloat(ventaTotalStr || 0);
       
       if (!ventaTotalStr || isNaN(ventaTotal)) {
         montoVentas += 0;
-      } else {
+      } else if (!isCancelled) {
         montoVentas += ventaTotal;
       }
-
-      // Check if order is cancelled (skip for Pago Inicial and Cuotas Pagadas)
-      const isCancelled = isCancelledOrder(row);
 
       // Get PAGO INICIAL (exclude cancelled orders)
       const pagoInicialStr = row["PAGO INICIAL"];
