@@ -6,7 +6,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Download, ArrowUpDown, ArrowUp, ArrowDown, Filter } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
-import { parseDDMMYYYY } from "@/lib/dateUtils";
+import { parseDDMMYYYY, parseExcelDate } from "@/lib/dateUtils";
 
 interface TableRow {
   [key: string]: any;
@@ -112,7 +112,14 @@ export function MarketplaceOrdersTable({
           } else if (rowDate instanceof Date) {
             rowDateObj = rowDate;
           } else if (typeof rowDate === 'number') {
-            rowDateObj = new Date(rowDate);
+            // Handle Excel serial numbers
+            const excelDate = parseExcelDate(rowDate);
+            if (excelDate) {
+              rowDateObj = excelDate;
+            } else {
+              // Fallback to timestamp
+              rowDateObj = new Date(rowDate);
+            }
           }
 
           if (rowDateObj && !isNaN(rowDateObj.getTime())) {
@@ -122,7 +129,12 @@ export function MarketplaceOrdersTable({
             }
             if (dateTo) {
               const toDate = parseDDMMYYYY(dateTo);
-              if (toDate && rowDateObj > toDate) return false;
+              if (toDate) {
+                // Set toDate to end of day (23:59:59.999) to include all records on that day
+                const endOfDay = new Date(toDate);
+                endOfDay.setHours(23, 59, 59, 999);
+                if (rowDateObj > endOfDay) return false;
+              }
             }
           }
         }
