@@ -290,6 +290,17 @@ export default function Home() {
           }
         }
 
+        // Exclude orders where STATUS ORDEN = CLOSED
+        const statusOrdenHeader = headers.find(h => 
+          h.toLowerCase().includes('status') && h.toLowerCase().includes('orden')
+        );
+        if (statusOrdenHeader) {
+          const statusOrden = String(row[statusOrdenHeader] || '').toUpperCase().trim();
+          if (statusOrden === 'CLOSED') {
+            return false;
+          }
+        }
+
         const ventaTotal = parseFloat(row["Venta total"] || 0);
         const pagoInicial = parseFloat(row["PAGO INICIAL"] || 0);
         let totalPagado = isNaN(pagoInicial) ? 0 : pagoInicial;
