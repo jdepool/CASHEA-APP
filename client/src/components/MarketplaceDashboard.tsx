@@ -15,7 +15,7 @@ export function MarketplaceDashboard({ data, headers }: MarketplaceDashboardProp
   };
 
   const totalUsdColumn = findColumn("total usd") || findColumn("total");
-  const pagoInicialColumn = findColumn("pago inicial") || findColumn("inicial") || findColumn("pago") || findColumn("anticipo") || findColumn("adelanto");
+  const pagoInicialColumn = findColumn("pago inicial usd") || findColumn("pago inicial") || findColumn("inicial");
   const estadoEntregaColumn = findColumn("estado de entrega") || findColumn("entrega");
 
   const metrics = useMemo(() => {
