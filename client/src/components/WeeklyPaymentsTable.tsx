@@ -21,6 +21,36 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
     }
   };
 
+  // Helper function to calculate STATUS for sorting
+  const getStatusValue = (inst: any): number => {
+    const fechaPago = inst.fechaPagoReal;
+    const fechaCuota = inst.fechaCuota;
+    
+    if (!fechaPago || !fechaCuota) return 0; // No status (—)
+    
+    const pagoNormalized = new Date(fechaPago);
+    pagoNormalized.setHours(0, 0, 0, 0);
+    
+    const cuotaNormalized = new Date(fechaCuota);
+    cuotaNormalized.setHours(0, 0, 0, 0);
+    
+    const sameMonth = pagoNormalized.getMonth() === cuotaNormalized.getMonth() && 
+                      pagoNormalized.getFullYear() === cuotaNormalized.getFullYear();
+    
+    const DAY_MS = 1000 * 60 * 60 * 24;
+    const diffMs = cuotaNormalized.getTime() - pagoNormalized.getTime();
+    
+    if (pagoNormalized > cuotaNormalized) {
+      return 3; // ATRASADO (late)
+    } else if (sameMonth) {
+      return 2; // A TIEMPO (on time)
+    } else if (diffMs > 15 * DAY_MS) {
+      return 1; // ADELANTADO (early)
+    } else {
+      return 2; // A TIEMPO (on time)
+    }
+  };
+
   // Sort installments based on selected column
   const sortedInstallments = useMemo(() => {
     return [...installments].sort((a, b) => {
@@ -61,6 +91,12 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
           const aTime = (a as any).fechaPagoReal?.getTime() || 0;
           const bTime = (b as any).fechaPagoReal?.getTime() || 0;
           comparison = aTime - bTime;
+          break;
+        }
+        case 'status': {
+          const aStatus = getStatusValue(a);
+          const bStatus = getStatusValue(b);
+          comparison = aStatus - bStatus;
           break;
         }
         default:
@@ -171,8 +207,19 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
             <th className="text-left py-3 px-4 font-semibold text-sm" data-testid="header-referencia">
               # Referencia
             </th>
-            <th className="text-left py-3 px-4 font-semibold text-sm" data-testid="header-status">
-              STATUS
+            <th 
+              onClick={() => handleSort('status')}
+              className="text-left py-3 px-4 font-semibold text-sm cursor-pointer hover-elevate" 
+              data-testid="header-status"
+            >
+              <div className="flex items-center gap-1">
+                <span>STATUS</span>
+                {sortColumn === 'status' ? (
+                  sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                ) : (
+                  <ArrowUpDown className="h-3 w-3 opacity-40" />
+                )}
+              </div>
             </th>
           </tr>
         </thead>
