@@ -44,11 +44,13 @@ export function extractInstallments(tableData: any[]): Installment[] {
       const estadoValue = row[estadoCuotaKey];
       const fechaPagoValue = row[fechaPagoKey];
 
-      // Only include installments that have at least a date or amount
-      if (fechaCuotaValue || montoValue) {
+      // Parse the amount
+      const monto = typeof montoValue === 'number' ? montoValue : parseFloat(String(montoValue || 0).replace(/[^0-9.-]/g, '')) || 0;
+
+      // Only include installments that have both a date AND an amount > 0
+      if (fechaCuotaValue && monto > 0) {
         const fechaCuota = parseExcelDate(fechaCuotaValue);
         const fechaPago = parseExcelDate(fechaPagoValue);
-        const monto = typeof montoValue === 'number' ? montoValue : parseFloat(String(montoValue || 0).replace(/[^0-9.-]/g, '')) || 0;
 
         installments.push({
           orden,
