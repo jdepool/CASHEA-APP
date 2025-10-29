@@ -5,10 +5,9 @@ import { DollarSign, ShoppingCart, CreditCard, AlertCircle, Wallet, Receipt } fr
 interface DashboardProps {
   data: any[];
   headers: string[];
-  allData?: any[]; // Unfiltered data for Pago inicial calculation
 }
 
-export function Dashboard({ data, headers, allData }: DashboardProps) {
+export function Dashboard({ data, headers }: DashboardProps) {
   // Helper function to check if an order is cancelled
   const isCancelledOrder = (row: any): boolean => {
     const statusOrden = String(row["STATUS ORDEN"] || "").toLowerCase().trim();
@@ -35,19 +34,7 @@ export function Dashboard({ data, headers, allData }: DashboardProps) {
     let totalPagos = 0;
     let saldoPendiente = 0; // Sum of individual positive saldos only
 
-    // Calculate Pago Inicial from ALL data (including CLOSED orders)
-    const dataForPagoInicial = allData || data;
-    dataForPagoInicial.forEach((row) => {
-      const isCancelled = isCancelledOrder(row);
-      if (!isCancelled) {
-        const pagoInicialStr = row["PAGO INICIAL"];
-        const pagoInicial = parseFloat(pagoInicialStr || 0);
-        const pagoInicialValue = isNaN(pagoInicial) ? 0 : pagoInicial;
-        pagoInicialTotal += pagoInicialValue;
-      }
-    });
-
-    // Calculate other metrics from filtered data
+    // Calculate all metrics from filtered data
     data.forEach((row, index) => {
       // Check if order is cancelled first
       const isCancelled = isCancelledOrder(row);
@@ -62,10 +49,15 @@ export function Dashboard({ data, headers, allData }: DashboardProps) {
         montoVentas += ventaTotal;
       }
 
-      // Get PAGO INICIAL for this row (for totalPagos calculation)
+      // Get PAGO INICIAL for this row
       const pagoInicialStr = row["PAGO INICIAL"];
       const pagoInicial = parseFloat(pagoInicialStr || 0);
       const pagoInicialValue = isNaN(pagoInicial) ? 0 : pagoInicial;
+      
+      // Add to Pago Inicial total (exclude cancelled orders)
+      if (!isCancelled) {
+        pagoInicialTotal += pagoInicialValue;
+      }
       
       let totalPagadoRow = pagoInicialValue;
 
@@ -108,7 +100,7 @@ export function Dashboard({ data, headers, allData }: DashboardProps) {
       totalPagos,
       saldo: saldoPendiente,
     };
-  }, [data, allData]);
+  }, [data]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {

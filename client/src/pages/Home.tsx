@@ -525,7 +525,7 @@ export default function Home() {
               <TabsContent value="all" className="space-y-4">
                 {tableData.length > 0 ? (
                   <>
-                    <Dashboard data={filteredTableData} headers={headers} allData={tableData} />
+                    <Dashboard data={filteredTableData} headers={headers} />
                     
                     <div className="flex items-center justify-between mb-4">
                       <div>
