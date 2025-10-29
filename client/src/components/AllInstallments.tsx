@@ -63,35 +63,35 @@ export function AllInstallments({
     if (hasPaymentData) {
       const paymentRows = apiData.data.rows;
       
-      // Track which payment records have been matched
+      // Step 1: Enrich existing scheduled installments with payment info (for "Fecha Cuota" view)
+      // Track which payment records have been used to prevent reusing the same payment for multiple installments
       const matchedPaymentIndices = new Set<number>();
       
-      // Enrich all installments with payment dates from payment records
       installments = installments.map((installment) => {
-        // Find matching payment record by order number (and optionally installment number)
+        // Find first unused matching payment record
         const matchingPaymentIndex = paymentRows.findIndex((payment: any, index: number) => {
+          // Skip if this payment has already been used for another installment
+          if (matchedPaymentIndices.has(index)) return false;
+          
           const paymentOrder = String(payment['# Orden'] || payment['#Orden'] || payment['Orden'] || '').trim();
           const paymentInstallmentStr = String(payment['# Cuota Pagada'] || payment['#CuotaPagada'] || payment['Cuota'] || '').trim();
           
-          // Match by order number first
           const orderMatches = paymentOrder === String(installment.orden).trim();
           
-          // If installment number exists in payment record, also match on that
+          // Match by both order and cuota number if available
           if (paymentInstallmentStr) {
-            // Parse payment installment number to handle different formats
             const paymentCuotaNum = parseInt(paymentInstallmentStr, 10);
             return orderMatches && !isNaN(paymentCuotaNum) && paymentCuotaNum === installment.numeroCuota;
           }
           
-          // Otherwise just match by order number
-          return orderMatches;
+          // If no cuota number in payment, don't match (prevent incorrect associations)
+          return false;
         });
 
         if (matchingPaymentIndex !== -1) {
           matchedPaymentIndices.add(matchingPaymentIndex);
           const matchingPayment = paymentRows[matchingPaymentIndex];
           
-          // Get the exchange rate date (FECHA TASA DE CAMBIO)
           const fechaTasaCambio = matchingPayment['Fecha Tasa de Cambio'] || 
                                   matchingPayment['FECHA TASA DE CAMBIO'] ||
                                   matchingPayment['Fecha de Transaccion'] ||
@@ -99,105 +99,100 @@ export function AllInstallments({
                                   matchingPayment['Fecha Tasa Cambio'] ||
                                   matchingPayment['FechaTasaCambio'];
           
-          if (fechaTasaCambio) {
-            // Parse date using parseExcelDate to handle Excel serial numbers and date strings
-            const parsedDate = parseExcelDate(fechaTasaCambio);
-            
-            if (parsedDate) {
-              // Store the full payment record details for display
-              return { 
-                ...installment, 
-                fechaPagoReal: parsedDate,
-                paymentDetails: {
-                  referencia: matchingPayment['# Referencia'] || matchingPayment['#Referencia'] || matchingPayment['Referencia'],
-                  metodoPago: matchingPayment['Método de Pago'] || matchingPayment['Metodo de Pago'] || matchingPayment['MÉTODO DE PAGO'],
-                  montoPagadoUSD: matchingPayment['Monto Pagado en USD'] || matchingPayment['MONTO PAGADO EN USD'] || matchingPayment['Monto'],
-                  montoPagadoVES: matchingPayment['Monto Pagado en VES'] || matchingPayment['MONTO PAGADO EN VES'],
-                  tasaCambio: matchingPayment['Tasa de Cambio'] || matchingPayment['TASA DE CAMBIO']
-                }
-              };
-            }
+          const parsedDate = fechaTasaCambio ? parseExcelDate(fechaTasaCambio) : null;
+          
+          if (parsedDate) {
+            return { 
+              ...installment, 
+              fechaPagoReal: parsedDate,
+              paymentDetails: {
+                referencia: matchingPayment['# Referencia'] || matchingPayment['#Referencia'] || matchingPayment['Referencia'],
+                metodoPago: matchingPayment['Método de Pago'] || matchingPayment['Metodo de Pago'] || matchingPayment['MÉTODO DE PAGO'],
+                montoPagadoUSD: matchingPayment['Monto Pagado en USD'] || matchingPayment['MONTO PAGADO EN USD'] || matchingPayment['Monto'],
+                montoPagadoVES: matchingPayment['Monto Pagado en VES'] || matchingPayment['MONTO PAGADO EN VES'],
+                tasaCambio: matchingPayment['Tasa de Cambio'] || matchingPayment['TASA DE CAMBIO']
+              }
+            };
           }
         }
         
         return installment;
       });
       
-      // Add unmatched payment records as synthetic installments (especially for Cuota 0)
-      // Track which orden-cuota combinations we've already added to avoid duplicates
-      const syntheticInstallmentKeys = new Set<string>();
+      // Step 2: Create payment-based entries for EVERY payment record (for "Fecha de Pago" view)
+      // These will have a special flag to identify them
+      const paymentBasedEntries: any[] = [];
       
-      paymentRows.forEach((payment: any, index: number) => {
-        if (!matchedPaymentIndices.has(index)) {
-          const paymentOrder = String(payment['# Orden'] || payment['#Orden'] || payment['Orden'] || '').trim();
-          const paymentInstallment = String(payment['# Cuota Pagada'] || payment['#CuotaPagada'] || payment['Cuota'] || '').trim();
-          const montoPagado = payment['Monto Pagado en USD'] || payment['MONTO PAGADO EN USD'] || payment['Monto'] || 0;
+      paymentRows.forEach((payment: any) => {
+        const paymentOrder = String(payment['# Orden'] || payment['#Orden'] || payment['Orden'] || '').trim();
+        const paymentInstallment = String(payment['# Cuota Pagada'] || payment['#CuotaPagada'] || payment['Cuota'] || '').trim();
+        const montoPagado = payment['Monto Pagado en USD'] || payment['MONTO PAGADO EN USD'] || payment['Monto'] || 0;
+        
+        const fechaTasaCambio = payment['Fecha Tasa de Cambio'] || 
+                                payment['FECHA TASA DE CAMBIO'] ||
+                                payment['Fecha de Transaccion'] ||
+                                payment['FECHA DE TRANSACCION'] ||
+                                payment['Fecha Tasa Cambio'] ||
+                                payment['FechaTasaCambio'];
+        
+        const parsedDate = fechaTasaCambio ? parseExcelDate(fechaTasaCambio) : null;
+        
+        // Include ALL payment records, even those without cuota numbers
+        if (paymentOrder) {
+          // Parse cuota number, use -1 as sentinel for missing values
+          let cuotaNumber = -1;
+          if (paymentInstallment) {
+            const parsed = parseInt(paymentInstallment, 10);
+            if (!isNaN(parsed)) {
+              cuotaNumber = parsed;
+            }
+          }
           
-          // Get the exchange rate date
-          const fechaTasaCambio = payment['Fecha Tasa de Cambio'] || 
-                                  payment['FECHA TASA DE CAMBIO'] ||
-                                  payment['Fecha de Transaccion'] ||
-                                  payment['FECHA DE TRANSACCION'] ||
-                                  payment['Fecha Tasa Cambio'] ||
-                                  payment['FechaTasaCambio'];
+          // Look up the scheduled date from the orders file (if exists)
+          let fechaCuotaValue = null;
+          const matchingOrder = tableData.find((row: any) => 
+            String(row['Orden'] || '').trim() === paymentOrder
+          );
           
-          const parsedDate = fechaTasaCambio ? parseExcelDate(fechaTasaCambio) : null;
-          
-          // Create synthetic installment if we have at least an order and installment number
-          if (paymentOrder && paymentInstallment) {
-            const cuotaNumber = parseInt(paymentInstallment, 10);
-            
-            if (!isNaN(cuotaNumber)) {
-              const syntheticKey = `${paymentOrder}-${cuotaNumber}`;
-              
-              // Check if an installment with this orden-numeroCuota combination already exists
-              const alreadyExists = installments.some(inst => 
-                String(inst.orden).trim() === paymentOrder && 
-                inst.numeroCuota === cuotaNumber
-              );
-              
-              // Only create synthetic installment if it doesn't already exist and we haven't created one yet
-              if (!alreadyExists && !syntheticInstallmentKeys.has(syntheticKey)) {
-                syntheticInstallmentKeys.add(syntheticKey);
-                
-                // For Cuota 0, lookup FECHA DE COMPRA from orders table as the scheduled date
-                let fechaCuotaValue = null;
-                if (cuotaNumber === 0) {
-                  const matchingOrder = tableData.find((row: any) => 
-                    String(row['Orden'] || '').trim() === paymentOrder
-                  );
-                  if (matchingOrder) {
-                    const fechaCompra = matchingOrder['FECHA DE COMPRA'] || 
-                                       matchingOrder['Fecha de Compra'] || 
-                                       matchingOrder['Fecha de compra'] || 
-                                       matchingOrder['Fecha Compra'];
-                    if (fechaCompra) {
-                      fechaCuotaValue = parseExcelDate(fechaCompra);
-                    }
-                  }
-                }
-                
-                installments.push({
-                  orden: paymentOrder,
-                  fechaCuota: fechaCuotaValue, // Use FECHA DE COMPRA for Cuota 0, null otherwise
-                  numeroCuota: cuotaNumber,
-                  monto: typeof montoPagado === 'number' ? montoPagado : parseFloat(String(montoPagado || 0).replace(/[^0-9.-]/g, '')) || 0,
-                  estadoCuota: 'Done', // Since there's a payment, mark as Done
-                  fechaPago: null,
-                  fechaPagoReal: parsedDate, // May be null if date is unparseable
-                  paymentDetails: {
-                    referencia: payment['# Referencia'] || payment['#Referencia'] || payment['Referencia'],
-                    metodoPago: payment['Método de Pago'] || payment['Metodo de Pago'] || payment['MÉTODO DE PAGO'],
-                    montoPagadoUSD: payment['Monto Pagado en USD'] || payment['MONTO PAGADO EN USD'] || payment['Monto'],
-                    montoPagadoVES: payment['Monto Pagado en VES'] || payment['MONTO PAGADO EN VES'],
-                    tasaCambio: payment['Tasa de Cambio'] || payment['TASA DE CAMBIO']
-                  }
-                });
+          if (matchingOrder && cuotaNumber >= 0) {
+            if (cuotaNumber === 0) {
+              const fechaCompra = matchingOrder['FECHA DE COMPRA'] || 
+                                 matchingOrder['Fecha de Compra'] || 
+                                 matchingOrder['Fecha de compra'] || 
+                                 matchingOrder['Fecha Compra'];
+              if (fechaCompra) {
+                fechaCuotaValue = parseExcelDate(fechaCompra);
+              }
+            } else {
+              const fechaCuotaRaw = matchingOrder[`Fecha cuota ${cuotaNumber}`];
+              if (fechaCuotaRaw) {
+                fechaCuotaValue = parseExcelDate(fechaCuotaRaw);
               }
             }
           }
+          
+          paymentBasedEntries.push({
+            orden: paymentOrder,
+            fechaCuota: fechaCuotaValue,
+            numeroCuota: cuotaNumber,
+            monto: typeof montoPagado === 'number' ? montoPagado : parseFloat(String(montoPagado || 0).replace(/[^0-9.-]/g, '')) || 0,
+            estadoCuota: 'Done',
+            fechaPago: null,
+            fechaPagoReal: parsedDate,
+            isPaymentBased: true, // Flag to identify payment-based entries
+            paymentDetails: {
+              referencia: payment['# Referencia'] || payment['#Referencia'] || payment['Referencia'],
+              metodoPago: payment['Método de Pago'] || payment['Metodo de Pago'] || payment['MÉTODO DE PAGO'],
+              montoPagadoUSD: payment['Monto Pagado en USD'] || payment['MONTO PAGADO EN USD'] || payment['Monto'],
+              montoPagadoVES: payment['Monto Pagado en VES'] || payment['MONTO PAGADO EN VES'],
+              tasaCambio: payment['Tasa de Cambio'] || payment['TASA DE CAMBIO']
+            }
+          });
         }
       });
+      
+      // Combine both sets of installments
+      installments = [...installments, ...paymentBasedEntries];
     }
 
     // Dynamically determine installment status based on payment dates
@@ -245,10 +240,16 @@ export function AllInstallments({
   // Apply filters to installments
   const filteredInstallments = useMemo(() => {
     return allInstallments.filter((installment: any) => {
-      // When "Fecha de Pago" is selected, only show installments that have a payment date
+      // Filter based on which date field is selected
       if (dateFieldFilter === 'fechaPago') {
+        // When "Fecha de Pago" is selected, only show payment-based entries
+        if (!installment.isPaymentBased) return false;
+        // Also ensure it has a payment date
         const hasPaymentDate = installment.fechaPagoReal || installment.fechaPago;
         if (!hasPaymentDate) return false;
+      } else {
+        // When "Fecha Cuota" is selected, only show scheduled installments (not payment-based)
+        if (installment.isPaymentBased) return false;
       }
       
       // Date range filter

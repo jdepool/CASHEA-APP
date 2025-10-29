@@ -177,12 +177,18 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
           </tr>
         </thead>
         <tbody>
-          {sortedInstallments.map((inst, idx) => (
-            <tr
-              key={`${inst.orden}-${inst.numeroCuota}`}
-              className="border-b last:border-0 hover-elevate"
-              data-testid={`row-weekly-${idx}`}
-            >
+          {sortedInstallments.map((inst, idx) => {
+            // Create unique key including reference number for multiple payments of same installment
+            const uniqueKey = (inst as any).paymentDetails?.referencia 
+              ? `${inst.orden}-${inst.numeroCuota}-${(inst as any).paymentDetails.referencia}`
+              : `${inst.orden}-${inst.numeroCuota}-${idx}`;
+            
+            return (
+              <tr
+                key={uniqueKey}
+                className="border-b last:border-0 hover-elevate"
+                data-testid={`row-weekly-${idx}`}
+              >
               <td className="py-3 px-4 font-mono text-sm sticky left-0 z-10 bg-card" data-testid={`cell-orden-${idx}`}>
                 {inst.orden}
               </td>
@@ -190,7 +196,9 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
                 {formatDate(inst.fechaCuota)}
               </td>
               <td className="py-3 px-4 text-sm" data-testid={`cell-numero-${idx}`}>
-                {inst.numeroCuota}
+                {inst.numeroCuota >= 0 ? inst.numeroCuota : (
+                  <span className="text-muted-foreground text-xs">—</span>
+                )}
               </td>
               <td className="py-3 px-4 text-sm text-right font-mono" data-testid={`cell-monto-${idx}`}>
                 ${inst.monto.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -218,7 +226,8 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
                 )}
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
