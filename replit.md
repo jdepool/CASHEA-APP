@@ -35,10 +35,11 @@ The application employs a client-server architecture, utilizing a React frontend
     - **Filter State Persistence**: All filter state managed in Home.tsx parent component, persists when switching between tabs
     - **Collapsible Filters**: Date range (Desde/Hasta), order number text filter, and status dropdown (Todas, Done, Pendiente, Vencido)
     - **Period Dashboard**: Appears when date range is specified, showing:
-        - **CUOTAS DEL PERIODO**: Count of all cuotas with due dates in the specified period
-        - **CUENTAS POR PAGAR**: Total amount of all cuotas with due dates in the specified period
+        - **CUOTAS DEL PERIODO**: Count of all cuotas (1-14) with due dates in the specified period (excludes Cuota 0/PAGO INICIAL)
+        - **CUENTAS POR PAGAR**: Total amount of all cuotas (1-14) with due dates in the specified period (excludes Cuota 0/PAGO INICIAL)
     - **Tri-state Column Sorting**: All columns sortable with visual indicators (none → ascending → descending → none)
     - **Excel Export**: Exports filtered cuotas with all columns
+    - **Note**: Only counts regular installments (Cuotas 1-14), excluding initial payment (Cuota 0)
 - **Marketplace Orders View (`MARKETPLACE ORDERS`)**: Displays marketplace order data with flexible schema, complete replacement on upload, sorting, Excel export, and comprehensive filtering.
     - **Collapsible Filters**: Toggle button to show/hide filter panel with four filter fields:
         - **Estado**: Dropdown filter for payment status

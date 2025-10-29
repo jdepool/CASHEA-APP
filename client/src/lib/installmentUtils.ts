@@ -21,7 +21,8 @@ export interface Installment {
 
 /**
  * Extract all installments from the table data
- * Converts wide format (14 installments per row) to long format (one row per installment)
+ * Converts wide format (14 regular installments per row) to long format (one row per installment)
+ * Excludes Cuota 0 (PAGO INICIAL) - only processes Cuotas 1-14
  */
 export function extractInstallments(tableData: any[]): Installment[] {
   const installments: Installment[] = [];
@@ -29,40 +30,19 @@ export function extractInstallments(tableData: any[]): Installment[] {
   for (const row of tableData) {
     const orden = row["Orden"] || "";
 
-    // Process installments 0-14 (0 = PAGO INICIAL)
-    for (let i = 0; i <= 14; i++) {
-      // Special handling for Cuota 0 (initial payment)
-      let fechaCuotaKey: string;
-      let cuotaKey: string;
-      let pagadoKey: string;
-      let estadoCuotaKey: string;
-      let fechaPagoKey: string;
+    // Process installments 1-14 (regular installments only, excluding Cuota 0/PAGO INICIAL)
+    for (let i = 1; i <= 14; i++) {
+      // For Cuotas 1-14, use standard column names
+      const fechaCuotaKey = `Fecha cuota ${i}`;
+      const cuotaKey = `Cuota ${i}`;
+      const pagadoKey = `Pagado de cuota ${i}`;
+      const estadoCuotaKey = `Estado cuota ${i}`;
+      const fechaPagoKey = `Fecha de pago cuota ${i}`;
 
-      if (i === 0) {
-        // For Cuota 0, use specific column names for initial payment
-        fechaCuotaKey = `Fecha cuota ${i}`;
-        cuotaKey = "PAGO INICIAL"; // Backend maps "Pago en Caja" to this standardized name
-        pagadoKey = `Pagado de cuota ${i}`;
-        estadoCuotaKey = "Estado pago inicial";
-        fechaPagoKey = `Fecha de pago cuota ${i}`;
-      } else {
-        // For Cuotas 1-14, use standard column names
-        fechaCuotaKey = `Fecha cuota ${i}`;
-        cuotaKey = `Cuota ${i}`;
-        pagadoKey = `Pagado de cuota ${i}`;
-        estadoCuotaKey = `Estado cuota ${i}`;
-        fechaPagoKey = `Fecha de pago cuota ${i}`;
-      }
-
-      let fechaCuotaValue = row[fechaCuotaKey];
+      const fechaCuotaValue = row[fechaCuotaKey];
       const montoValue = row[cuotaKey];
       const estadoValue = row[estadoCuotaKey];
       const fechaPagoValue = row[fechaPagoKey];
-
-      // For Cuota 0, if no fecha cuota is provided, use FECHA DE COMPRA as fallback
-      if (i === 0 && !fechaCuotaValue) {
-        fechaCuotaValue = row["FECHA DE COMPRA"] || row["Fecha de Compra"] || row["Fecha de compra"] || row["Fecha Compra"];
-      }
 
       // Only include installments that have at least a date or amount
       if (fechaCuotaValue || montoValue) {
