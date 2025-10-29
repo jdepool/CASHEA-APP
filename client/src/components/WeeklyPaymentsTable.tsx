@@ -230,16 +230,30 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
                     return <span className="text-muted-foreground text-xs">—</span>;
                   }
                   
-                  // Compare dates: A TIEMPO if paid on/before due date, ADELANTADO if paid after
-                  const isOnTime = fechaPago <= fechaCuota;
+                  // Calculate millisecond difference for precise comparison
+                  const DAY_MS = 1000 * 60 * 60 * 24;
+                  const diffMs = fechaCuota.getTime() - fechaPago.getTime();
+                  
+                  let status: string;
+                  let badgeClass: string;
+                  
+                  if (fechaPago > fechaCuota) {
+                    // Payment made AFTER due date (late)
+                    status = 'ATRASADO';
+                    badgeClass = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+                  } else if (diffMs > 15 * DAY_MS) {
+                    // Payment made MORE than 15 days before due date (advanced)
+                    status = 'ADELANTADO';
+                    badgeClass = 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
+                  } else {
+                    // Payment made within 15 days before or on due date (on time)
+                    status = 'A TIEMPO';
+                    badgeClass = 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+                  }
                   
                   return (
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      isOnTime 
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
-                        : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-                    }`}>
-                      {isOnTime ? 'A TIEMPO' : 'ADELANTADO'}
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}`}>
+                      {status}
                     </span>
                   );
                 })()}
