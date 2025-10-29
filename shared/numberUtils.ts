@@ -163,3 +163,34 @@ export function normalizeNumberForKey(value: any): string {
   }
   return num.toFixed(8);
 }
+
+/**
+ * Normalize a reference number by removing leading zeros for comparison
+ * Examples:
+ * - "000437506838" → "437506838"
+ * - "00123" → "123"
+ * - "0" → "0"
+ * - "" → ""
+ * - null → ""
+ * - undefined → ""
+ */
+export function normalizeReferenceNumber(value: any): string {
+  // Handle null/undefined
+  if (value == null) {
+    return '';
+  }
+  
+  // Convert to string and trim
+  const str = String(value).trim();
+  
+  // Return empty string for empty values
+  if (!str) {
+    return '';
+  }
+  
+  // Remove leading zeros but keep at least one digit
+  // "000" becomes "0", "00123" becomes "123"
+  const normalized = str.replace(/^0+/, '') || '0';
+  
+  return normalized;
+}
