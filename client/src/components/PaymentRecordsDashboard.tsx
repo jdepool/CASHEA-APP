@@ -6,9 +6,35 @@ import { normalizeNumber } from "@shared/numberUtils";
 interface PaymentRecordsDashboardProps {
   data: any[];
   headers: string[];
+  ordersData: any[];
 }
 
-export function PaymentRecordsDashboard({ data, headers }: PaymentRecordsDashboardProps) {
+export function PaymentRecordsDashboard({ data, headers, ordersData }: PaymentRecordsDashboardProps) {
+  // Create order status lookup map
+  const orderStatusMap = useMemo(() => {
+    const map = new Map<string, string>();
+    if (!ordersData || ordersData.length === 0) return map;
+
+    // Find the order number and status columns in orders data (case-insensitive)
+    const orderNumKey = Object.keys(ordersData[0] || {}).find(key => 
+      key.toLowerCase() === 'orden'
+    );
+    const statusKey = Object.keys(ordersData[0] || {}).find(key => 
+      key.toLowerCase().includes('status') && key.toLowerCase().includes('orden')
+    );
+
+    if (orderNumKey && statusKey) {
+      ordersData.forEach((order: any) => {
+        const ordenNum = order[orderNumKey];
+        const status = order[statusKey];
+        if (ordenNum != null && status != null) {
+          map.set(String(ordenNum), String(status));
+        }
+      });
+    }
+    return map;
+  }, [ordersData]);
+
   const metrics = useMemo(() => {
     if (!data || data.length === 0) {
       return {
@@ -54,7 +80,15 @@ export function PaymentRecordsDashboard({ data, headers }: PaymentRecordsDashboa
         // Don't count multi-installment payments like "0,1,2"
         const cuotaNumbers = cuotaValue.split(',').map(c => c.trim()).filter(c => c);
         if (cuotaNumbers.length === 1 && parseInt(cuotaNumbers[0]) === 0) {
-          totalPagoIniciales += montoPagado;
+          // Only include in Pagos Iniciales if the order is found in orders data
+          const statusOrden = ordenNum != null 
+            ? orderStatusMap.get(String(ordenNum))
+            : undefined;
+          
+          // Exclude orders with NOT FOUND status (orders not in TODAS LAS ORDENES)
+          if (statusOrden) {
+            totalPagoIniciales += montoPagado;
+          }
         }
       }
 
@@ -76,7 +110,7 @@ export function PaymentRecordsDashboard({ data, headers }: PaymentRecordsDashboa
       totalPagado,
       totalPagoIniciales,
     };
-  }, [data, headers]);
+  }, [data, headers, orderStatusMap]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {
