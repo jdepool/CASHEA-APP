@@ -135,9 +135,9 @@ export function AllInstallments({
         
         const parsedDate = fechaTasaCambio ? parseExcelDate(fechaTasaCambio) : null;
         
-        // Include ALL payment records, even those without cuota numbers
-        // BUT only if they have both an order number AND a valid transaction date
-        if (paymentOrder && parsedDate) {
+        // Include ALL payment records, even those without cuota numbers or parseable dates
+        // Match PAGO DE CUOTAS behavior: include all records with order numbers
+        if (paymentOrder) {
           // Parse cuota number, use -1 as sentinel for missing values
           let cuotaNumber = -1;
           if (paymentInstallment) {
@@ -242,10 +242,8 @@ export function AllInstallments({
       // Filter based on which date field is selected
       if (dateFieldFilter === 'fechaPago') {
         // When "Fecha de Pago" is selected, only show payment-based entries
+        // Match PAGO DE CUOTAS: don't require a parseable payment date
         if (!installment.isPaymentBased) return false;
-        // Also ensure it has a payment date
-        const hasPaymentDate = installment.fechaPagoReal || installment.fechaPago;
-        if (!hasPaymentDate) return false;
       } else {
         // When "Fecha Cuota" is selected, only show scheduled installments (not payment-based)
         if (installment.isPaymentBased) return false;
