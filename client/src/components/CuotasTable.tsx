@@ -45,9 +45,16 @@ export function CuotasTable({
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
 
-  // Extract all installments from orders
+  // Helper function to check if an order is cancelled
+  const isCancelledOrder = (row: any): boolean => {
+    const statusOrden = String(row["STATUS ORDEN"] || "").toLowerCase().trim();
+    return statusOrden.includes("cancel");
+  };
+
+  // Extract all installments from orders, excluding cancelled orders
   const allCuotas = useMemo(() => {
-    return extractInstallments(tableData);
+    const nonCancelledOrders = tableData.filter(row => !isCancelledOrder(row));
+    return extractInstallments(nonCancelledOrders);
   }, [tableData]);
 
   // Filter cuotas
