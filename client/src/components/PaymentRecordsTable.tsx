@@ -108,6 +108,36 @@ export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRec
     }
   });
 
+  // Build a map to detect duplicates (same Order + Cuota Pagada combination)
+  const duplicateMap = useMemo(() => {
+    const countMap = new Map<string, number>();
+    
+    enrichedRecords.forEach((record) => {
+      const ordenNum = record['# Orden'];
+      const cuotaNum = record['# Cuota Pagada'];
+      
+      if (ordenNum != null && cuotaNum != null) {
+        const key = `${ordenNum}_${cuotaNum}`;
+        countMap.set(key, (countMap.get(key) || 0) + 1);
+      }
+    });
+    
+    return countMap;
+  }, [enrichedRecords]);
+
+  // Check if a payment is a duplicate (same Order + Cuota appears more than once)
+  const isDuplicatePayment = (record: PaymentRecord): boolean => {
+    const ordenNum = record['# Orden'];
+    const cuotaNum = record['# Cuota Pagada'];
+    
+    if (ordenNum == null || cuotaNum == null) return false;
+    
+    const key = `${ordenNum}_${cuotaNum}`;
+    const count = duplicateMap.get(key) || 0;
+    
+    return count > 1;
+  };
+
   // Check if a payment is partial (paid less than expected)
   const isPartialPayment = (record: PaymentRecord): boolean => {
     const ordenNum = record['# Orden'];
@@ -265,10 +295,11 @@ export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRec
         <tbody>
           {sortedRecords.map((record, rowIdx) => {
             const isPartial = isPartialPayment(record);
+            const isDuplicate = isDuplicatePayment(record);
             return (
               <tr
                 key={rowIdx}
-                className={`border-b hover-elevate ${isPartial ? 'text-red-600 dark:text-red-400 font-bold' : ''}`}
+                className={`border-b hover-elevate ${isPartial || isDuplicate ? 'text-red-600 dark:text-red-400 font-bold' : ''}`}
                 data-testid={`row-${rowIdx}`}
               >
                 {orderedHeaders.map((header, colIdx) => (
