@@ -52,9 +52,17 @@ export function AllInstallments({
     refetchOnWindowFocus: false,
   });
 
+  // Helper function to check if an order is cancelled
+  const isCancelledOrder = (row: any): boolean => {
+    const statusOrden = String(row["STATUS ORDEN"] || "").toLowerCase().trim();
+    return statusOrden.includes("cancel");
+  };
+
   // Extract all installments and enrich with payment dates
   const allInstallments = useMemo(() => {
-    let installments = extractInstallments(tableData);
+    // Filter out cancelled orders before extracting installments
+    const nonCancelledOrders = tableData.filter(row => !isCancelledOrder(row));
+    let installments = extractInstallments(nonCancelledOrders);
 
     // Cross-reference with payment records to add payment dates
     const apiData = paymentRecordsData as any;
@@ -162,7 +170,7 @@ export function AllInstallments({
           cuotaNumbers.forEach((cuotaNumber) => {
             // Look up the scheduled date from the orders file (if exists)
             let fechaCuotaValue = null;
-            const matchingOrder = tableData.find((row: any) => 
+            const matchingOrder = nonCancelledOrders.find((row: any) => 
               String(row['Orden'] || '').trim() === paymentOrder
             );
             
