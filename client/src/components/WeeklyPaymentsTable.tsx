@@ -171,8 +171,8 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
             <th className="text-left py-3 px-4 font-semibold text-sm" data-testid="header-referencia">
               # Referencia
             </th>
-            <th className="text-left py-3 px-4 font-semibold text-sm" data-testid="header-metodo-pago">
-              Método de Pago
+            <th className="text-left py-3 px-4 font-semibold text-sm" data-testid="header-status">
+              STATUS
             </th>
           </tr>
         </thead>
@@ -220,10 +220,29 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
                   <span className="text-muted-foreground text-xs">—</span>
                 )}
               </td>
-              <td className="py-3 px-4 text-sm" data-testid={`cell-metodo-pago-${idx}`}>
-                {(inst as any).paymentDetails?.metodoPago || (
-                  <span className="text-muted-foreground text-xs">—</span>
-                )}
+              <td className="py-3 px-4 text-sm" data-testid={`cell-status-${idx}`}>
+                {(() => {
+                  const fechaPago = (inst as any).fechaPagoReal;
+                  const fechaCuota = inst.fechaCuota;
+                  
+                  // Only show status if payment has been made and due date exists
+                  if (!fechaPago || !fechaCuota) {
+                    return <span className="text-muted-foreground text-xs">—</span>;
+                  }
+                  
+                  // Compare dates: A TIEMPO if paid on/before due date, ADELANTADO if paid after
+                  const isOnTime = fechaPago <= fechaCuota;
+                  
+                  return (
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      isOnTime 
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
+                        : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                    }`}>
+                      {isOnTime ? 'A TIEMPO' : 'ADELANTADO'}
+                    </span>
+                  );
+                })()}
               </td>
             </tr>
             );
