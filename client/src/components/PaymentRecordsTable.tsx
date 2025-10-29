@@ -296,12 +296,11 @@ export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRec
         </thead>
         <tbody>
           {sortedRecords.map((record, rowIdx) => {
-            const isPartial = isPartialPayment(record);
             const isDuplicate = isDuplicatePayment(record);
             return (
               <tr
                 key={rowIdx}
-                className={`border-b hover-elevate ${isPartial || isDuplicate ? 'text-red-600 dark:text-red-400 font-bold' : ''}`}
+                className={`border-b hover-elevate ${isDuplicate ? 'text-red-600 dark:text-red-400 font-bold' : ''}`}
                 data-testid={`row-${rowIdx}`}
               >
                 {orderedHeaders.map((header, colIdx) => (
