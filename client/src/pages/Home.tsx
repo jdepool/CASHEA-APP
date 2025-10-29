@@ -53,6 +53,13 @@ export default function Home() {
   const [paymentsOrdenFilter, setPaymentsOrdenFilter] = useState<string>("");
   const [paymentsReferenciaFilter, setPaymentsReferenciaFilter] = useState<string>("");
   
+  // CUOTAS tab filters
+  const [cuotasShowFilters, setCuotasShowFilters] = useState<boolean>(false);
+  const [cuotasDateFrom, setCuotasDateFrom] = useState<string>("");
+  const [cuotasDateTo, setCuotasDateTo] = useState<string>("");
+  const [cuotasOrdenFilter, setCuotasOrdenFilter] = useState<string>("");
+  const [cuotasEstadoFilter, setCuotasEstadoFilter] = useState<string>("all");
+  
   // MARKETPLACE ORDERS tab filters
   const [marketplaceShowFilters, setMarketplaceShowFilters] = useState<boolean>(false);
   const [marketplaceDateFrom, setMarketplaceDateFrom] = useState<string>("");
@@ -652,7 +659,19 @@ export default function Home() {
 
               <TabsContent value="cuotas" className="space-y-4">
                 {tableData.length > 0 ? (
-                  <CuotasTable tableData={tableData} />
+                  <CuotasTable 
+                    tableData={tableData}
+                    showFilters={cuotasShowFilters}
+                    setShowFilters={setCuotasShowFilters}
+                    dateFrom={cuotasDateFrom}
+                    setDateFrom={setCuotasDateFrom}
+                    dateTo={cuotasDateTo}
+                    setDateTo={setCuotasDateTo}
+                    ordenFilter={cuotasOrdenFilter}
+                    setOrdenFilter={setCuotasOrdenFilter}
+                    estadoFilter={cuotasEstadoFilter}
+                    setEstadoFilter={setCuotasEstadoFilter}
+                  />
                 ) : (
                   <div className="text-center py-12">
                     <FileSpreadsheet className="h-12 w-12 text-muted-foreground mx-auto mb-4" />

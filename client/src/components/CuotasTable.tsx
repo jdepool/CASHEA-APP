@@ -4,26 +4,44 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Filter, Download, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Filter, Download, ArrowUpDown, ArrowUp, ArrowDown, DollarSign, FileText } from "lucide-react";
 import { extractInstallments } from "@/lib/installmentUtils";
 import { parseDDMMYYYY, formatDate, parseExcelDate } from "@/lib/dateUtils";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface CuotasTableProps {
   tableData: any[];
+  showFilters: boolean;
+  setShowFilters: (show: boolean) => void;
+  dateFrom: string;
+  setDateFrom: (date: string) => void;
+  dateTo: string;
+  setDateTo: (date: string) => void;
+  ordenFilter: string;
+  setOrdenFilter: (orden: string) => void;
+  estadoFilter: string;
+  setEstadoFilter: (estado: string) => void;
 }
 
 type SortField = 'orden' | 'cuota' | 'fecha' | 'monto' | 'estado';
 type SortDirection = 'asc' | 'desc' | null;
 
-export function CuotasTable({ tableData }: CuotasTableProps) {
+export function CuotasTable({ 
+  tableData, 
+  showFilters, 
+  setShowFilters,
+  dateFrom,
+  setDateFrom,
+  dateTo,
+  setDateTo,
+  ordenFilter,
+  setOrdenFilter,
+  estadoFilter,
+  setEstadoFilter
+}: CuotasTableProps) {
   const { toast } = useToast();
-  const [showFilters, setShowFilters] = useState(false);
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [ordenFilter, setOrdenFilter] = useState("");
-  const [estadoFilter, setEstadoFilter] = useState("all");
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
 
@@ -169,6 +187,40 @@ export function CuotasTable({ tableData }: CuotasTableProps) {
 
   const hasActiveFilters = dateFrom || dateTo || ordenFilter || (estadoFilter && estadoFilter !== 'all');
 
+  // Calculate period metrics (for cuotas in the date range)
+  const periodMetrics = useMemo(() => {
+    if (!dateFrom && !dateTo) {
+      // No date range specified, return null
+      return null;
+    }
+
+    const fromDate = dateFrom ? parseDDMMYYYY(dateFrom) : null;
+    const toDate = dateTo ? parseDDMMYYYY(dateTo) : null;
+    
+    if (toDate) {
+      toDate.setHours(23, 59, 59, 999);
+    }
+
+    // Filter cuotas within the date range
+    const cuotasInPeriod = allCuotas.filter((cuota) => {
+      if (!cuota.fechaCuota) return false;
+      const cuotaDate = typeof cuota.fechaCuota === 'string' ? parseExcelDate(cuota.fechaCuota) : cuota.fechaCuota;
+      if (!cuotaDate || isNaN(cuotaDate.getTime())) return false;
+
+      if (fromDate && cuotaDate < fromDate) return false;
+      if (toDate && cuotaDate > toDate) return false;
+      return true;
+    });
+
+    const totalCuotas = cuotasInPeriod.length;
+    const totalAmount = cuotasInPeriod.reduce((sum, cuota) => sum + (cuota.monto || 0), 0);
+
+    return {
+      totalCuotas,
+      totalAmount
+    };
+  }, [allCuotas, dateFrom, dateTo]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -201,6 +253,56 @@ export function CuotasTable({ tableData }: CuotasTableProps) {
           </Button>
         </div>
       </div>
+
+      {periodMetrics && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">CUOTAS DEL PERIODO</p>
+                  <p className="text-2xl font-bold mt-2" data-testid="metric-cuotas-periodo">
+                    {periodMetrics.totalCuotas}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {dateFrom && dateTo 
+                      ? `${dateFrom} - ${dateTo}`
+                      : dateFrom 
+                      ? `Desde ${dateFrom}`
+                      : `Hasta ${dateTo}`}
+                  </p>
+                </div>
+                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                  <FileText className="h-6 w-6 text-primary" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">CUENTAS POR PAGAR</p>
+                  <p className="text-2xl font-bold mt-2" data-testid="metric-cuentas-por-pagar">
+                    ${periodMetrics.totalAmount.toFixed(2)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {dateFrom && dateTo 
+                      ? `${dateFrom} - ${dateTo}`
+                      : dateFrom 
+                      ? `Desde ${dateFrom}`
+                      : `Hasta ${dateTo}`}
+                  </p>
+                </div>
+                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                  <DollarSign className="h-6 w-6 text-primary" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {showFilters && (
         <div className="bg-card border rounded-lg p-6 space-y-4">

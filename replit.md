@@ -31,6 +31,14 @@ The application employs a client-server architecture, utilizing a React frontend
 - **Duplicate Handling**: Orders are replaced by new uploads based on `Orden` number. Payment records update based on `(# Orden, # Cuota Pagada, # Referencia)`, allowing multiple payments for the same installment if reference numbers differ.
 - **Installments View (`CONCILIACION DE CUOTAS`)**: Displays all installments with collapsible filters (date range, order, status, date field selector: "Fecha de Pago" vs. "Fecha Cuota") and an `InstallmentsDashboard` showing status-based and total metrics.
 - **Payment Records View (`PAGO DE CUOTAS`)**: Allows uploading and viewing payment transactions with flexible columns, auto-detection/formatting of currencies, and a dashboard. Highlights partial payments and supports multi-installment payments.
+- **Cuotas View (`CUOTAS`)**: Displays all installments vertically with collapsible filters (date range, order, status) and period-based dashboard metrics:
+    - **Filter State Persistence**: All filter state managed in Home.tsx parent component, persists when switching between tabs
+    - **Collapsible Filters**: Date range (Desde/Hasta), order number text filter, and status dropdown (Todas, Done, Pendiente, Vencido)
+    - **Period Dashboard**: Appears when date range is specified, showing:
+        - **CUOTAS DEL PERIODO**: Count of all cuotas with due dates in the specified period
+        - **CUENTAS POR PAGAR**: Total amount of all cuotas with due dates in the specified period
+    - **Tri-state Column Sorting**: All columns sortable with visual indicators (none → ascending → descending → none)
+    - **Excel Export**: Exports filtered cuotas with all columns
 - **Marketplace Orders View (`MARKETPLACE ORDERS`)**: Displays marketplace order data with flexible schema, complete replacement on upload, sorting, Excel export, and comprehensive filtering.
     - **Collapsible Filters**: Toggle button to show/hide filter panel with four filter fields:
         - **Estado**: Dropdown filter for payment status
