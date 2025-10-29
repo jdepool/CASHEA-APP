@@ -138,54 +138,68 @@ export function AllInstallments({
         // Include ALL payment records, even those without cuota numbers or parseable dates
         // Match PAGO DE CUOTAS behavior: include all records with order numbers
         if (paymentOrder) {
-          // Parse cuota number, use -1 as sentinel for missing values
-          let cuotaNumber = -1;
+          // Handle comma-separated cuota numbers (e.g., "3,4,5" means cuotas 3, 4, and 5)
+          // Match PAGO DE CUOTAS: each cuota in the list creates a separate entry
+          const cuotaNumbers: number[] = [];
+          
           if (paymentInstallment) {
-            const parsed = parseInt(paymentInstallment, 10);
-            if (!isNaN(parsed)) {
-              cuotaNumber = parsed;
-            }
-          }
-          
-          // Look up the scheduled date from the orders file (if exists)
-          let fechaCuotaValue = null;
-          const matchingOrder = tableData.find((row: any) => 
-            String(row['Orden'] || '').trim() === paymentOrder
-          );
-          
-          if (matchingOrder && cuotaNumber >= 0) {
-            if (cuotaNumber === 0) {
-              const fechaCompra = matchingOrder['FECHA DE COMPRA'] || 
-                                 matchingOrder['Fecha de Compra'] || 
-                                 matchingOrder['Fecha de compra'] || 
-                                 matchingOrder['Fecha Compra'];
-              if (fechaCompra) {
-                fechaCuotaValue = parseExcelDate(fechaCompra);
-              }
-            } else {
-              const fechaCuotaRaw = matchingOrder[`Fecha cuota ${cuotaNumber}`];
-              if (fechaCuotaRaw) {
-                fechaCuotaValue = parseExcelDate(fechaCuotaRaw);
+            // Split by comma and parse each number
+            const cuotaParts = paymentInstallment.split(',').map(s => s.trim());
+            for (const part of cuotaParts) {
+              const parsed = parseInt(part, 10);
+              if (!isNaN(parsed)) {
+                cuotaNumbers.push(parsed);
               }
             }
           }
           
-          paymentBasedEntries.push({
-            orden: paymentOrder,
-            fechaCuota: fechaCuotaValue,
-            numeroCuota: cuotaNumber,
-            monto: typeof montoPagado === 'number' ? montoPagado : parseFloat(String(montoPagado || 0).replace(/[^0-9.-]/g, '')) || 0,
-            estadoCuota: 'Done',
-            fechaPago: null,
-            fechaPagoReal: parsedDate,
-            isPaymentBased: true, // Flag to identify payment-based entries
-            paymentDetails: {
-              referencia: payment['# Referencia'] || payment['#Referencia'] || payment['Referencia'],
-              metodoPago: payment['Método de Pago'] || payment['Metodo de Pago'] || payment['MÉTODO DE PAGO'],
-              montoPagadoUSD: payment['Monto Pagado en USD'] || payment['MONTO PAGADO EN USD'] || payment['Monto'],
-              montoPagadoVES: payment['Monto Pagado en VES'] || payment['MONTO PAGADO EN VES'],
-              tasaCambio: payment['Tasa de Cambio'] || payment['TASA DE CAMBIO']
+          // If no valid cuota numbers found, use -1 as sentinel
+          if (cuotaNumbers.length === 0) {
+            cuotaNumbers.push(-1);
+          }
+          
+          // Create one entry per cuota number
+          cuotaNumbers.forEach((cuotaNumber) => {
+            // Look up the scheduled date from the orders file (if exists)
+            let fechaCuotaValue = null;
+            const matchingOrder = tableData.find((row: any) => 
+              String(row['Orden'] || '').trim() === paymentOrder
+            );
+            
+            if (matchingOrder && cuotaNumber >= 0) {
+              if (cuotaNumber === 0) {
+                const fechaCompra = matchingOrder['FECHA DE COMPRA'] || 
+                                   matchingOrder['Fecha de Compra'] || 
+                                   matchingOrder['Fecha de compra'] || 
+                                   matchingOrder['Fecha Compra'];
+                if (fechaCompra) {
+                  fechaCuotaValue = parseExcelDate(fechaCompra);
+                }
+              } else {
+                const fechaCuotaRaw = matchingOrder[`Fecha cuota ${cuotaNumber}`];
+                if (fechaCuotaRaw) {
+                  fechaCuotaValue = parseExcelDate(fechaCuotaRaw);
+                }
+              }
             }
+            
+            paymentBasedEntries.push({
+              orden: paymentOrder,
+              fechaCuota: fechaCuotaValue,
+              numeroCuota: cuotaNumber,
+              monto: typeof montoPagado === 'number' ? montoPagado : parseFloat(String(montoPagado || 0).replace(/[^0-9.-]/g, '')) || 0,
+              estadoCuota: 'Done',
+              fechaPago: null,
+              fechaPagoReal: parsedDate,
+              isPaymentBased: true, // Flag to identify payment-based entries
+              paymentDetails: {
+                referencia: payment['# Referencia'] || payment['#Referencia'] || payment['Referencia'],
+                metodoPago: payment['Método de Pago'] || payment['Metodo de Pago'] || payment['MÉTODO DE PAGO'],
+                montoPagadoUSD: payment['Monto Pagado en USD'] || payment['MONTO PAGADO EN USD'] || payment['Monto'],
+                montoPagadoVES: payment['Monto Pagado en VES'] || payment['MONTO PAGADO EN VES'],
+                tasaCambio: payment['Tasa de Cambio'] || payment['TASA DE CAMBIO']
+              }
+            });
           });
         }
       });
