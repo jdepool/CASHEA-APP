@@ -57,8 +57,8 @@ export function PaymentRecordsDashboard({ data, headers, ordersData }: PaymentRe
       h.toLowerCase().includes('usd')
     );
 
-    // Track unique installments: Set of "order_cuota" combinations
-    const uniqueCuotas = new Set<string>();
+    // Count total cuotas (expanded from comma-separated values)
+    let totalCuotasPagadas = 0;
     let totalPagado = 0;
     let totalPagoIniciales = 0;
 
@@ -92,23 +92,21 @@ export function PaymentRecordsDashboard({ data, headers, ordersData }: PaymentRe
         }
       }
 
-      // Parse cuota value(s)
-      if (ordenNum && cuotaValue) {
+      // Count cuotas - expand comma-separated values
+      if (ordenNum) {
         // Split by comma to handle multi-installment payments
         // IMPORTANT: "3,4" counts as 2 cuotas (cuota 3 and cuota 4)
-        // This ensures Total Cuotas Pagadas counts each cuota separately
-        const cuotaNumbers = cuotaValue.split(',').map(c => c.trim()).filter(c => c);
+        // Each payment record contributes to the count based on how many cuotas it covers
+        const cuotaNumbers = cuotaValue ? cuotaValue.split(',').map(c => c.trim()).filter(c => c) : [];
         
-        cuotaNumbers.forEach(cuotaNum => {
-          // Create unique key: "order_cuota" to avoid counting duplicates
-          const key = `${ordenNum}_${cuotaNum}`;
-          uniqueCuotas.add(key);
-        });
+        // If no cuota numbers found, count as 1
+        // If comma-separated (e.g., "3,4,5"), count as 3
+        totalCuotasPagadas += cuotaNumbers.length > 0 ? cuotaNumbers.length : 1;
       }
     });
 
     return {
-      totalCuotasPagadas: uniqueCuotas.size,
+      totalCuotasPagadas,
       totalPagado,
       totalPagoIniciales,
     };
