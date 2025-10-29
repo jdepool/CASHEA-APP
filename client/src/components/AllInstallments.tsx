@@ -92,12 +92,11 @@ export function AllInstallments({
           matchedPaymentIndices.add(matchingPaymentIndex);
           const matchingPayment = paymentRows[matchingPaymentIndex];
           
-          const fechaTasaCambio = matchingPayment['Fecha Tasa de Cambio'] || 
-                                  matchingPayment['FECHA TASA DE CAMBIO'] ||
-                                  matchingPayment['Fecha de Transaccion'] ||
+          // Use transaction date to match PAGO DE CUOTAS filtering
+          const fechaTasaCambio = matchingPayment['Fecha de Transaccion'] ||
                                   matchingPayment['FECHA DE TRANSACCION'] ||
-                                  matchingPayment['Fecha Tasa Cambio'] ||
-                                  matchingPayment['FechaTasaCambio'];
+                                  matchingPayment['Fecha de Transacción'] ||
+                                  matchingPayment['FECHA DE TRANSACCIÓN'];
           
           const parsedDate = fechaTasaCambio ? parseExcelDate(fechaTasaCambio) : null;
           
@@ -128,12 +127,11 @@ export function AllInstallments({
         const paymentInstallment = String(payment['# Cuota Pagada'] || payment['#CuotaPagada'] || payment['Cuota'] || '').trim();
         const montoPagado = payment['Monto Pagado en USD'] || payment['MONTO PAGADO EN USD'] || payment['Monto'] || 0;
         
-        const fechaTasaCambio = payment['Fecha Tasa de Cambio'] || 
-                                payment['FECHA TASA DE CAMBIO'] ||
-                                payment['Fecha de Transaccion'] ||
+        // Use transaction date to match PAGO DE CUOTAS filtering
+        const fechaTasaCambio = payment['Fecha de Transaccion'] ||
                                 payment['FECHA DE TRANSACCION'] ||
-                                payment['Fecha Tasa Cambio'] ||
-                                payment['FechaTasaCambio'];
+                                payment['Fecha de Transacción'] ||
+                                payment['FECHA DE TRANSACCIÓN'];
         
         const parsedDate = fechaTasaCambio ? parseExcelDate(fechaTasaCambio) : null;
         
