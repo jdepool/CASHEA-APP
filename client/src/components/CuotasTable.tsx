@@ -278,6 +278,7 @@ export function CuotasTable({ tableData }: CuotasTableProps) {
                   className="text-left p-4 font-medium cursor-pointer hover-elevate active-elevate-2"
                   onClick={() => handleSort('orden')}
                   data-testid="header-orden"
+                  aria-sort={sortField === 'orden' ? (sortDirection === 'asc' ? 'ascending' : sortDirection === 'desc' ? 'descending' : 'none') : 'none'}
                 >
                   <div className="flex items-center">
                     Orden
@@ -288,6 +289,7 @@ export function CuotasTable({ tableData }: CuotasTableProps) {
                   className="text-left p-4 font-medium cursor-pointer hover-elevate active-elevate-2"
                   onClick={() => handleSort('cuota')}
                   data-testid="header-cuota"
+                  aria-sort={sortField === 'cuota' ? (sortDirection === 'asc' ? 'ascending' : sortDirection === 'desc' ? 'descending' : 'none') : 'none'}
                 >
                   <div className="flex items-center">
                     Cuota
@@ -298,6 +300,7 @@ export function CuotasTable({ tableData }: CuotasTableProps) {
                   className="text-left p-4 font-medium cursor-pointer hover-elevate active-elevate-2"
                   onClick={() => handleSort('fecha')}
                   data-testid="header-fecha"
+                  aria-sort={sortField === 'fecha' ? (sortDirection === 'asc' ? 'ascending' : sortDirection === 'desc' ? 'descending' : 'none') : 'none'}
                 >
                   <div className="flex items-center">
                     Fecha de Vencimiento
@@ -308,6 +311,7 @@ export function CuotasTable({ tableData }: CuotasTableProps) {
                   className="text-right p-4 font-medium cursor-pointer hover-elevate active-elevate-2"
                   onClick={() => handleSort('monto')}
                   data-testid="header-monto"
+                  aria-sort={sortField === 'monto' ? (sortDirection === 'asc' ? 'ascending' : sortDirection === 'desc' ? 'descending' : 'none') : 'none'}
                 >
                   <div className="flex items-center justify-end">
                     Monto
@@ -318,6 +322,7 @@ export function CuotasTable({ tableData }: CuotasTableProps) {
                   className="text-left p-4 font-medium cursor-pointer hover-elevate active-elevate-2"
                   onClick={() => handleSort('estado')}
                   data-testid="header-estado"
+                  aria-sort={sortField === 'estado' ? (sortDirection === 'asc' ? 'ascending' : sortDirection === 'desc' ? 'descending' : 'none') : 'none'}
                 >
                   <div className="flex items-center">
                     Estado
