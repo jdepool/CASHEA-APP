@@ -543,45 +543,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         rows.push(rowObj);
       }
 
-      // Check for duplicate order numbers
+      // Check for duplicate order numbers and auto-deduplicate
       const orderNumberHeader = allHeaders.find(h => 
         h.toLowerCase().includes('orden') || 
         h.toLowerCase().includes('order')
       );
       
+      let deduplicatedRows = rows;
+      let duplicateWarning = '';
+      
       if (orderNumberHeader) {
-        const orderNumbers = new Map<string, number[]>();
+        const orderNumbersSeen = new Set<string>();
+        const duplicatesFound: { orderNum: string; count: number }[] = [];
+        const duplicateCounts = new Map<string, number>();
         
-        rows.forEach((row, index) => {
+        // Track duplicates
+        rows.forEach((row) => {
           const orderNum = String(row[orderNumberHeader] || '').trim();
           if (orderNum) {
-            if (!orderNumbers.has(orderNum)) {
-              orderNumbers.set(orderNum, []);
-            }
-            orderNumbers.get(orderNum)!.push(index + 2); // +2 because: +1 for 0-based index, +1 for header row
+            duplicateCounts.set(orderNum, (duplicateCounts.get(orderNum) || 0) + 1);
           }
         });
         
-        // Find duplicates
-        const duplicates: { orderNum: string; rowNumbers: number[] }[] = [];
-        orderNumbers.forEach((rowIndices, orderNum) => {
-          if (rowIndices.length > 1) {
-            duplicates.push({ orderNum, rowNumbers: rowIndices });
+        // Find which orders have duplicates
+        duplicateCounts.forEach((count, orderNum) => {
+          if (count > 1) {
+            duplicatesFound.push({ orderNum, count });
           }
         });
         
-        if (duplicates.length > 0) {
-          const duplicateDetails = duplicates
-            .slice(0, 5) // Show first 5 duplicates
-            .map(d => `Orden ${d.orderNum} (filas ${d.rowNumbers.join(', ')})`)
-            .join('; ');
+        // Keep only first occurrence of each order number
+        deduplicatedRows = rows.filter((row) => {
+          const orderNum = String(row[orderNumberHeader] || '').trim();
+          if (!orderNum) return true; // Keep rows without order numbers
           
-          const moreCount = duplicates.length > 5 ? ` y ${duplicates.length - 5} más` : '';
+          if (orderNumbersSeen.has(orderNum)) {
+            return false; // Skip duplicate
+          }
           
-          return res.status(400).json({
-            error: `Se encontraron números de orden duplicados en el archivo: ${duplicateDetails}${moreCount}`,
-            details: `Total de órdenes duplicadas: ${duplicates.length}`
-          });
+          orderNumbersSeen.add(orderNum);
+          return true; // Keep first occurrence
+        });
+        
+        if (duplicatesFound.length > 0) {
+          const totalRemoved = rows.length - deduplicatedRows.length;
+          const duplicateDetails = duplicatesFound
+            .slice(0, 5)
+            .map(d => `${d.orderNum} (${d.count}x)`)
+            .join(', ');
+          
+          const moreCount = duplicatesFound.length > 5 ? ` y ${duplicatesFound.length - 5} órdenes más` : '';
+          
+          duplicateWarning = `Se eliminaron ${totalRemoved} filas duplicadas. Órdenes duplicadas: ${duplicateDetails}${moreCount}`;
         }
       }
 
@@ -589,19 +602,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createMarketplaceOrder({
         fileName: req.file.originalname,
         headers: allHeaders,
-        rows: rows,
-        rowCount: String(rows.length),
+        rows: deduplicatedRows,
+        rowCount: String(deduplicatedRows.length),
       });
+
+      const successMessage = `${deduplicatedRows.length} registros de marketplace cargados exitosamente.`;
+      const fullMessage = duplicateWarning ? `${successMessage} ${duplicateWarning}` : successMessage;
 
       res.json({
         success: true,
         data: {
           headers: allHeaders,
-          rows,
+          rows: deduplicatedRows,
           fileName: req.file.originalname,
-          rowCount: rows.length,
+          rowCount: deduplicatedRows.length,
         },
-        message: `${rows.length} registros de marketplace cargados exitosamente.`
+        message: fullMessage
       });
     } catch (error) {
       console.error('Error processing marketplace orders file:', error);
