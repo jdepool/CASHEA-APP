@@ -217,9 +217,10 @@ export function AllInstallments({
     }
 
     // Dynamically determine installment status based on payment dates
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(23, 59, 59, 999);
+    // Grace period threshold: 3 days after due date before marking as delayed
+    const gracePeriodThreshold = new Date();
+    gracePeriodThreshold.setDate(gracePeriodThreshold.getDate() - 3);
+    gracePeriodThreshold.setHours(23, 59, 59, 999);
     
     installments = installments.map((installment) => {
       const paymentDateRaw = installment.fechaPagoReal || installment.fechaPago;
@@ -239,14 +240,15 @@ export function AllInstallments({
         }
       }
       
-      // Rule 2: If (Scheduled OR Graced) AND overdue (Fecha Cuota < yesterday) AND no payment date, mark as "Delayed"
+      // Rule 2: If (Scheduled OR Graced) AND overdue (with 3-day grace period) AND no payment date, mark as "Delayed"
       if (fechaCuota && isScheduledOrGraced && !paymentDate) {
         const cuotaDate = fechaCuota instanceof Date ? new Date(fechaCuota) : parseExcelDate(fechaCuota);
         
         if (cuotaDate) {
           cuotaDate.setHours(23, 59, 59, 999);
           
-          if (cuotaDate < yesterday) {
+          // Only mark as delayed if due date is more than 3 days ago
+          if (cuotaDate < gracePeriodThreshold) {
             return { ...installment, estadoCuota: 'Delayed' };
           }
         }
