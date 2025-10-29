@@ -108,16 +108,17 @@ export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRec
     }
   });
 
-  // Build a map to detect duplicates (same Order + Cuota Pagada combination)
+  // Build a map to detect duplicates (same Order + Cuota Pagada + Referencia combination)
   const duplicateMap = useMemo(() => {
     const countMap = new Map<string, number>();
     
     enrichedRecords.forEach((record) => {
       const ordenNum = record['# Orden'];
       const cuotaNum = record['# Cuota Pagada'];
+      const referencia = record['# Referencia'];
       
-      if (ordenNum != null && cuotaNum != null) {
-        const key = `${ordenNum}_${cuotaNum}`;
+      if (ordenNum != null && cuotaNum != null && referencia != null) {
+        const key = `${ordenNum}_${cuotaNum}_${referencia}`;
         countMap.set(key, (countMap.get(key) || 0) + 1);
       }
     });
@@ -125,14 +126,15 @@ export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRec
     return countMap;
   }, [enrichedRecords]);
 
-  // Check if a payment is a duplicate (same Order + Cuota appears more than once)
+  // Check if a payment is a duplicate (same Order + Cuota + Referencia appears more than once)
   const isDuplicatePayment = (record: PaymentRecord): boolean => {
     const ordenNum = record['# Orden'];
     const cuotaNum = record['# Cuota Pagada'];
+    const referencia = record['# Referencia'];
     
-    if (ordenNum == null || cuotaNum == null) return false;
+    if (ordenNum == null || cuotaNum == null || referencia == null) return false;
     
-    const key = `${ordenNum}_${cuotaNum}`;
+    const key = `${ordenNum}_${cuotaNum}_${referencia}`;
     const count = duplicateMap.get(key) || 0;
     
     return count > 1;
