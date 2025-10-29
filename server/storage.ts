@@ -250,7 +250,9 @@ export class DatabaseStorage implements IStorage {
           return;
         }
         
-        const key = `${orden}_${cuota}_${referencia}`;
+        // Normalize reference number to handle leading zeros (e.g., "000437506838" === "437506838")
+        const normalizedRef = normalizeReferenceNumber(referencia);
+        const key = `${orden}_${cuota}_${normalizedRef}`;
         
         if (processedKeys.has(key)) {
           // Skip duplicate within the same upload (second+ occurrence)
