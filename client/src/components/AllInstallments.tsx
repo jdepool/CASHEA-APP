@@ -136,7 +136,8 @@ export function AllInstallments({
         const parsedDate = fechaTasaCambio ? parseExcelDate(fechaTasaCambio) : null;
         
         // Include ALL payment records, even those without cuota numbers
-        if (paymentOrder) {
+        // BUT only if they have both an order number AND a valid transaction date
+        if (paymentOrder && parsedDate) {
           // Parse cuota number, use -1 as sentinel for missing values
           let cuotaNumber = -1;
           if (paymentInstallment) {
