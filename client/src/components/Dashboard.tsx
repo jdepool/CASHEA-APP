@@ -5,12 +5,13 @@ import { parseDDMMYYYY, parseExcelDate } from "@/lib/dateUtils";
 
 interface DashboardProps {
   data: any[];
+  allData?: any[]; // All orders (unfiltered) for period-based installment counting
   headers: string[];
   dateFrom?: string;
   dateTo?: string;
 }
 
-export function Dashboard({ data, headers, dateFrom, dateTo }: DashboardProps) {
+export function Dashboard({ data, allData, headers, dateFrom, dateTo }: DashboardProps) {
   // Helper function to check if an order is cancelled
   const isCancelledOrder = (row: any): boolean => {
     const statusOrden = String(row["STATUS ORDEN"] || "").toLowerCase().trim();
@@ -19,19 +20,6 @@ export function Dashboard({ data, headers, dateFrom, dateTo }: DashboardProps) {
   };
 
   const metrics = useMemo(() => {
-    if (!data || data.length === 0) {
-      return {
-        totalOrdenesActivas: 0,
-        montoVentas: 0,
-        pagoInicial: 0,
-        cuotasPagadas: 0,
-        totalPagos: 0,
-        saldo: 0,
-        cuotasDelPeriodo: 0,
-        cuentasPorCobrar: 0,
-      };
-    }
-
     let totalOrdenesActivas = 0;
     let montoVentas = 0;
     let pagoInicialTotal = 0;
@@ -50,68 +38,74 @@ export function Dashboard({ data, headers, dateFrom, dateTo }: DashboardProps) {
       toDate.setHours(23, 59, 59, 999);
     }
 
-    // Calculate all metrics from filtered data
-    data.forEach((row, index) => {
-      // Check if order is cancelled first
-      const isCancelled = isCancelledOrder(row);
+    // Calculate metrics from filtered data (if any)
+    if (data && data.length > 0) {
+      data.forEach((row, index) => {
+        // Check if order is cancelled first
+        const isCancelled = isCancelledOrder(row);
 
-      // Get Venta Total (exclude cancelled orders)
-      const ventaTotalStr = row["Venta total"];
-      const ventaTotal = parseFloat(ventaTotalStr || 0);
-      
-      if (!ventaTotalStr || isNaN(ventaTotal)) {
-        montoVentas += 0;
-      } else if (!isCancelled) {
-        montoVentas += ventaTotal;
-      }
-
-      // Get PAGO INICIAL for this row
-      const pagoInicialStr = row["PAGO INICIAL"];
-      const pagoInicial = parseFloat(pagoInicialStr || 0);
-      const pagoInicialValue = isNaN(pagoInicial) ? 0 : pagoInicial;
-      
-      // Add to Pago Inicial total (exclude cancelled orders)
-      if (!isCancelled) {
-        pagoInicialTotal += pagoInicialValue;
-      }
-      
-      let totalPagadoRow = pagoInicialValue;
-
-      // Sum all "Pagado de cuota N" values (exclude cancelled orders)
-      let cuotasPagadasRow = 0;
-      for (let i = 1; i <= 14; i++) {
-        const pagadoCuotaStr = row[`Pagado de cuota ${i}`];
-        const pagadoCuota = parseFloat(pagadoCuotaStr || 0);
-        if (!isNaN(pagadoCuota)) {
-          cuotasPagadasRow += pagadoCuota;
-          totalPagadoRow += pagadoCuota;
+        // Get Venta Total (exclude cancelled orders)
+        const ventaTotalStr = row["Venta total"];
+        const ventaTotal = parseFloat(ventaTotalStr || 0);
+        
+        if (!ventaTotalStr || isNaN(ventaTotal)) {
+          montoVentas += 0;
+        } else if (!isCancelled) {
+          montoVentas += ventaTotal;
         }
-      }
-      
-      if (!isCancelled) {
-        cuotasPagadasTotal += cuotasPagadasRow;
-        totalPagos += totalPagadoRow;
-      }
 
-      // Calculate individual saldo for this order
-      const saldoRow = ventaTotal - totalPagadoRow;
-      
-      // Only add positive saldos to the pending balance
-      // This ensures overpayments don't reduce the total pending amount
-      if (saldoRow > 0) {
-        saldoPendiente += saldoRow;
-      }
-      
-      // Check if order is "Activa" (has outstanding payments)
-      if (saldoRow > 0.01) { // Consider active if saldo > $0.01
-        totalOrdenesActivas++;
-      }
-      
-      // Count installments within the date period
-      if (fromDate || toDate) {
+        // Get PAGO INICIAL for this row
+        const pagoInicialStr = row["PAGO INICIAL"];
+        const pagoInicial = parseFloat(pagoInicialStr || 0);
+        const pagoInicialValue = isNaN(pagoInicial) ? 0 : pagoInicial;
+        
+        // Add to Pago Inicial total (exclude cancelled orders)
+        if (!isCancelled) {
+          pagoInicialTotal += pagoInicialValue;
+        }
+        
+        let totalPagadoRow = pagoInicialValue;
+
+        // Sum all "Pagado de cuota N" values (exclude cancelled orders)
+        let cuotasPagadasRow = 0;
+        for (let i = 1; i <= 14; i++) {
+          const pagadoCuotaStr = row[`Pagado de cuota ${i}`];
+          const pagadoCuota = parseFloat(pagadoCuotaStr || 0);
+          if (!isNaN(pagadoCuota)) {
+            cuotasPagadasRow += pagadoCuota;
+            totalPagadoRow += pagadoCuota;
+          }
+        }
+        
+        if (!isCancelled) {
+          cuotasPagadasTotal += cuotasPagadasRow;
+          totalPagos += totalPagadoRow;
+        }
+
+        // Calculate individual saldo for this order
+        const saldoRow = ventaTotal - totalPagadoRow;
+        
+        // Only add positive saldos to the pending balance
+        // This ensures overpayments don't reduce the total pending amount
+        if (saldoRow > 0) {
+          saldoPendiente += saldoRow;
+        }
+        
+        // Check if order is "Activa" (has outstanding payments)
+        if (saldoRow > 0.01) { // Consider active if saldo > $0.01
+          totalOrdenesActivas++;
+        }
+      });
+    }
+    
+    // Count installments within the date period from ALL orders (not just filtered ones)
+    // This searches through all orders on record for cuotas due in the selected period
+    const dataToSearchForInstallments = allData || data;
+    if (fromDate || toDate) {
+      dataToSearchForInstallments.forEach((row) => {
         for (let i = 1; i <= 14; i++) {
           const fechaCuotaStr = row[`Fecha cuota ${i}`];
-          const cuotaMonto = parseFloat(row[`CUOTA ${i}`] || 0);
+          const cuotaMonto = parseFloat(row[`Cuota ${i}`] || 0);
           
           if (fechaCuotaStr && cuotaMonto > 0) {
             // Parse the date using the proper utility function
@@ -130,8 +124,8 @@ export function Dashboard({ data, headers, dateFrom, dateTo }: DashboardProps) {
             }
           }
         }
-      }
-    });
+      });
+    }
 
     return {
       totalOrdenesActivas,
@@ -143,7 +137,7 @@ export function Dashboard({ data, headers, dateFrom, dateTo }: DashboardProps) {
       cuotasDelPeriodo,
       cuentasPorCobrar,
     };
-  }, [data, dateFrom, dateTo]);
+  }, [data, allData, dateFrom, dateTo]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {
