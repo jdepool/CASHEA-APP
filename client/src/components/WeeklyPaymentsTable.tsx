@@ -34,20 +34,16 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
     const cuotaNormalized = new Date(fechaCuota);
     cuotaNormalized.setHours(0, 0, 0, 0);
     
-    const sameMonth = pagoNormalized.getMonth() === cuotaNormalized.getMonth() && 
-                      pagoNormalized.getFullYear() === cuotaNormalized.getFullYear();
-    
+    // Calculate day difference: (Fecha de Pago - Fecha de Cuota)
     const DAY_MS = 1000 * 60 * 60 * 24;
-    const diffMs = cuotaNormalized.getTime() - pagoNormalized.getTime();
+    const daysDiff = Math.round((pagoNormalized.getTime() - cuotaNormalized.getTime()) / DAY_MS);
     
-    if (pagoNormalized > cuotaNormalized) {
-      return 3; // ATRASADO (late)
-    } else if (sameMonth) {
-      return 2; // A TIEMPO (on time)
-    } else if (diffMs > 15 * DAY_MS) {
-      return 1; // ADELANTADO (early)
+    // If payment was made MORE than 2 days after due date → ATRASADO (value: 2)
+    // Otherwise → A TIEMPO (value: 1)
+    if (daysDiff > 2) {
+      return 2; // ATRASADO (late)
     } else {
-      return 2; // A TIEMPO (on time)
+      return 1; // A TIEMPO (on time)
     }
   };
 
@@ -284,31 +280,19 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
                   const cuotaNormalized = new Date(fechaCuota);
                   cuotaNormalized.setHours(0, 0, 0, 0);
                   
-                  // Check if payment and due date are in the same month/year
-                  const sameMonth = pagoNormalized.getMonth() === cuotaNormalized.getMonth() && 
-                                    pagoNormalized.getFullYear() === cuotaNormalized.getFullYear();
-                  
-                  // Calculate millisecond difference for precise comparison
+                  // Calculate day difference: (Fecha de Pago - Fecha de Cuota)
                   const DAY_MS = 1000 * 60 * 60 * 24;
-                  const diffMs = cuotaNormalized.getTime() - pagoNormalized.getTime();
+                  const daysDiff = Math.round((pagoNormalized.getTime() - cuotaNormalized.getTime()) / DAY_MS);
                   
                   let status: string;
                   let badgeClass: string;
                   
-                  if (pagoNormalized > cuotaNormalized) {
-                    // Payment made AFTER due date (late)
+                  // If payment was made MORE than 2 days after due date → ATRASADO
+                  if (daysDiff > 2) {
                     status = 'ATRASADO';
                     badgeClass = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
-                  } else if (sameMonth) {
-                    // Payment and due date in the same month → A TIEMPO
-                    status = 'A TIEMPO';
-                    badgeClass = 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
-                  } else if (diffMs > 15 * DAY_MS) {
-                    // Different months AND payment made MORE than 15 days before due date → ADELANTADO
-                    status = 'ADELANTADO';
-                    badgeClass = 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
                   } else {
-                    // Different months but within 15 days → A TIEMPO
+                    // Otherwise (payment within 2 days of due date or earlier) → A TIEMPO
                     status = 'A TIEMPO';
                     badgeClass = 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
                   }
