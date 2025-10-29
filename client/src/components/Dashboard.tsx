@@ -109,7 +109,8 @@ export function Dashboard({ data, allData, headers, dateFrom, dateTo }: Dashboar
           return;
         }
         
-        for (let i = 1; i <= 14; i++) {
+        // Process cuotas 0-14 (0 = PAGO INICIAL, 1-14 = regular installments)
+        for (let i = 0; i <= 14; i++) {
           const fechaCuotaStr = row[`Fecha cuota ${i}`];
           const cuotaMonto = parseFloat(row[`Cuota ${i}`] || 0);
           
