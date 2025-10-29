@@ -404,6 +404,9 @@ export default function Home() {
                   <TabsTrigger value="upload" data-testid="tab-upload">
                     CARGAR DATOS
                   </TabsTrigger>
+                  <TabsTrigger value="marketplace" data-testid="tab-marketplace">
+                    MARKETPLACE ORDERS
+                  </TabsTrigger>
                   <TabsTrigger value="all" data-testid="tab-all">
                     TODAS LAS ÓRDENES
                   </TabsTrigger>
@@ -412,9 +415,6 @@ export default function Home() {
                   </TabsTrigger>
                   <TabsTrigger value="weekly" data-testid="tab-weekly">
                     CONCILIACION DE CUOTAS
-                  </TabsTrigger>
-                  <TabsTrigger value="marketplace" data-testid="tab-marketplace">
-                    MARKETPLACE ORDERS
                   </TabsTrigger>
                 </TabsList>
               </div>
