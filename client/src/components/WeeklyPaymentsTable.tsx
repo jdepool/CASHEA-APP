@@ -230,6 +230,10 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
                     return <span className="text-muted-foreground text-xs">—</span>;
                   }
                   
+                  // Check if payment and due date are in the same month/year
+                  const sameMonth = fechaPago.getMonth() === fechaCuota.getMonth() && 
+                                    fechaPago.getFullYear() === fechaCuota.getFullYear();
+                  
                   // Calculate millisecond difference for precise comparison
                   const DAY_MS = 1000 * 60 * 60 * 24;
                   const diffMs = fechaCuota.getTime() - fechaPago.getTime();
@@ -241,12 +245,16 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
                     // Payment made AFTER due date (late)
                     status = 'ATRASADO';
                     badgeClass = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+                  } else if (sameMonth) {
+                    // Payment and due date in the same month → A TIEMPO
+                    status = 'A TIEMPO';
+                    badgeClass = 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
                   } else if (diffMs > 15 * DAY_MS) {
-                    // Payment made MORE than 15 days before due date (advanced)
+                    // Different months AND payment made MORE than 15 days before due date → ADELANTADO
                     status = 'ADELANTADO';
                     badgeClass = 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
                   } else {
-                    // Payment made within 15 days before or on due date (on time)
+                    // Different months but within 15 days → A TIEMPO
                     status = 'A TIEMPO';
                     badgeClass = 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
                   }
