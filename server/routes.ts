@@ -543,6 +543,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         rows.push(rowObj);
       }
 
+      // Check for duplicate order numbers
+      const orderNumberHeader = allHeaders.find(h => 
+        h.toLowerCase().includes('orden') || 
+        h.toLowerCase().includes('order')
+      );
+      
+      if (orderNumberHeader) {
+        const orderNumbers = new Map<string, number[]>();
+        
+        rows.forEach((row, index) => {
+          const orderNum = String(row[orderNumberHeader] || '').trim();
+          if (orderNum) {
+            if (!orderNumbers.has(orderNum)) {
+              orderNumbers.set(orderNum, []);
+            }
+            orderNumbers.get(orderNum)!.push(index + 2); // +2 because: +1 for 0-based index, +1 for header row
+          }
+        });
+        
+        // Find duplicates
+        const duplicates: { orderNum: string; rowNumbers: number[] }[] = [];
+        orderNumbers.forEach((rowIndices, orderNum) => {
+          if (rowIndices.length > 1) {
+            duplicates.push({ orderNum, rowNumbers: rowIndices });
+          }
+        });
+        
+        if (duplicates.length > 0) {
+          const duplicateDetails = duplicates
+            .slice(0, 5) // Show first 5 duplicates
+            .map(d => `Orden ${d.orderNum} (filas ${d.rowNumbers.join(', ')})`)
+            .join('; ');
+          
+          const moreCount = duplicates.length > 5 ? ` y ${duplicates.length - 5} más` : '';
+          
+          return res.status(400).json({
+            error: `Se encontraron números de orden duplicados en el archivo: ${duplicateDetails}${moreCount}`,
+            details: `Total de órdenes duplicadas: ${duplicates.length}`
+          });
+        }
+      }
+
       // Save to database
       await storage.createMarketplaceOrder({
         fileName: req.file.originalname,

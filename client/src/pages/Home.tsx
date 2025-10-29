@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Download, FileSpreadsheet, Upload, Filter, CheckCircle2 } from "lucide-react";
+import { Download, FileSpreadsheet, Upload, Filter } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
@@ -36,7 +36,6 @@ export default function Home() {
   const [referenciaFilter, setReferenciaFilter] = useState<string>("");
   const [estadoCuotaFilter, setEstadoCuotaFilter] = useState<string>("all");
   const [showFilters, setShowFilters] = useState<boolean>(false);
-  const [hideFullyPaid, setHideFullyPaid] = useState<boolean>(false);
   
   // CONCILIACION DE CUOTAS tab filters
   const [installmentsShowFilters, setInstallmentsShowFilters] = useState<boolean>(false);
@@ -277,49 +276,6 @@ export default function Home() {
     if (!tableData || tableData.length === 0) return [];
 
     return tableData.filter((row) => {
-      // Hide fully paid orders filter
-      if (hideFullyPaid) {
-        // Exclude orders where ESTADO PAGO INICIAL = CANCELLED
-        const estadoPagoInicialHeader = headers.find(h => 
-          h.toLowerCase().includes('estado') && h.toLowerCase().includes('pago inicial')
-        );
-        if (estadoPagoInicialHeader) {
-          const estadoPagoInicial = String(row[estadoPagoInicialHeader] || '').toUpperCase().trim();
-          if (estadoPagoInicial === 'CANCELLED') {
-            return false;
-          }
-        }
-
-        // Exclude orders where STATUS ORDEN = CLOSED
-        const statusOrdenHeader = headers.find(h => 
-          h.toLowerCase().includes('status') && h.toLowerCase().includes('orden')
-        );
-        if (statusOrdenHeader) {
-          const statusOrden = String(row[statusOrdenHeader] || '').toUpperCase().trim();
-          if (statusOrden === 'CLOSED') {
-            return false;
-          }
-        }
-
-        const ventaTotal = parseFloat(row["Venta total"] || 0);
-        const pagoInicial = parseFloat(row["PAGO INICIAL"] || 0);
-        let totalPagado = isNaN(pagoInicial) ? 0 : pagoInicial;
-        
-        // Sum all installment payments
-        for (let i = 1; i <= 14; i++) {
-          const pagadoCuota = parseFloat(row[`Pagado de cuota ${i}`] || 0);
-          if (!isNaN(pagadoCuota)) {
-            totalPagado += pagadoCuota;
-          }
-        }
-        
-        const saldo = ventaTotal - totalPagado;
-        // Hide if fully paid (saldo <= $0.01)
-        if (saldo <= 0.01) {
-          return false;
-        }
-      }
-
       // Date range filter
       if (dateFrom || dateTo) {
         const fechaCompraHeader = headers.find(h => h.toLowerCase().includes('fecha de compra'));
@@ -375,7 +331,7 @@ export default function Home() {
 
       return true;
     });
-  }, [tableData, headers, dateFrom, dateTo, ordenFilter, referenciaFilter, estadoCuotaFilter, hideFullyPaid]);
+  }, [tableData, headers, dateFrom, dateTo, ordenFilter, referenciaFilter, estadoCuotaFilter]);
 
   const handleExportOrders = () => {
     if (filteredTableData.length === 0) {
@@ -581,15 +537,6 @@ export default function Home() {
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button
-                          variant={hideFullyPaid ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setHideFullyPaid(!hideFullyPaid)}
-                          data-testid="button-hide-fully-paid"
-                        >
-                          <CheckCircle2 className="h-4 w-4 mr-2" />
-                          {hideFullyPaid ? "Mostrar todas" : "Solo activas"}
-                        </Button>
                         <Button
                           variant="outline"
                           size="icon"
