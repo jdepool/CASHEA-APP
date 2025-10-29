@@ -12,7 +12,7 @@ import {
   paymentRecords,
   marketplaceOrders
 } from "@shared/schema";
-import { normalizeNumberForKey } from "@shared/numberUtils";
+import { normalizeNumberForKey, normalizeReferenceNumber } from "@shared/numberUtils";
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
 
@@ -210,7 +210,9 @@ export class DatabaseStorage implements IStorage {
         // Skip if critical fields are null/undefined
         if (orden == null || cuota == null || referencia == null) return;
         
-        const key = `${orden}_${cuota}_${referencia}`;
+        // Normalize reference number to handle leading zeros (e.g., "000437506838" === "437506838")
+        const normalizedRef = normalizeReferenceNumber(referencia);
+        const key = `${orden}_${cuota}_${normalizedRef}`;
         
         // Only keep first occurrence of each key (removes duplicates)
         if (!deduplicatedMap.has(key)) {
