@@ -230,18 +230,25 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
                     return <span className="text-muted-foreground text-xs">—</span>;
                   }
                   
+                  // Normalize dates to midnight for proper date-only comparison (ignore time)
+                  const pagoNormalized = new Date(fechaPago);
+                  pagoNormalized.setHours(0, 0, 0, 0);
+                  
+                  const cuotaNormalized = new Date(fechaCuota);
+                  cuotaNormalized.setHours(0, 0, 0, 0);
+                  
                   // Check if payment and due date are in the same month/year
-                  const sameMonth = fechaPago.getMonth() === fechaCuota.getMonth() && 
-                                    fechaPago.getFullYear() === fechaCuota.getFullYear();
+                  const sameMonth = pagoNormalized.getMonth() === cuotaNormalized.getMonth() && 
+                                    pagoNormalized.getFullYear() === cuotaNormalized.getFullYear();
                   
                   // Calculate millisecond difference for precise comparison
                   const DAY_MS = 1000 * 60 * 60 * 24;
-                  const diffMs = fechaCuota.getTime() - fechaPago.getTime();
+                  const diffMs = cuotaNormalized.getTime() - pagoNormalized.getTime();
                   
                   let status: string;
                   let badgeClass: string;
                   
-                  if (fechaPago > fechaCuota) {
+                  if (pagoNormalized > cuotaNormalized) {
                     // Payment made AFTER due date (late)
                     status = 'ATRASADO';
                     badgeClass = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
