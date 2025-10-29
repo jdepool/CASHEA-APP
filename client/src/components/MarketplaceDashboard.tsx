@@ -11,12 +11,12 @@ interface MarketplaceDashboardProps {
 export function MarketplaceDashboard({ data, headers }: MarketplaceDashboardProps) {
   // Helper function to find column names (case-insensitive)
   const findColumn = (name: string) => {
-    return headers.find(h => h.toLowerCase().includes(name.toLowerCase())) || name;
+    return headers.find(h => h.toLowerCase().includes(name.toLowerCase()));
   };
 
-  const totalUsdColumn = findColumn("total usd") || findColumn("total");
-  const pagoInicialColumn = findColumn("pago inicial usd") || findColumn("pago inicial") || findColumn("inicial");
-  const estadoEntregaColumn = findColumn("estado de entrega") || findColumn("entrega");
+  const totalUsdColumn = findColumn("total usd") || findColumn("total") || "";
+  const pagoInicialColumn = findColumn("pago inicial usd") || findColumn("pago inicial") || findColumn("inicial") || "";
+  const estadoEntregaColumn = findColumn("estado de entrega") || findColumn("entrega") || "";
 
   const metrics = useMemo(() => {
     if (!data || data.length === 0) {
