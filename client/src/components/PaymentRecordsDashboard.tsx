@@ -94,11 +94,13 @@ export function PaymentRecordsDashboard({ data, headers, ordersData }: PaymentRe
 
       // Parse cuota value(s)
       if (ordenNum && cuotaValue) {
-        // Split by comma to handle multi-installment payments (e.g., "4,5,6")
+        // Split by comma to handle multi-installment payments
+        // IMPORTANT: "3,4" counts as 2 cuotas (cuota 3 and cuota 4)
+        // This ensures Total Cuotas Pagadas counts each cuota separately
         const cuotaNumbers = cuotaValue.split(',').map(c => c.trim()).filter(c => c);
         
         cuotaNumbers.forEach(cuotaNum => {
-          // Create unique key: "order_cuota"
+          // Create unique key: "order_cuota" to avoid counting duplicates
           const key = `${ordenNum}_${cuotaNum}`;
           uniqueCuotas.add(key);
         });
