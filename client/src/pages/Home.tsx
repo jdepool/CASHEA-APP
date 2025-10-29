@@ -7,6 +7,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { AllInstallments } from "@/components/AllInstallments";
 import { PaymentRecords } from "@/components/PaymentRecords";
 import { MarketplaceOrdersTable } from "@/components/MarketplaceOrdersTable";
+import { CuotasTable } from "@/components/CuotasTable";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -410,6 +411,9 @@ export default function Home() {
                   <TabsTrigger value="all" data-testid="tab-all">
                     TODAS LAS ÓRDENES
                   </TabsTrigger>
+                  <TabsTrigger value="cuotas" data-testid="tab-cuotas">
+                    CUOTAS
+                  </TabsTrigger>
                   <TabsTrigger value="payments" data-testid="tab-payments">
                     PAGO DE CUOTAS
                   </TabsTrigger>
@@ -635,6 +639,20 @@ export default function Home() {
                     )}
                     <DataTable data={filteredTableData} headers={headers} />
                   </>
+                ) : (
+                  <div className="text-center py-12">
+                    <FileSpreadsheet className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No hay datos de órdenes</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Carga un archivo desde la pestaña "CARGAR DATOS"
+                    </p>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="cuotas" className="space-y-4">
+                {tableData.length > 0 ? (
+                  <CuotasTable tableData={tableData} />
                 ) : (
                   <div className="text-center py-12">
                     <FileSpreadsheet className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
