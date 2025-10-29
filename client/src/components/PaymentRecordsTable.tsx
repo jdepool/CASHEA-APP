@@ -15,10 +15,41 @@ interface PaymentRecordsTableProps {
 export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRecordsTableProps) {
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  
+  // Build a map of order numbers to their status from ordersData
+  const orderStatusMap = useMemo(() => {
+    const map = new Map<string, string>();
+    ordersData.forEach((order) => {
+      const ordenNum = order["Orden"];
+      const statusOrden = order["Status Orden"] || order["STATUS ORDEN"] || order["status orden"];
+      if (ordenNum != null && statusOrden != null) {
+        map.set(String(ordenNum), String(statusOrden));
+      }
+    });
+    return map;
+  }, [ordersData]);
+  
+  // Enrich records with Status Orden lookup
+  const enrichedRecords = useMemo(() => {
+    return records.map(record => {
+      const ordenNum = record['# Orden'];
+      const statusOrden = ordenNum != null 
+        ? (orderStatusMap.get(String(ordenNum)) || 'NOT FOUND')
+        : 'NOT FOUND';
+      
+      const enriched: PaymentRecord = {
+        ...record,
+        'Status Orden': statusOrden
+      };
+      return enriched;
+    });
+  }, [records, orderStatusMap]);
+  
   // Define the desired column order patterns (case-insensitive)
   const desiredOrderPatterns = [
     { pattern: /^#\s*orden$/i, display: '# Orden' },
     { pattern: /^#\s*cuota\s*pagada$/i, display: '# Cuota Pagada' },
+    { pattern: /^status\s*orden$/i, display: 'Status Orden' },
     { pattern: /^monto\s*pagado\s*en\s*ves$/i, display: 'Monto Pagado en VES' },
     { pattern: /^#\s*referencia$/i, display: '# Referencia' },
     { pattern: /^m[eé]todo\s*de\s*pago$/i, display: 'Método de Pago' },
@@ -30,8 +61,13 @@ export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRec
   // Columns to hide (case-insensitive)
   const hiddenPatterns = [/factura/i, /sucursal/i, /monto\s*asignado/i];
   
-  // Helper function to find header by pattern
+  // Helper function to find header by pattern (also check enriched columns)
   const findHeaderByPattern = (pattern: RegExp) => {
+    // First check if it's an enriched column
+    if (pattern.test('Status Orden')) {
+      return 'Status Orden';
+    }
+    // Then check original headers
     return headers.find(h => pattern.test(h));
   };
   
@@ -155,9 +191,9 @@ export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRec
   };
 
   const sortedRecords = useMemo(() => {
-    if (!sortColumn) return records;
+    if (!sortColumn) return enrichedRecords;
 
-    return [...records].sort((a, b) => {
+    return [...enrichedRecords].sort((a, b) => {
       let aVal = a[sortColumn];
       let bVal = b[sortColumn];
 
@@ -186,7 +222,7 @@ export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRec
         return bStr.localeCompare(aStr);
       }
     });
-  }, [records, sortColumn, sortDirection]);
+  }, [enrichedRecords, sortColumn, sortDirection]);
 
   if (!records || records.length === 0) {
     return (
