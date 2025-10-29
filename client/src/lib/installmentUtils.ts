@@ -1,5 +1,13 @@
 import { parseExcelDate } from "./dateUtils";
 
+export interface PaymentDetails {
+  referencia?: string;
+  metodoPago?: string;
+  montoPagadoUSD?: number;
+  montoPagadoVES?: number;
+  tasaCambio?: number;
+}
+
 export interface Installment {
   orden: string;
   fechaCuota: Date | null;
@@ -8,6 +16,7 @@ export interface Installment {
   estadoCuota: string;
   fechaPago: Date | null;
   fechaPagoReal?: Date | null;
+  paymentDetails?: PaymentDetails;
 }
 
 /**

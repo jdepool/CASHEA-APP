@@ -168,6 +168,12 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
                 )}
               </div>
             </th>
+            <th className="text-left py-3 px-4 font-semibold text-sm" data-testid="header-referencia">
+              # Referencia
+            </th>
+            <th className="text-left py-3 px-4 font-semibold text-sm" data-testid="header-metodo-pago">
+              Método de Pago
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -198,6 +204,16 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
                     {formatDate((inst as any).fechaPagoReal)}
                   </span>
                 ) : (
+                  <span className="text-muted-foreground text-xs">—</span>
+                )}
+              </td>
+              <td className="py-3 px-4 text-sm font-mono" data-testid={`cell-referencia-${idx}`}>
+                {(inst as any).paymentDetails?.referencia || (
+                  <span className="text-muted-foreground text-xs">—</span>
+                )}
+              </td>
+              <td className="py-3 px-4 text-sm" data-testid={`cell-metodo-pago-${idx}`}>
+                {(inst as any).paymentDetails?.metodoPago || (
                   <span className="text-muted-foreground text-xs">—</span>
                 )}
               </td>

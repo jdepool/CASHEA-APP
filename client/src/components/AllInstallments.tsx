@@ -104,7 +104,18 @@ export function AllInstallments({
             const parsedDate = parseExcelDate(fechaTasaCambio);
             
             if (parsedDate) {
-              return { ...installment, fechaPagoReal: parsedDate };
+              // Store the full payment record details for display
+              return { 
+                ...installment, 
+                fechaPagoReal: parsedDate,
+                paymentDetails: {
+                  referencia: matchingPayment['# Referencia'] || matchingPayment['#Referencia'] || matchingPayment['Referencia'],
+                  metodoPago: matchingPayment['Método de Pago'] || matchingPayment['Metodo de Pago'] || matchingPayment['MÉTODO DE PAGO'],
+                  montoPagadoUSD: matchingPayment['Monto Pagado en USD'] || matchingPayment['MONTO PAGADO EN USD'] || matchingPayment['Monto'],
+                  montoPagadoVES: matchingPayment['Monto Pagado en VES'] || matchingPayment['MONTO PAGADO EN VES'],
+                  tasaCambio: matchingPayment['Tasa de Cambio'] || matchingPayment['TASA DE CAMBIO']
+                }
+              };
             }
           }
         }
@@ -173,7 +184,14 @@ export function AllInstallments({
                   monto: typeof montoPagado === 'number' ? montoPagado : parseFloat(String(montoPagado || 0).replace(/[^0-9.-]/g, '')) || 0,
                   estadoCuota: 'Done', // Since there's a payment, mark as Done
                   fechaPago: null,
-                  fechaPagoReal: parsedDate // May be null if date is unparseable
+                  fechaPagoReal: parsedDate, // May be null if date is unparseable
+                  paymentDetails: {
+                    referencia: payment['# Referencia'] || payment['#Referencia'] || payment['Referencia'],
+                    metodoPago: payment['Método de Pago'] || payment['Metodo de Pago'] || payment['MÉTODO DE PAGO'],
+                    montoPagadoUSD: payment['Monto Pagado en USD'] || payment['MONTO PAGADO EN USD'] || payment['Monto'],
+                    montoPagadoVES: payment['Monto Pagado en VES'] || payment['MONTO PAGADO EN VES'],
+                    tasaCambio: payment['Tasa de Cambio'] || payment['TASA DE CAMBIO']
+                  }
                 });
               }
             }
