@@ -100,9 +100,15 @@ export function Dashboard({ data, allData, headers, dateFrom, dateTo }: Dashboar
     
     // Count installments within the date period from ALL orders (not just filtered ones)
     // This searches through all orders on record for cuotas due in the selected period
+    // Excludes cancelled orders from the count
     const dataToSearchForInstallments = allData || data;
     if (fromDate || toDate) {
       dataToSearchForInstallments.forEach((row) => {
+        // Skip cancelled orders
+        if (isCancelledOrder(row)) {
+          return;
+        }
+        
         for (let i = 1; i <= 14; i++) {
           const fechaCuotaStr = row[`Fecha cuota ${i}`];
           const cuotaMonto = parseFloat(row[`Cuota ${i}`] || 0);
