@@ -25,8 +25,12 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
   const getStatusValue = (inst: any): number => {
     const fechaPago = inst.fechaPagoReal;
     const fechaCuota = inst.fechaCuota;
+    const estadoCuota = (inst.estadoCuota || '').toLowerCase();
     
-    // No status if no payment
+    // NO DEPOSITADO: Order is DONE but no payment received
+    if (!fechaPago && estadoCuota === 'done') return 5;
+    
+    // No status if no payment and order not done
     if (!fechaPago) return 0;
     
     // OTRO ALIADO: Payment exists but no due date
@@ -286,8 +290,18 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
                 {(() => {
                   const fechaPago = (inst as any).fechaPagoReal;
                   const fechaCuota = inst.fechaCuota;
+                  const estadoCuota = (inst.estadoCuota || '').toLowerCase();
                   
-                  // No status if no payment
+                  // NO DEPOSITADO: Order is DONE but no payment received
+                  if (!fechaPago && estadoCuota === 'done') {
+                    return (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400">
+                        NO DEPOSITADO
+                      </span>
+                    );
+                  }
+                  
+                  // No status if no payment and order not done
                   if (!fechaPago) {
                     return <span className="text-muted-foreground text-xs">—</span>;
                   }

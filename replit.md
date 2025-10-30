@@ -30,12 +30,13 @@ The application employs a client-server architecture, utilizing a React frontend
 - **Data Persistence**: All processed data is automatically saved to PostgreSQL and reloaded on app start.
 - **Duplicate Handling**: Orders are replaced by new uploads based on `Orden` number. Payment records update based on `(# Orden, # Cuota Pagada, # Referencia)`, allowing multiple payments for the same installment if reference numbers differ.
 - **Installments View (`CONCILIACION DE CUOTAS`)**: Displays all installments with collapsible filters (date range, order, status, date field selector: "Fecha de Pago" vs. "Fecha Cuota") and an `InstallmentsDashboard` showing status-based and total metrics.
-    - **STATUS Column**: Categorizes payment timing with four statuses:
+    - **STATUS Column**: Categorizes payment timing with five statuses:
         - **ADELANTADO** (blue badge): Payment made at least 15 days before due date AND cuota month is after payment month
         - **A TIEMPO** (green badge): Payment made within 2 days of due date (before or after) OR payment early but not meeting ADELANTADO criteria
         - **ATRASADO** (red badge): Payment made more than 2 days after the due date
         - **OTRO ALIADO** (purple badge): Payment exists but there is no due date (fecha de cuota)
-    - **STATUS Sorting**: Click STATUS column header to sort by: No status → ADELANTADO → A TIEMPO → ATRASADO → OTRO ALIADO
+        - **NO DEPOSITADO** (orange badge): Order status is DONE but there is no payment received (no fecha de pago)
+    - **STATUS Sorting**: Click STATUS column header to sort by: No status → ADELANTADO → A TIEMPO → ATRASADO → OTRO ALIADO → NO DEPOSITADO
 - **Payment Records View (`PAGO DE CUOTAS`)**: Allows uploading and viewing payment transactions with flexible columns, auto-detection/formatting of currencies, and a dashboard. Highlights partial payments and supports multi-installment payments.
 - **Cuotas View (`CUOTAS`)**: Displays all installments vertically with collapsible filters (date range, order, status) and period-based dashboard metrics:
     - **Filter State Persistence**: All filter state managed in Home.tsx parent component, persists when switching between tabs
