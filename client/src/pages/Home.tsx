@@ -763,7 +763,7 @@ export default function Home() {
               </TabsContent>
 
               <TabsContent value="monthly-report">
-                <MonthlyReport tableData={tableData} />
+                <MonthlyReport marketplaceData={marketplaceData} />
               </TabsContent>
             </Tabs>
           )}
