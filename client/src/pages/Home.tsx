@@ -8,6 +8,7 @@ import { AllInstallments } from "@/components/AllInstallments";
 import { PaymentRecords } from "@/components/PaymentRecords";
 import { MarketplaceOrdersTable } from "@/components/MarketplaceOrdersTable";
 import { CuotasTable } from "@/components/CuotasTable";
+import { MonthlyReport } from "@/components/MonthlyReport";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -427,6 +428,9 @@ export default function Home() {
                   <TabsTrigger value="weekly" data-testid="tab-weekly">
                     CONCILIACION DE CUOTAS
                   </TabsTrigger>
+                  <TabsTrigger value="monthly-report" data-testid="tab-monthly-report">
+                    REPORTE MENSUAL
+                  </TabsTrigger>
                 </TabsList>
               </div>
 
@@ -756,6 +760,10 @@ export default function Home() {
                     </p>
                   </div>
                 )}
+              </TabsContent>
+
+              <TabsContent value="monthly-report">
+                <MonthlyReport tableData={tableData} />
               </TabsContent>
             </Tabs>
           )}
