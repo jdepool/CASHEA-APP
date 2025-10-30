@@ -118,6 +118,12 @@ export function MonthlyReport({
         totalPagoInicial: 0,
         montoFinanciado: 0,
         porcentajeFinanciado: 0,
+        serviciosPrestados: 0,
+        iva16: 0,
+        ivaRetenido: 0,
+        ivaPagarCashea: 0,
+        islrRetenido: 0,
+        totalServiciosTecnologicos: 0,
       };
     }
 
@@ -140,11 +146,25 @@ export function MonthlyReport({
     const montoFinanciado = totalVentas - totalPagoInicial;
     const porcentajeFinanciado = totalVentas > 0 ? (montoFinanciado / totalVentas) * 100 : 0;
 
+    // TODO: Calculate these values based on user's explanation
+    const serviciosPrestados = 0;
+    const iva16 = 0;
+    const ivaRetenido = 0;
+    const ivaPagarCashea = 0;
+    const islrRetenido = 0;
+    const totalServiciosTecnologicos = 0;
+
     return {
       totalVentas,
       totalPagoInicial,
       montoFinanciado,
       porcentajeFinanciado,
+      serviciosPrestados,
+      iva16,
+      ivaRetenido,
+      ivaPagarCashea,
+      islrRetenido,
+      totalServiciosTecnologicos,
     };
   }, [filteredData, headers]);
 
@@ -212,6 +232,57 @@ export function MonthlyReport({
               <span className="italic text-muted-foreground">Porcentaje Financiado</span>
               <span className="font-mono text-right italic text-muted-foreground" data-testid="porcentaje-financiado">
                 {metrics.porcentajeFinanciado.toFixed(0)}%
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>SERVICIOS TECNOLÓGICOS</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center py-2">
+              <span>Servicios Prestados</span>
+              <span className="font-mono text-right" data-testid="servicios-prestados">
+                {formatCurrency(metrics.serviciosPrestados)}
+              </span>
+            </div>
+
+            <div className="flex justify-between items-center py-2">
+              <span>(+) IVA 16%</span>
+              <span className="font-mono text-right" data-testid="iva-16">
+                {formatCurrency(metrics.iva16)}
+              </span>
+            </div>
+
+            <div className="flex justify-between items-center py-2">
+              <span>(-) IVA retenido por aliado (75%)</span>
+              <span className="font-mono text-right" data-testid="iva-retenido">
+                {formatCurrency(metrics.ivaRetenido)}
+              </span>
+            </div>
+
+            <div className="flex justify-between items-center py-2">
+              <span>IVA a pagar a CASHEA</span>
+              <span className="font-mono text-right" data-testid="iva-pagar-cashea">
+                {formatCurrency(metrics.ivaPagarCashea)}
+              </span>
+            </div>
+
+            <div className="flex justify-between items-center py-2">
+              <span>(-) ISLR retenido por aliado</span>
+              <span className="font-mono text-right" data-testid="islr-retenido">
+                {formatCurrency(metrics.islrRetenido)}
+              </span>
+            </div>
+
+            <div className="flex justify-between items-center py-2 bg-muted/50 px-3 -mx-3 rounded-md">
+              <span className="font-semibold">(-) Total Servicios Tecnológicos</span>
+              <span className="font-mono font-semibold text-right" data-testid="total-servicios-tecnologicos">
+                {formatCurrency(metrics.totalServiciosTecnologicos)}
               </span>
             </div>
           </div>
