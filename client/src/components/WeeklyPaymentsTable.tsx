@@ -38,13 +38,27 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
     const DAY_MS = 1000 * 60 * 60 * 24;
     const daysDiff = Math.round((pagoNormalized.getTime() - cuotaNormalized.getTime()) / DAY_MS);
     
-    // If payment was made MORE than 2 days after due date → ATRASADO (value: 2)
-    // Otherwise → A TIEMPO (value: 1)
-    if (daysDiff > 2) {
-      return 2; // ATRASADO (late)
-    } else {
-      return 1; // A TIEMPO (on time)
+    // Get month/year for comparison
+    const pagoMonth = pagoNormalized.getMonth();
+    const pagoYear = pagoNormalized.getFullYear();
+    const cuotaMonth = cuotaNormalized.getMonth();
+    const cuotaYear = cuotaNormalized.getFullYear();
+    
+    // ADELANTADO: Payment made at least 15 days before due date AND cuota month is after payment month
+    if (daysDiff <= -15) {
+      // Check if cuota month is after payment month
+      if (cuotaYear > pagoYear || (cuotaYear === pagoYear && cuotaMonth > pagoMonth)) {
+        return 1; // ADELANTADO (advanced)
+      }
     }
+    
+    // ATRASADO: Payment made MORE than 2 days after due date
+    if (daysDiff > 2) {
+      return 3; // ATRASADO (late)
+    }
+    
+    // A TIEMPO: Payment made within 2 days of due date or earlier (but not ADELANTADO)
+    return 2; // A TIEMPO (on time)
   };
 
   // Sort installments based on selected column
@@ -284,15 +298,32 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
                   const DAY_MS = 1000 * 60 * 60 * 24;
                   const daysDiff = Math.round((pagoNormalized.getTime() - cuotaNormalized.getTime()) / DAY_MS);
                   
+                  // Get month/year for comparison
+                  const pagoMonth = pagoNormalized.getMonth();
+                  const pagoYear = pagoNormalized.getFullYear();
+                  const cuotaMonth = cuotaNormalized.getMonth();
+                  const cuotaYear = cuotaNormalized.getFullYear();
+                  
                   let status: string;
                   let badgeClass: string;
                   
-                  // If payment was made MORE than 2 days after due date → ATRASADO
-                  if (daysDiff > 2) {
+                  // ADELANTADO: Payment made at least 15 days before due date AND cuota month is after payment month
+                  if (daysDiff <= -15) {
+                    // Check if cuota month is after payment month
+                    if (cuotaYear > pagoYear || (cuotaYear === pagoYear && cuotaMonth > pagoMonth)) {
+                      status = 'ADELANTADO';
+                      badgeClass = 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
+                    } else {
+                      // Payment early but not meeting ADELANTADO criteria → A TIEMPO
+                      status = 'A TIEMPO';
+                      badgeClass = 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+                    }
+                  } else if (daysDiff > 2) {
+                    // ATRASADO: Payment made MORE than 2 days after due date
                     status = 'ATRASADO';
                     badgeClass = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
                   } else {
-                    // Otherwise (payment within 2 days of due date or earlier) → A TIEMPO
+                    // A TIEMPO: Payment made within 2 days of due date or earlier (but not ADELANTADO)
                     status = 'A TIEMPO';
                     badgeClass = 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
                   }
