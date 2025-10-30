@@ -26,8 +26,13 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
     const fechaPago = inst.fechaPagoReal;
     const fechaCuota = inst.fechaCuota;
     
-    if (!fechaPago || !fechaCuota) return 0; // No status (—)
+    // No status if no payment
+    if (!fechaPago) return 0;
     
+    // OTRO ALIADO: Payment exists but no due date
+    if (fechaCuota == null) return 4;
+    
+    // If we have both dates, calculate the status
     const pagoNormalized = new Date(fechaPago);
     pagoNormalized.setHours(0, 0, 0, 0);
     
@@ -282,16 +287,25 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
                   const fechaPago = (inst as any).fechaPagoReal;
                   const fechaCuota = inst.fechaCuota;
                   
-                  // Only show status if payment has been made and due date exists
-                  if (!fechaPago || !fechaCuota) {
+                  // No status if no payment
+                  if (!fechaPago) {
                     return <span className="text-muted-foreground text-xs">—</span>;
                   }
                   
-                  // Normalize dates to midnight for proper date-only comparison (ignore time)
+                  // OTRO ALIADO: Payment exists but no due date
+                  if (fechaCuota == null) {
+                    return (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
+                        OTRO ALIADO
+                      </span>
+                    );
+                  }
+                  
+                  // If we have both dates, calculate the status
                   const pagoNormalized = new Date(fechaPago);
                   pagoNormalized.setHours(0, 0, 0, 0);
                   
-                  const cuotaNormalized = new Date(fechaCuota);
+                  const cuotaNormalized = new Date(fechaCuota!);
                   cuotaNormalized.setHours(0, 0, 0, 0);
                   
                   // Calculate day difference: (Fecha de Pago - Fecha de Cuota)
