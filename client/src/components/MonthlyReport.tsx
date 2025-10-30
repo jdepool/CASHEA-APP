@@ -2,12 +2,27 @@ import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileSpreadsheet } from "lucide-react";
 import { normalizeNumber } from "@shared/numberUtils";
+import { parseDDMMYYYY, parseExcelDate } from "@/lib/dateUtils";
 
 interface MonthlyReportProps {
   marketplaceData: any;
+  dateFrom: string;
+  dateTo: string;
+  estadoFilter: string;
+  ordenFilter: string;
+  estadoEntregaFilter: string;
+  referenciaFilter: string;
 }
 
-export function MonthlyReport({ marketplaceData }: MonthlyReportProps) {
+export function MonthlyReport({ 
+  marketplaceData,
+  dateFrom,
+  dateTo,
+  estadoFilter,
+  ordenFilter,
+  estadoEntregaFilter,
+  referenciaFilter
+}: MonthlyReportProps) {
   const data = marketplaceData?.data?.rows || [];
   const headers = marketplaceData?.data?.headers || [];
 
@@ -16,8 +31,88 @@ export function MonthlyReport({ marketplaceData }: MonthlyReportProps) {
     return headers.find((h: string) => h.toLowerCase().includes(name.toLowerCase()));
   };
 
+  const estadoColumn = findColumn("estado pago");
+  const ordenColumn = findColumn("# orden") || findColumn("orden");
+  const estadoEntregaColumn = findColumn("estado de entrega") || findColumn("entrega");
+  const referenciaColumn = findColumn("# referencia") || findColumn("referencia");
+  const dateColumn = findColumn("fecha") || findColumn("date") || headers.find((h: string) => h.toLowerCase().includes("fecha"));
+
+  // Apply filters to get filtered data (same logic as MarketplaceOrdersTable)
+  const filteredData = useMemo(() => {
+    return data.filter((row: any) => {
+      // Date filter (if date column exists)
+      if (dateColumn && (dateFrom || dateTo)) {
+        const rowDate = row[dateColumn];
+        if (rowDate) {
+          let rowDateObj: Date | null = null;
+          if (typeof rowDate === 'string') {
+            const parsedDate = parseDDMMYYYY(rowDate);
+            if (parsedDate) {
+              rowDateObj = parsedDate;
+            } else {
+              rowDateObj = new Date(rowDate);
+              if (isNaN(rowDateObj.getTime())) {
+                rowDateObj = null;
+              }
+            }
+          } else if (rowDate instanceof Date) {
+            rowDateObj = rowDate;
+          } else if (typeof rowDate === 'number') {
+            const excelDate = parseExcelDate(rowDate);
+            if (excelDate) {
+              rowDateObj = excelDate;
+            } else {
+              rowDateObj = new Date(rowDate);
+            }
+          }
+
+          if (rowDateObj && !isNaN(rowDateObj.getTime())) {
+            if (dateFrom) {
+              const fromDate = parseDDMMYYYY(dateFrom);
+              if (fromDate && rowDateObj < fromDate) return false;
+            }
+            if (dateTo) {
+              const toDate = parseDDMMYYYY(dateTo);
+              if (toDate) {
+                const endOfDay = new Date(toDate);
+                endOfDay.setHours(23, 59, 59, 999);
+                if (rowDateObj > endOfDay) return false;
+              }
+            }
+          }
+        }
+      }
+
+      // Estado filter
+      if (estadoFilter !== "all" && estadoColumn) {
+        const rowEstado = String(row[estadoColumn] || "");
+        if (rowEstado !== estadoFilter) return false;
+      }
+
+      // Orden filter
+      if (ordenFilter && ordenColumn) {
+        const rowOrden = String(row[ordenColumn] || "").toLowerCase();
+        if (!rowOrden.includes(ordenFilter.toLowerCase())) return false;
+      }
+
+      // Estado de entrega filter
+      if (estadoEntregaFilter !== "all" && estadoEntregaColumn) {
+        const rowEstadoEntrega = String(row[estadoEntregaColumn] || "");
+        if (rowEstadoEntrega !== estadoEntregaFilter) return false;
+      }
+
+      // Referencia filter
+      if (referenciaFilter && referenciaColumn) {
+        const rowReferencia = String(row[referenciaColumn] || "").toLowerCase();
+        if (!rowReferencia.includes(referenciaFilter.toLowerCase())) return false;
+      }
+
+      return true;
+    });
+  }, [data, dateFrom, dateTo, estadoFilter, ordenFilter, estadoEntregaFilter, referenciaFilter, dateColumn, estadoColumn, ordenColumn, estadoEntregaColumn, referenciaColumn]);
+
   const metrics = useMemo(() => {
-    if (!data || data.length === 0) {
+    if (!filteredData || filteredData.length === 0) {
       return {
         totalVentas: 0,
         totalPagoInicial: 0,
@@ -32,7 +127,7 @@ export function MonthlyReport({ marketplaceData }: MonthlyReportProps) {
     let totalVentas = 0;
     let totalPagoInicial = 0;
 
-    data.forEach((row: any) => {
+    filteredData.forEach((row: any) => {
       const totalUsdValue = normalizeNumber(row[totalUsdColumn]);
       const totalUsd = isNaN(totalUsdValue) ? 0 : totalUsdValue;
       const pagoInicialValue = normalizeNumber(row[pagoInicialColumn]);
@@ -51,7 +146,7 @@ export function MonthlyReport({ marketplaceData }: MonthlyReportProps) {
       montoFinanciado,
       porcentajeFinanciado,
     };
-  }, [data, headers]);
+  }, [filteredData, headers]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {

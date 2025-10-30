@@ -763,7 +763,15 @@ export default function Home() {
               </TabsContent>
 
               <TabsContent value="monthly-report">
-                <MonthlyReport marketplaceData={marketplaceData} />
+                <MonthlyReport 
+                  marketplaceData={marketplaceData}
+                  dateFrom={marketplaceDateFrom}
+                  dateTo={marketplaceDateTo}
+                  estadoFilter={marketplaceEstadoFilter}
+                  ordenFilter={marketplaceOrdenFilter}
+                  estadoEntregaFilter={marketplaceEstadoEntregaFilter}
+                  referenciaFilter={marketplaceReferenciaFilter}
+                />
               </TabsContent>
             </Tabs>
           )}

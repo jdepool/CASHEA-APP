@@ -16,7 +16,7 @@ The application employs a client-server architecture, utilizing a React frontend
 **UI/UX Decisions**:
 - **Design System**: Professional and clean UI with Tailwind CSS and Shadcn UI.
 - **Theming**: Dark/light mode toggle with persistence.
-- **Layout**: Tabbed navigation for `CARGAR DATOS`, `TODAS LAS ÓRDENES`, `CONCILIACION DE CUOTAS`, `PAGO DE CUOTAS`, and `MARKETPLACE ORDERS`.
+- **Layout**: Tabbed navigation for `CARGAR DATOS`, `MARKETPLACE ORDERS`, `TODAS LAS ÓRDENES`, `CUOTAS`, `PAGO DE CUOTAS`, `CONCILIACION DE CUOTAS`, and `REPORTE MENSUAL`.
 - **Data Presentation**: Dashboards displaying key metrics (e.g., active orders, total sales, pending balance), DataTables with sticky headers and horizontal scroll for main order data, WeeklyPaymentsTable for installments, and PaymentRecordsTable with dynamic column adjustment. Semantic colored badges are used for payment statuses.
 - **User Feedback**: Toast notifications, animated spinners for loading, and clear empty states.
 
@@ -50,6 +50,15 @@ The application employs a client-server architecture, utilizing a React frontend
     - **Filtered Count Display**: Shows "X de Y registros" when filters are active
     - **Clear Filters**: One-click button to reset all filters
     - **Flexible Column Detection**: Uses case-insensitive matching to find columns (e.g., "estado pago", "# orden")
+- **Monthly Report View (`REPORTE MENSUAL`)**: Displays financial summary metrics calculated from marketplace order data:
+    - **Dynamic Metrics**: All metrics update in real-time based on the same filters applied in the MARKETPLACE ORDERS tab
+    - **Ventas Totales (incluye IVA)**: Sum of "Total USD" column from filtered marketplace data
+    - **Monto Pagado en Caja**: Sum of "Pago Inicial USD" column from filtered marketplace data
+    - **Monto Financiado**: Calculated as `Ventas Totales - Monto Pagado en Caja`
+    - **Porcentaje Financiado**: Calculated as `(Monto Financiado / Ventas Totales) * 100`
+    - **Filter Synchronization**: Uses the same date range, estado, orden, estado de entrega, and referencia filters as MARKETPLACE ORDERS
+    - **Currency Formatting**: Values displayed with Spanish number formatting (comma as thousand separator, period as decimal)
+    - **Empty State**: Shows prompt to upload marketplace data when no data is available
 - **Data Export**: Export current table view to Excel.
 - **Table Sorting**: All major tables support column sorting with visual indicators.
 - **Date Handling**: Automatic conversion of Excel serial dates and various date formats.
