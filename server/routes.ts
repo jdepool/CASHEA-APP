@@ -715,16 +715,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const allHeaders = jsonData[0] as string[];
+      // Find the header row by looking for bank statement keywords
+      const bankKeywords = ['fecha', 'debe', 'haber', 'saldo', 'transacción', 'transaccion', 'referencia', 'descripción', 'descripcion'];
+      let headerRowIndex = -1;
+      let allHeaders: string[] = [];
+
+      for (let i = 0; i < Math.min(jsonData.length, 20); i++) {
+        const row = jsonData[i];
+        if (!row || row.length === 0) continue;
+
+        const rowStr = row.map(cell => String(cell || '').toLowerCase().trim()).join(' ');
+        const keywordsFound = bankKeywords.filter(keyword => rowStr.includes(keyword)).length;
+
+        // If we find at least 3 bank keywords in this row, it's likely the header
+        if (keywordsFound >= 3) {
+          headerRowIndex = i;
+          allHeaders = row.map(cell => String(cell || '').trim());
+          console.log(`Found header row at index ${i} with keywords:`, allHeaders);
+          break;
+        }
+      }
+
+      // If no header row found with keywords, fall back to first non-empty row
+      if (headerRowIndex === -1) {
+        for (let i = 0; i < Math.min(jsonData.length, 20); i++) {
+          const row = jsonData[i];
+          if (row && row.length > 0 && row.some(cell => String(cell || '').trim() !== '')) {
+            headerRowIndex = i;
+            allHeaders = row.map(cell => String(cell || '').trim());
+            console.log(`Using first non-empty row at index ${i} as header:`, allHeaders);
+            break;
+          }
+        }
+      }
       
-      if (!allHeaders || allHeaders.length === 0) {
+      if (headerRowIndex === -1 || !allHeaders || allHeaders.length === 0) {
         return res.status(400).json({
-          error: 'El archivo no contiene encabezados válidos'
+          error: 'El archivo no contiene encabezados válidos. Verifique que el archivo contenga columnas como Fecha, Debe, Haber, Saldo.'
         });
       }
 
-      // Use all headers from the file as-is
-      const rows = jsonData.slice(1).map(row => {
+      // Process rows after the header row
+      const rows = jsonData.slice(headerRowIndex + 1).map(row => {
         const rowObj: any = {};
         allHeaders.forEach((header, idx) => {
           rowObj[header] = (row[idx] !== undefined) ? row[idx] : "";
@@ -735,7 +767,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return Object.values(row).some(value => value != null && String(value).trim() !== '');
       });
 
-      console.log(`Filtered ${jsonData.length - 1 - rows.length} empty rows from bank statement`);
+      console.log(`Filtered ${jsonData.length - headerRowIndex - 1 - rows.length} empty rows from bank statement`);
       console.log('Bank statement processed:', {
         fileName: req.file.originalname,
         headers: allHeaders,
