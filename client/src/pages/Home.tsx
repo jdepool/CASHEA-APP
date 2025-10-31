@@ -10,6 +10,7 @@ import { MarketplaceOrdersTable } from "@/components/MarketplaceOrdersTable";
 import { CuotasTable } from "@/components/CuotasTable";
 import { MonthlyReport } from "@/components/MonthlyReport";
 import { MasterFilter } from "@/components/MasterFilter";
+import { BankStatementsTable } from "@/components/BankStatementsTable";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,7 @@ export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedPaymentFile, setSelectedPaymentFile] = useState<File | null>(null);
   const [selectedMarketplaceFile, setSelectedMarketplaceFile] = useState<File | null>(null);
+  const [selectedBankFile, setSelectedBankFile] = useState<File | null>(null);
   const [tableData, setTableData] = useState<any[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -286,6 +288,51 @@ export default function Home() {
     setSelectedMarketplaceFile(null);
   }, []);
 
+  // Bank statement upload mutation
+  const uploadBankMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch('/api/upload-bank-statement', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Error al cargar el archivo');
+      }
+
+      return response.json();
+    },
+    onSuccess: async (data) => {
+      // Refetch bank statements query
+      await queryClient.refetchQueries({ queryKey: ['/api/bank-statements'] });
+      
+      toast({
+        title: "Estado de cuenta cargado",
+        description: data.message || `${data.data.rowCount} registros importados`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error al cargar el archivo",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleBankFileSelect = useCallback((file: File) => {
+    setSelectedBankFile(file);
+    uploadBankMutation.mutate(file);
+  }, [uploadBankMutation]);
+
+  const handleClearBankFile = useCallback(() => {
+    setSelectedBankFile(null);
+  }, []);
+
   // Filter logic for TODAS LAS ORDENES tab
   const filteredTableData = useMemo(() => {
     if (!tableData || tableData.length === 0) return [];
@@ -478,6 +525,9 @@ export default function Home() {
                   <TabsTrigger value="cuotas" data-testid="tab-cuotas">
                     CUOTAS
                   </TabsTrigger>
+                  <TabsTrigger value="banco" data-testid="tab-banco">
+                    BANCO
+                  </TabsTrigger>
                   <TabsTrigger value="payments" data-testid="tab-payments">
                     PAGO DE CUOTAS
                   </TabsTrigger>
@@ -500,7 +550,7 @@ export default function Home() {
                   </p>
                 </div>
 
-                <div className="grid md:grid-cols-3 gap-6">
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
                   {/* Orders Upload Section */}
                   <div className="space-y-4">
                     <div className="bg-card border rounded-lg p-6">
@@ -586,6 +636,39 @@ export default function Home() {
                           onClearFile={handleClearMarketplaceFile}
                           onInvalidFile={handleInvalidFile}
                           inputId="file-upload-marketplace"
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Bank Statement Upload Section */}
+                  <div className="space-y-4">
+                    <div className="bg-card border rounded-lg p-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2 bg-primary/10 rounded-lg">
+                          <FileSpreadsheet className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold">Estado de Cuenta</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Archivo de estado de cuenta bancario
+                          </p>
+                        </div>
+                      </div>
+                      {uploadBankMutation.isPending ? (
+                        <div className="flex items-center justify-center py-8 border-2 border-dashed rounded-lg">
+                          <div className="text-center">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
+                            <p className="text-xs text-muted-foreground">Procesando archivo...</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <FileUpload
+                          onFileSelect={handleBankFileSelect}
+                          selectedFile={selectedBankFile}
+                          onClearFile={handleClearBankFile}
+                          onInvalidFile={handleInvalidFile}
+                          inputId="file-upload-bank"
                         />
                       )}
                     </div>
@@ -744,6 +827,14 @@ export default function Home() {
                     </p>
                   </div>
                 )}
+              </TabsContent>
+
+              <TabsContent value="banco" className="space-y-4">
+                <BankStatementsTable 
+                  masterDateFrom={masterDateFrom}
+                  masterDateTo={masterDateTo}
+                  masterOrden={masterOrden}
+                />
               </TabsContent>
 
               <TabsContent value="payments">

@@ -7,10 +7,13 @@ import {
   type InsertPaymentRecord,
   type MarketplaceOrder,
   type InsertMarketplaceOrder,
+  type BankStatement,
+  type InsertBankStatement,
   users,
   orders,
   paymentRecords,
-  marketplaceOrders
+  marketplaceOrders,
+  bankStatements
 } from "@shared/schema";
 import { normalizeNumberForKey, normalizeReferenceNumber } from "@shared/numberUtils";
 import { db } from "./db";
@@ -46,6 +49,9 @@ export interface IStorage {
   
   createMarketplaceOrder(marketplaceOrder: InsertMarketplaceOrder): Promise<MarketplaceOrder>;
   getLatestMarketplaceOrder(): Promise<MarketplaceOrder | undefined>;
+  
+  createBankStatement(bankStatement: InsertBankStatement): Promise<BankStatement>;
+  getLatestBankStatement(): Promise<BankStatement | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -384,6 +390,37 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(marketplaceOrders.uploadedAt))
       .limit(1);
     return marketplaceOrder || undefined;
+  }
+
+  async createBankStatement(insertBankStatement: InsertBankStatement): Promise<BankStatement> {
+    // Use transaction to ensure atomic delete+insert
+    // If insert fails, delete is rolled back automatically
+    return await db.transaction(async (tx) => {
+      // Delete all existing bank statements
+      await tx.delete(bankStatements);
+      
+      // Insert new bank statement
+      const [bankStatement] = await tx
+        .insert(bankStatements)
+        .values({
+          fileName: insertBankStatement.fileName,
+          headers: insertBankStatement.headers as any,
+          rows: insertBankStatement.rows as any,
+          rowCount: insertBankStatement.rowCount,
+        })
+        .returning();
+      
+      return bankStatement;
+    });
+  }
+
+  async getLatestBankStatement(): Promise<BankStatement | undefined> {
+    const [bankStatement] = await db
+      .select()
+      .from(bankStatements)
+      .orderBy(desc(bankStatements.uploadedAt))
+      .limit(1);
+    return bankStatement || undefined;
   }
 }
 

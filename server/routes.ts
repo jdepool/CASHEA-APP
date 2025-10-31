@@ -658,6 +658,153 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST endpoint to upload bank statements
+  app.post('/api/upload-bank-statement', (req, res, next) => {
+    upload.single('file')(req, res, (err) => {
+      if (err) {
+        if (err instanceof multer.MulterError) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({ 
+              error: 'El archivo es demasiado grande. Tamaño máximo: 10MB' 
+            });
+          }
+          return res.status(400).json({ 
+            error: `Error al cargar el archivo: ${err.message}` 
+          });
+        }
+        return res.status(400).json({ 
+          error: err.message || 'Solo se permiten archivos Excel (.xlsx, .xls)' 
+        });
+      }
+      next();
+    });
+  }, async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ 
+          error: 'No se proporcionó ningún archivo' 
+        });
+      }
+
+      const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+      
+      if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+        return res.status(400).json({
+          error: 'El archivo Excel no contiene hojas de cálculo'
+        });
+      }
+
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+
+      if (!worksheet) {
+        return res.status(400).json({
+          error: 'No se pudo leer la hoja de cálculo'
+        });
+      }
+
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+        header: 1,
+        defval: "",
+        raw: false,
+      }) as any[][];
+
+      if (jsonData.length === 0) {
+        return res.status(400).json({
+          error: 'El archivo Excel está vacío'
+        });
+      }
+
+      const allHeaders = jsonData[0] as string[];
+      
+      if (!allHeaders || allHeaders.length === 0) {
+        return res.status(400).json({
+          error: 'El archivo no contiene encabezados válidos'
+        });
+      }
+
+      // Use all headers from the file as-is
+      const rows = jsonData.slice(1).map(row => {
+        const rowObj: any = {};
+        allHeaders.forEach((header, idx) => {
+          rowObj[header] = (row[idx] !== undefined) ? row[idx] : "";
+        });
+        return rowObj;
+      }).filter(row => {
+        // Filter out empty rows
+        return Object.values(row).some(value => value != null && String(value).trim() !== '');
+      });
+
+      console.log(`Filtered ${jsonData.length - 1 - rows.length} empty rows from bank statement`);
+      console.log('Bank statement processed:', {
+        fileName: req.file.originalname,
+        headers: allHeaders,
+        totalRows: jsonData.length - 1,
+        rowCount: rows.length,
+        firstRow: rows[0]
+      });
+
+      await storage.createBankStatement({
+        fileName: req.file.originalname,
+        headers: allHeaders,
+        rows,
+        rowCount: String(rows.length),
+      });
+
+      console.log('\n=== RESUMEN DE CARGA DE ESTADO DE CUENTA ===');
+      console.log(`Archivo: ${req.file.originalname}`);
+      console.log(`Registros cargados: ${rows.length}`);
+      console.log('=============================================\n');
+
+      res.json({
+        success: true,
+        data: {
+          headers: allHeaders,
+          rows,
+          fileName: req.file.originalname,
+          rowCount: rows.length,
+        },
+        message: `Se cargaron ${rows.length} registros del estado de cuenta bancario`
+      });
+    } catch (error) {
+      console.error('Error processing bank statement file:', error);
+      res.status(500).json({
+        error: 'Error al procesar el archivo de estado de cuenta',
+        details: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+
+  // GET endpoint to retrieve latest bank statement
+  app.get('/api/bank-statements', async (req, res) => {
+    try {
+      const latestBankStatement = await storage.getLatestBankStatement();
+      
+      if (!latestBankStatement) {
+        return res.json({
+          success: true,
+          data: null
+        });
+      }
+
+      res.json({
+        success: true,
+        data: {
+          headers: latestBankStatement.headers,
+          rows: latestBankStatement.rows,
+          fileName: latestBankStatement.fileName,
+          rowCount: parseInt(latestBankStatement.rowCount, 10),
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching bank statements:', error);
+      res.status(500).json({
+        error: 'Error al obtener el estado de cuenta',
+        details: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

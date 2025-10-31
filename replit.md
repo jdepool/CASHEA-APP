@@ -16,14 +16,14 @@ The application employs a client-server architecture, utilizing a React frontend
 **UI/UX Decisions**:
 - **Design System**: Professional and clean UI with Tailwind CSS and Shadcn UI.
 - **Theming**: Dark/light mode toggle with persistence.
-- **Layout**: Tabbed navigation for `CARGAR DATOS`, `MARKETPLACE ORDERS`, `TODAS LAS ÓRDENES`, `CUOTAS`, `PAGO DE CUOTAS`, `CONCILIACION DE CUOTAS`, and `REPORTE MENSUAL`.
+- **Layout**: Tabbed navigation for `CARGAR DATOS`, `MARKETPLACE ORDERS`, `TODAS LAS ÓRDENES`, `CUOTAS`, `BANCO`, `PAGO DE CUOTAS`, `CONCILIACION DE CUOTAS`, and `REPORTE MENSUAL`.
 - **Data Presentation**: Dashboards displaying key metrics (e.g., active orders, total sales, pending balance), DataTables with sticky headers and horizontal scroll for main order data, WeeklyPaymentsTable for installments, and PaymentRecordsTable with dynamic column adjustment. Semantic colored badges are used for payment statuses.
 - **User Feedback**: Toast notifications, animated spinners for loading, and clear empty states.
 
 **Technical Implementations**:
 - **Frontend**: React with TypeScript, React Query for data fetching, Wouter for routing, and SheetJS for client-side Excel handling.
 - **Backend**: Express.js server, Drizzle ORM for PostgreSQL interaction, Multer for file uploads, and SheetJS for server-side Excel processing.
-- **Database**: PostgreSQL (Neon-backed) with `orders`, `payment_records`, and `marketplace_orders` tables storing data as JSONB, managed by `drizzle-kit` for migrations.
+- **Database**: PostgreSQL (Neon-backed) with `orders`, `payment_records`, `marketplace_orders`, and `bank_statements` tables storing data as JSONB, managed by `drizzle-kit` for migrations.
 
 **Feature Specifications**:
 - **File Upload**: Drag & drop or file selection with client-side and backend validation for file types and expected headers for orders, payments, and marketplace orders.
@@ -49,6 +49,16 @@ The application employs a client-server architecture, utilizing a React frontend
         - **NO DEPOSITADO** (orange badge): Order status is DONE but there is no payment received (no fecha de pago)
     - **STATUS Sorting**: Click STATUS column header to sort by: No status → ADELANTADO → A TIEMPO → ATRASADO → OTRO ALIADO → NO DEPOSITADO
 - **Payment Records View (`PAGO DE CUOTAS`)**: Allows uploading and viewing payment transactions with flexible columns, auto-detection/formatting of currencies, and a dashboard. Highlights partial payments and supports multi-installment payments.
+- **Bank Statements View (`BANCO`)**: Displays bank statement data with flexible schema, complete replacement on upload, column sorting, and Excel export:
+    - **File Upload**: Upload bank statement Excel files from the CARGAR DATOS tab
+    - **Flexible Column Detection**: Automatically parses all columns from the Excel file
+    - **Numeric Formatting**: Automatically formats Debe, Haber, and Saldo columns as currency values
+    - **Master Filter Support**: Applies master date range and order filters to bank statement data
+    - **Date Filtering**: Filters by Fecha column when master date filters are applied
+    - **Search Functionality**: Master order filter searches across all text fields in the bank statement
+    - **Column Sorting**: Click any column header to sort in ascending, descending, or no order
+    - **Excel Export**: Export filtered bank statement data to Excel format
+    - **Complete Replacement**: Each new upload replaces all existing bank statement data
 - **Cuotas View (`CUOTAS`)**: Displays all installments vertically with collapsible filters (date range, order, status) and period-based dashboard metrics:
     - **Filter State Persistence**: All filter state managed in Home.tsx parent component, persists when switching between tabs
     - **Collapsible Filters**: Date range (Desde/Hasta), order number text filter, and status dropdown (Todas, Done, Pendiente, Vencido)
