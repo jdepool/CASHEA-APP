@@ -51,8 +51,9 @@ export function PaymentRecordsTable({ records, headers, ordersData, bankStatemen
       }
 
       const paymentRef = record['# Referencia'];
-      const paymentAmountVES = record['Monto Pagado en VES'];
-      const paymentAmountUSD = record['Monto Pagado en USD'];
+      // Handle case-insensitive column name matching
+      const paymentAmountVES = record['Monto Pagado en VES'] || record['Monto pagado en VES'];
+      const paymentAmountUSD = record['Monto Pagado en USD'] || record['Monto pagado en USD'];
 
       // If no reference or amounts, can't verify
       if (!paymentRef || (!paymentAmountVES && !paymentAmountUSD)) {
