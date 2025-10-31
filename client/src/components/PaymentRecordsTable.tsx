@@ -297,12 +297,20 @@ export function PaymentRecordsTable({ records, headers, ordersData, bankStatemen
       const valueStr = String(value);
       // Check if it's in scientific notation
       if (valueStr.includes('E') || valueStr.includes('e')) {
-        const numValue = parseFloat(valueStr);
-        if (!isNaN(numValue)) {
-          return numValue.toLocaleString('en-US', {
-            useGrouping: false,
-            maximumFractionDigits: 0
-          });
+        // Convert scientific notation to full number
+        // Reference numbers should be integers, use round to handle floating point errors
+        try {
+          const scientificValue = Number(valueStr);
+          if (!isNaN(scientificValue) && Math.abs(scientificValue) < Number.MAX_SAFE_INTEGER) {
+            // For safe integers, round and convert to string
+            // Use round instead of floor to handle floating point representation errors
+            return Math.round(scientificValue).toString();
+          } else {
+            // For very large numbers, keep original
+            return valueStr;
+          }
+        } catch (e) {
+          return valueStr;
         }
       }
       return valueStr;

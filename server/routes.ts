@@ -83,7 +83,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const jsonData = XLSX.utils.sheet_to_json(worksheet, {
         header: 1,
         defval: "",
-        raw: false,
+        raw: true,
       }) as any[][];
 
       if (jsonData.length === 0) {
@@ -238,7 +238,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const jsonData = XLSX.utils.sheet_to_json(worksheet, {
         header: 1,
         defval: "",
-        raw: false,
+        raw: true,
       }) as any[][];
 
       if (jsonData.length === 0) {
@@ -514,7 +514,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
-      const data: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      const data: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true });
 
       if (data.length < 2) {
         return res.status(400).json({
@@ -706,7 +706,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const jsonData = XLSX.utils.sheet_to_json(worksheet, {
         header: 1,
         defval: "",
-        raw: false,
+        raw: true,
       }) as any[][];
 
       if (jsonData.length === 0) {

@@ -275,13 +275,20 @@ export function BankStatementsTable({
                           // Convert to string and check if it's in scientific notation
                           const valueStr = String(value);
                           if (valueStr.includes('E') || valueStr.includes('e')) {
-                            // Parse as number and convert to fixed string without scientific notation
-                            const numValue = parseFloat(valueStr);
-                            if (!isNaN(numValue)) {
-                              displayValue = numValue.toLocaleString('en-US', {
-                                useGrouping: false,
-                                maximumFractionDigits: 0
-                              });
+                            // Convert scientific notation to full number
+                            // Reference numbers should be integers, use round to handle floating point errors
+                            try {
+                              const scientificValue = Number(valueStr);
+                              if (!isNaN(scientificValue) && Math.abs(scientificValue) < Number.MAX_SAFE_INTEGER) {
+                                // For safe integers, round and convert to string
+                                // Use round instead of floor to handle floating point representation errors
+                                displayValue = Math.round(scientificValue).toString();
+                              } else {
+                                // For very large numbers, keep original
+                                displayValue = valueStr;
+                              }
+                            } catch (e) {
+                              displayValue = valueStr;
                             }
                           } else {
                             displayValue = valueStr;
