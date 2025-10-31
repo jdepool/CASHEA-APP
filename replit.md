@@ -56,6 +56,9 @@ The application employs a client-server architecture, utilizing a React frontend
     - **Master Filter Support**: Applies master date range and order filters to bank statement data
     - **Date Filtering**: Filters by Fecha column when master date filters are applied
     - **Search Functionality**: Master order filter searches across all text fields in the bank statement
+    - **Collapsible Filters**: Toggle button to show/hide filter panel with Referencia filter
+    - **Referencia Filter**: Text input for searching reference numbers (case-insensitive, applied after master filters)
+    - **Clear Filters**: One-click button to reset Referencia filter when active
     - **Column Sorting**: Click any column header to sort in ascending, descending, or no order
     - **Excel Export**: Export filtered bank statement data to Excel format
     - **Complete Replacement**: Each new upload replaces all existing bank statement data
