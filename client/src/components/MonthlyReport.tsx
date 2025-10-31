@@ -224,6 +224,14 @@ export function MonthlyReport({
     const totalAvancesCaja = 0;
     const totalReconocer = 0;
 
+    // TODO: Calculate factoring and final compensation based on user's explanation
+    const cuotasVencidas = 0;
+    const conciliacionBancoNeto = 0;
+    const diferenciaFactoring = 0;
+    const totalServiciosTecnologicosFinal = 0;
+    const totalReconocerFinal = 0;
+    const totalPagarCashea = 0;
+
     return {
       totalVentas,
       totalPagoInicial,
@@ -246,6 +254,12 @@ export function MonthlyReport({
       servTecnologicoOrdenesCanceladas,
       totalAvancesCaja,
       totalReconocer,
+      cuotasVencidas,
+      conciliacionBancoNeto,
+      diferenciaFactoring,
+      totalServiciosTecnologicosFinal,
+      totalReconocerFinal,
+      totalPagarCashea,
     };
   }, [filteredData, headers]);
 
@@ -480,6 +494,81 @@ export function MonthlyReport({
             <span className="font-mono font-bold text-lg text-right" data-testid="total-reconocer">
               {formatCurrency(metrics.totalReconocer ?? 0)}
             </span>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>3. Compensación Final</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            {/* FACTORING */}
+            <div className="space-y-3">
+              <div className="border-b pb-2 mb-2">
+                <p className="text-sm mb-3">
+                  <strong>FACTORING</strong> - Cáshea realiza factoring al absorber la deuda de los usuarios que no pagaron en este periodo.
+                </p>
+              </div>
+              
+              <div className="flex justify-between items-center py-2">
+                <span>Cuotas vencidas</span>
+                <span className="font-mono text-right" data-testid="cuotas-vencidas">
+                  {formatCurrency(metrics.cuotasVencidas ?? 0)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2">
+                <span>Conciliación banco neto - cuentas por cobrar</span>
+                <span className="font-mono text-right" data-testid="conciliacion-banco-neto">
+                  {formatCurrency(metrics.conciliacionBancoNeto ?? 0)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2 bg-muted/50 px-3 -mx-3 rounded-md">
+                <span className="font-semibold">Diferencia por factoring</span>
+                <span className="font-mono font-semibold text-right" data-testid="diferencia-factoring">
+                  {formatCurrency(metrics.diferenciaFactoring ?? 0)}
+                </span>
+              </div>
+            </div>
+
+            {/* COMPENSACIÓN FINAL */}
+            <div className="space-y-3">
+              <div className="border-b pb-2 mb-2">
+                <h3 className="font-semibold mb-3">COMPENSACIÓN FINAL</h3>
+              </div>
+              
+              <div className="flex justify-between items-center py-2">
+                <span>Total Servicios tecnológicos</span>
+                <span className="font-mono text-right" data-testid="total-servicios-tecnologicos-final">
+                  {formatCurrency(metrics.totalServiciosTecnologicosFinal ?? 0)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2">
+                <span>(-) Diferencia por factoring</span>
+                <span className="font-mono text-right" data-testid="diferencia-factoring-compensacion">
+                  {formatCurrency(metrics.diferenciaFactoring ?? 0)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2 bg-muted/50 px-3 -mx-3 rounded-md">
+                <span className="font-semibold">Total a reconocer Cáshea a BOXI SLEEP, C. A.</span>
+                <span className="font-mono font-semibold text-right" data-testid="total-reconocer-final">
+                  {formatCurrency(metrics.totalReconocerFinal ?? 0)}
+                </span>
+              </div>
+            </div>
+
+            {/* TOTAL A PAGAR */}
+            <div className="flex justify-between items-center py-3 bg-primary/10 px-3 -mx-3 rounded-md mt-4">
+              <span className="font-semibold text-lg italic">Total a pagar a Cáshea (September 2025)</span>
+              <span className="font-mono font-bold text-lg text-right" data-testid="total-pagar-cashea">
+                {formatCurrency(metrics.totalPagarCashea ?? 0)}
+              </span>
+            </div>
           </div>
         </CardContent>
       </Card>
