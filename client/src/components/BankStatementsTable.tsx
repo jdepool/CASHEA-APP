@@ -1,7 +1,9 @@
 import { useState, useMemo } from "react";
-import { FileSpreadsheet, Download, ChevronUp, ChevronDown } from "lucide-react";
+import { FileSpreadsheet, Download, ChevronUp, ChevronDown, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useQuery } from "@tanstack/react-query";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
@@ -26,6 +28,8 @@ export function BankStatementsTable({
   masterOrden = "",
 }: BankStatementsTableProps) {
   const [sortConfig, setSortConfig] = useState<SortConfig>({ column: null, direction: null });
+  const [showFilters, setShowFilters] = useState(false);
+  const [referenciaFilter, setReferenciaFilter] = useState("");
   const { toast } = useToast();
 
   const { data: bankData } = useQuery({
@@ -41,11 +45,12 @@ export function BankStatementsTable({
     return (bankData as any)?.data?.rows || [];
   }, [bankData]);
 
-  // Apply master filters
+  // Apply master filters and local filters
   const filteredData = useMemo(() => {
     if (!rows || rows.length === 0) return [];
 
     return rows.filter((row: any) => {
+      // MASTER FILTERS - Applied FIRST
       // Master date range filter
       if (masterDateFrom || masterDateTo) {
         const fechaHeader = headers.find((h: string) => h.toLowerCase().includes('fecha'));
@@ -72,14 +77,27 @@ export function BankStatementsTable({
       // Master orden filter (search in any text field)
       if (masterOrden) {
         const searchLower = masterOrden.toLowerCase();
-        return Object.values(row).some((value: any) => 
+        const hasMatch = Object.values(row).some((value: any) => 
           String(value || '').toLowerCase().includes(searchLower)
         );
+        if (!hasMatch) return false;
+      }
+
+      // TAB-SPECIFIC FILTERS - Applied AFTER master filters
+      // Referencia filter
+      if (referenciaFilter) {
+        const referenciaHeader = headers.find((h: string) => 
+          h.toLowerCase().includes('referencia')
+        );
+        if (referenciaHeader) {
+          const referenciaValue = String(row[referenciaHeader] || '').toLowerCase();
+          if (!referenciaValue.includes(referenciaFilter.toLowerCase())) return false;
+        }
       }
 
       return true;
     });
-  }, [rows, headers, masterDateFrom, masterDateTo, masterOrden]);
+  }, [rows, headers, masterDateFrom, masterDateTo, masterOrden, referenciaFilter]);
 
   // Apply sorting
   const sortedData = useMemo(() => {
@@ -158,19 +176,61 @@ export function BankStatementsTable({
                 {sortedData.length !== rows.length && ` (filtrado de ${rows.length})`}
               </p>
             </div>
-            <Button
-              onClick={handleExport}
-              variant="outline"
-              size="sm"
-              disabled={sortedData.length === 0}
-              data-testid="button-export-bank"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Exportar
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setShowFilters(!showFilters)}
+                data-testid="button-toggle-bank-filters"
+              >
+                <Filter className="h-4 w-4" />
+              </Button>
+              <Button
+                onClick={handleExport}
+                variant="outline"
+                size="sm"
+                disabled={sortedData.length === 0}
+                data-testid="button-export-bank"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Exportar
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
+          {showFilters && (
+            <div className="bg-card border rounded-lg p-6 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="bank-referencia-filter">Referencia</Label>
+                  <Input
+                    id="bank-referencia-filter"
+                    type="text"
+                    placeholder="Buscar referencia..."
+                    value={referenciaFilter}
+                    onChange={(e) => setReferenciaFilter(e.target.value)}
+                    className="w-full"
+                    data-testid="input-bank-referencia-filter"
+                  />
+                </div>
+              </div>
+              
+              {referenciaFilter && (
+                <div className="flex justify-end pt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setReferenciaFilter("")}
+                    data-testid="button-clear-bank-filters"
+                  >
+                    Limpiar filtros
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+          
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
