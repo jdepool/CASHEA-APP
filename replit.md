@@ -104,6 +104,7 @@ The application employs a client-server architecture, utilizing a React frontend
 - **Modularity**: Reusable components and utility functions (`dateUtils.ts`, `installmentUtils.ts`, `numberUtils.ts`).
 - **Locale-aware Number Parsing**: `shared/numberUtils.ts` handles various numeric formats and separators, used consistently across the application.
 - **Empty Row Filtering**: Filters out empty rows during uploads to prevent inaccurate record counts.
+- **Scientific Notation Prevention**: Reference numbers automatically converted from scientific notation (e.g., "6.48145E+12") to full numbers (e.g., "6481450000000") in all tables (BANCO, PAGO DE CUOTAS, MARKETPLACE ORDERS).
 
 ## External Dependencies
 - **Database**: PostgreSQL (Neon).
