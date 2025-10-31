@@ -244,7 +244,13 @@ export function PaymentRecords({
     <div className="space-y-4">
       {sortedPaymentData.length > 0 ? (
         <>
-          <PaymentRecordsDashboard data={paymentData} headers={headers} ordersData={ordersTableData} />
+          <PaymentRecordsDashboard 
+            data={paymentData} 
+            headers={headers} 
+            ordersData={ordersTableData}
+            bankStatementRows={bankStatementRows}
+            bankStatementHeaders={bankStatementHeaders}
+          />
           
           <div className="flex items-center justify-between mb-4">
             <div>

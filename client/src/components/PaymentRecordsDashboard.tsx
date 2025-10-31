@@ -1,15 +1,17 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Receipt, DollarSign, Wallet } from "lucide-react";
+import { Receipt, DollarSign, Wallet, XCircle, CheckCircle } from "lucide-react";
 import { normalizeNumber } from "@shared/numberUtils";
 
 interface PaymentRecordsDashboardProps {
   data: any[];
   headers: string[];
   ordersData: any[];
+  bankStatementRows: any[];
+  bankStatementHeaders: string[];
 }
 
-export function PaymentRecordsDashboard({ data, headers, ordersData }: PaymentRecordsDashboardProps) {
+export function PaymentRecordsDashboard({ data, headers, ordersData, bankStatementRows, bankStatementHeaders }: PaymentRecordsDashboardProps) {
   // Create order status lookup map
   const orderStatusMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -35,12 +37,110 @@ export function PaymentRecordsDashboard({ data, headers, ordersData }: PaymentRe
     return map;
   }, [ordersData]);
 
+  // Function to verify if a payment exists in bank statements
+  const verifyPaymentInBankStatement = useMemo(() => {
+    // Find relevant headers in bank statement (case-insensitive)
+    const referenciaHeader = bankStatementHeaders?.find(h => 
+      h.toLowerCase().includes('referencia')
+    );
+    const debeHeader = bankStatementHeaders?.find(h => 
+      h.toLowerCase().includes('debe')
+    );
+    const haberHeader = bankStatementHeaders?.find(h => 
+      h.toLowerCase().includes('haber')
+    );
+
+    return (record: any): string => {
+      // If no bank statements available, return "NO"
+      if (!bankStatementRows || bankStatementRows.length === 0) {
+        return 'NO';
+      }
+
+      const paymentRef = record['# Referencia'];
+      // Handle case-insensitive column name matching
+      const paymentAmountVES = record['Monto Pagado en VES'] || record['Monto pagado en VES'];
+      const paymentAmountUSD = record['Monto Pagado en USD'] || record['Monto pagado en USD'];
+
+      // If no reference or amounts, can't verify
+      if (!paymentRef || (!paymentAmountVES && !paymentAmountUSD)) {
+        return 'NO';
+      }
+
+      // Normalize payment reference (remove spaces, leading zeros)
+      const normalizedPaymentRef = String(paymentRef).replace(/\s+/g, '').replace(/^0+/, '').toLowerCase();
+
+      // Normalize payment amounts
+      const normalizedVES = paymentAmountVES ? normalizeNumber(paymentAmountVES) : null;
+      const normalizedUSD = paymentAmountUSD ? normalizeNumber(paymentAmountUSD) : null;
+
+      // Search bank statements for matching reference and amount
+      const found = bankStatementRows.some(bankRow => {
+        // Check reference match
+        if (referenciaHeader) {
+          const bankRef = bankRow[referenciaHeader];
+          if (bankRef) {
+            const normalizedBankRef = String(bankRef).replace(/\s+/g, '').replace(/^0+/, '').toLowerCase();
+            if (normalizedBankRef !== normalizedPaymentRef) {
+              return false; // Reference doesn't match
+            }
+          } else {
+            return false; // No reference in bank statement
+          }
+        } else {
+          return false; // No reference header in bank statement
+        }
+
+        // Reference matches, now check amount
+        // Check both Debe and Haber columns
+        let amountFound = false;
+
+        if (debeHeader) {
+          const debeAmount = bankRow[debeHeader];
+          if (debeAmount) {
+            const normalizedDebe = normalizeNumber(debeAmount);
+            if (!isNaN(normalizedDebe)) {
+              // Check against both VES and USD amounts (bank could have either)
+              if (normalizedVES !== null && Math.abs(normalizedDebe - normalizedVES) < 0.01) {
+                amountFound = true;
+              }
+              if (normalizedUSD !== null && Math.abs(normalizedDebe - normalizedUSD) < 0.01) {
+                amountFound = true;
+              }
+            }
+          }
+        }
+
+        if (haberHeader && !amountFound) {
+          const haberAmount = bankRow[haberHeader];
+          if (haberAmount) {
+            const normalizedHaber = normalizeNumber(haberAmount);
+            if (!isNaN(normalizedHaber)) {
+              // Check against both VES and USD amounts
+              if (normalizedVES !== null && Math.abs(normalizedHaber - normalizedVES) < 0.01) {
+                amountFound = true;
+              }
+              if (normalizedUSD !== null && Math.abs(normalizedHaber - normalizedUSD) < 0.01) {
+                amountFound = true;
+              }
+            }
+          }
+        }
+
+        return amountFound;
+      });
+
+      return found ? 'SI' : 'NO';
+    };
+  }, [bankStatementRows, bankStatementHeaders]);
+
   const metrics = useMemo(() => {
     if (!data || data.length === 0) {
       return {
         totalCuotasPagadas: 0,
         totalPagado: 0,
         totalPagoIniciales: 0,
+        noDepositadas: 0,
+        depositoBanco: 0,
       };
     }
 
@@ -61,6 +161,8 @@ export function PaymentRecordsDashboard({ data, headers, ordersData }: PaymentRe
     let totalCuotasPagadas = 0;
     let totalPagado = 0;
     let totalPagoIniciales = 0;
+    let noDepositadas = 0;
+    let depositoBanco = 0;
 
     data.forEach((row) => {
       // Get order number
@@ -75,6 +177,14 @@ export function PaymentRecordsDashboard({ data, headers, ordersData }: PaymentRe
       
       if (!isNaN(montoPagado)) {
         totalPagado += montoPagado;
+        
+        // Check verification status
+        const verificacion = verifyPaymentInBankStatement(row);
+        if (verificacion === 'SI') {
+          depositoBanco += montoPagado;
+        } else {
+          noDepositadas += montoPagado;
+        }
         
         // Check if this is an initial payment (cuota exactly equals "0")
         // Don't count multi-installment payments like "0,1,2"
@@ -109,8 +219,10 @@ export function PaymentRecordsDashboard({ data, headers, ordersData }: PaymentRe
       totalCuotasPagadas,
       totalPagado,
       totalPagoIniciales,
+      noDepositadas,
+      depositoBanco,
     };
-  }, [data, headers, orderStatusMap]);
+  }, [data, headers, orderStatusMap, verifyPaymentInBankStatement]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {
@@ -121,7 +233,7 @@ export function PaymentRecordsDashboard({ data, headers, ordersData }: PaymentRe
   };
 
   return (
-    <div className="grid gap-4 md:grid-cols-3 mb-6">
+    <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5 mb-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">
@@ -169,6 +281,40 @@ export function PaymentRecordsDashboard({ data, headers, ordersData }: PaymentRe
           </div>
           <p className="text-xs text-muted-foreground">
             Suma de pagos en USD
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">
+            No Depositadas
+          </CardTitle>
+          <XCircle className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold" data-testid="metric-no-depositadas">
+            {formatCurrency(metrics.noDepositadas)}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            VERIFICACION = NO
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">
+            Deposito Banco
+          </CardTitle>
+          <CheckCircle className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold" data-testid="metric-deposito-banco">
+            {formatCurrency(metrics.depositoBanco)}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            VERIFICACION = SI
           </p>
         </CardContent>
       </Card>
