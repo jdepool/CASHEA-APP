@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Receipt, DollarSign, Wallet, XCircle, CheckCircle } from "lucide-react";
+import { Receipt, DollarSign, Wallet, XCircle, CheckCircle, BadgeCheck, AlertCircle } from "lucide-react";
 import { normalizeNumber } from "@shared/numberUtils";
 
 interface PaymentRecordsDashboardProps {
@@ -141,6 +141,8 @@ export function PaymentRecordsDashboard({ data, headers, ordersData, bankStateme
         totalPagoIniciales: 0,
         noDepositadas: 0,
         depositoBanco: 0,
+        pagoInicialesDepositado: 0,
+        pagoInicialesNoDepositado: 0,
       };
     }
 
@@ -163,6 +165,8 @@ export function PaymentRecordsDashboard({ data, headers, ordersData, bankStateme
     let totalPagoIniciales = 0;
     let noDepositadas = 0;
     let depositoBanco = 0;
+    let pagoInicialesDepositado = 0;
+    let pagoInicialesNoDepositado = 0;
 
     data.forEach((row) => {
       // Get order number
@@ -198,6 +202,13 @@ export function PaymentRecordsDashboard({ data, headers, ordersData, bankStateme
           // Exclude orders with NOT FOUND status (orders not in TODAS LAS ORDENES)
           if (statusOrden) {
             totalPagoIniciales += montoPagado;
+            
+            // Track Cuota 0 by verification status
+            if (verificacion === 'SI') {
+              pagoInicialesDepositado += montoPagado;
+            } else {
+              pagoInicialesNoDepositado += montoPagado;
+            }
           }
         }
       }
@@ -221,6 +232,8 @@ export function PaymentRecordsDashboard({ data, headers, ordersData, bankStateme
       totalPagoIniciales,
       noDepositadas,
       depositoBanco,
+      pagoInicialesDepositado,
+      pagoInicialesNoDepositado,
     };
   }, [data, headers, orderStatusMap, verifyPaymentInBankStatement]);
 
@@ -233,91 +246,129 @@ export function PaymentRecordsDashboard({ data, headers, ordersData, bankStateme
   };
 
   return (
-    <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5 mb-6">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">
-            Pago Iniciales
-          </CardTitle>
-          <Wallet className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold" data-testid="metric-pago-iniciales">
-            {formatCurrency(metrics.totalPagoIniciales)}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Suma de cuota 0 en USD
-          </p>
-        </CardContent>
-      </Card>
+    <div className="space-y-6 mb-6">
+      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Pago Iniciales
+            </CardTitle>
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="metric-pago-iniciales">
+              {formatCurrency(metrics.totalPagoIniciales)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Suma de cuota 0 en USD
+            </p>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">
-            Total Cuotas Pagadas
-          </CardTitle>
-          <Receipt className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold" data-testid="metric-cuotas-pagadas">
-            {metrics.totalCuotasPagadas}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Cuotas únicas abonadas
-          </p>
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Total Cuotas Pagadas
+            </CardTitle>
+            <Receipt className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="metric-cuotas-pagadas">
+              {metrics.totalCuotasPagadas}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Cuotas únicas abonadas
+            </p>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">
-            Total Pagado
-          </CardTitle>
-          <DollarSign className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold" data-testid="metric-total-pagado">
-            {formatCurrency(metrics.totalPagado)}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Suma de pagos en USD
-          </p>
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Total Pagado
+            </CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="metric-total-pagado">
+              {formatCurrency(metrics.totalPagado)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Suma de pagos en USD
+            </p>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">
-            No Depositadas
-          </CardTitle>
-          <XCircle className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold" data-testid="metric-no-depositadas">
-            {formatCurrency(metrics.noDepositadas)}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            VERIFICACION = NO
-          </p>
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              No Depositadas
+            </CardTitle>
+            <XCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="metric-no-depositadas">
+              {formatCurrency(metrics.noDepositadas)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              VERIFICACION = NO
+            </p>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">
-            Deposito Banco
-          </CardTitle>
-          <CheckCircle className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold" data-testid="metric-deposito-banco">
-            {formatCurrency(metrics.depositoBanco)}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            VERIFICACION = SI
-          </p>
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Deposito Banco
+            </CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="metric-deposito-banco">
+              {formatCurrency(metrics.depositoBanco)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              VERIFICACION = SI
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Pago Inicial Depositado
+            </CardTitle>
+            <BadgeCheck className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="metric-pago-inicial-depositado">
+              {formatCurrency(metrics.pagoInicialesDepositado)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Cuota 0 con VERIFICACION = SI
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Pago Inicial No Depositado
+            </CardTitle>
+            <AlertCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="metric-pago-inicial-no-depositado">
+              {formatCurrency(metrics.pagoInicialesNoDepositado)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Cuota 0 con VERIFICACION = NO
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
