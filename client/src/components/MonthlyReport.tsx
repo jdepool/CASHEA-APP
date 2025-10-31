@@ -211,6 +211,18 @@ export function MonthlyReport({
     const islrRetenido = 0;
     const totalServiciosTecnologicos = 0;
 
+    // TODO: Calculate bank reconciliation based on user's explanation
+    const recibidoEnBanco = 0;
+    const cuotasAdelantadasClientes = 0;
+    const pagoInicialClientesApp = 0;
+    const devolucionesPagoClientesBanco = 0;
+    const depositosOtrosAliadosBanco = 0;
+    const bancoNetoCuotasReconocidas = 0;
+    const cuentasPorCobrar = 0;
+    const cuotasAdelantadasPeriodosAnteriores = 0;
+    const cuentasPorCobrarNeto = 0;
+    const subtotalConciliacionBancoNeto = 0;
+
     // TODO: Calculate reconciliation adjustments based on user's explanation
     const devolucionesPagoClientes = 0;
     const cupones = 0;
@@ -243,6 +255,16 @@ export function MonthlyReport({
       ivaPagarCashea,
       islrRetenido,
       totalServiciosTecnologicos,
+      recibidoEnBanco,
+      cuotasAdelantadasClientes,
+      pagoInicialClientesApp,
+      devolucionesPagoClientesBanco,
+      depositosOtrosAliadosBanco,
+      bancoNetoCuotasReconocidas,
+      cuentasPorCobrar,
+      cuotasAdelantadasPeriodosAnteriores,
+      cuentasPorCobrarNeto,
+      subtotalConciliacionBancoNeto,
       devolucionesPagoClientes,
       cupones,
       subtotalIncidencias,
@@ -379,6 +401,133 @@ export function MonthlyReport({
               <span className="font-mono font-semibold text-right" data-testid="total-servicios-tecnologicos">
                 {formatCurrency(metrics.totalServiciosTecnologicos)}
               </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>2. Conciliación Bancaria</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            {/* Introduction */}
+            <div className="text-sm space-y-2">
+              <p>En esta sección encontrarás:</p>
+              <p>I. Un resumen de tu cuenta bancaria con los ajustes correspondientes y el reconocimiento de montos no conciliados (si los hay).</p>
+              <p>II. El total de cuotas que debías cobrar este mes, descontando lo que ya has recibido.</p>
+              <p>III. Tabla con compensaciones por ajustes, ya sea por errores de compradores o acciones de Cáshea que impactan tu total.</p>
+              <p>IV. La suma final considerando todos estos factores.</p>
+            </div>
+
+            {/* I. RESUMEN DE BANCO */}
+            <div className="space-y-3">
+              <div className="border-b pb-2 mb-2">
+                <h3 className="font-semibold mb-3">I. RESUMEN DE BANCO</h3>
+                <p className="text-sm text-muted-foreground">
+                  Esta tabla muestra el monto real recibido en el banco por cuotas conciliadas, excluyendo conceptos no aplicables. Luego, en III. Ajustes, estos valores se compensan e integran en el Total a Reconocer
+                </p>
+              </div>
+              
+              <div className="flex justify-between items-center py-2">
+                <span>Recibido en Banco</span>
+                <span className="font-mono text-right" data-testid="recibido-en-banco">
+                  {formatCurrency(metrics.recibidoEnBanco ?? 0)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2">
+                <span>(-) Cuotas adelantadas de clientes (corresponde a otro periodo)</span>
+                <span className="font-mono text-right" data-testid="cuotas-adelantadas-clientes">
+                  {formatCurrency(metrics.cuotasAdelantadasClientes ?? 0)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2">
+                <span>(-) Pago inicial de clientes en App</span>
+                <span className="font-mono text-right" data-testid="pago-inicial-clientes-app">
+                  {formatCurrency(metrics.pagoInicialClientesApp ?? 0)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2">
+                <span>(-) Devoluciones por errores de pago de clientes</span>
+                <span className="font-mono text-right" data-testid="devoluciones-pago-clientes-banco">
+                  {formatCurrency(metrics.devolucionesPagoClientesBanco ?? 0)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2">
+                <span>(-) Depósitos de otros aliados</span>
+                <span className="font-mono text-right" data-testid="depositos-otros-aliados-banco">
+                  {formatCurrency(metrics.depositosOtrosAliadosBanco ?? 0)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2 bg-muted/50 px-3 -mx-3 rounded-md">
+                <span className="font-semibold">Banco neto: Cuotas reconocidas al corte</span>
+                <span className="font-mono font-semibold text-right" data-testid="banco-neto-cuotas-reconocidas">
+                  {formatCurrency(metrics.bancoNetoCuotasReconocidas ?? 0)}
+                </span>
+              </div>
+            </div>
+
+            {/* II. CUENTAS POR COBRAR */}
+            <div className="space-y-3">
+              <div className="border-b pb-2 mb-2">
+                <h3 className="font-semibold mb-3">II. CUENTAS POR COBRAR</h3>
+              </div>
+              
+              <div className="flex justify-between items-center py-2">
+                <span>Cuentas por Cobrar</span>
+                <span className="font-mono text-right" data-testid="cuentas-por-cobrar">
+                  {formatCurrency(metrics.cuentasPorCobrar ?? 0)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2">
+                <span>(-) Cuotas adelantadas en periodos anteriores</span>
+                <span className="font-mono text-right" data-testid="cuotas-adelantadas-periodos-anteriores">
+                  {formatCurrency(metrics.cuotasAdelantadasPeriodosAnteriores ?? 0)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2 bg-muted/50 px-3 -mx-3 rounded-md">
+                <span className="font-semibold">Cuentas por Cobrar Neto</span>
+                <span className="font-mono font-semibold text-right" data-testid="cuentas-por-cobrar-neto">
+                  {formatCurrency(metrics.cuentasPorCobrarNeto ?? 0)}
+                </span>
+              </div>
+            </div>
+
+            {/* SUBTOTAL */}
+            <div className="space-y-3">
+              <div className="border-b pb-2 mb-2">
+                <h3 className="font-semibold mb-3">SUBTOTAL</h3>
+                <h4 className="font-semibold text-sm">CONCILIACIÓN BANCO NETO - CUENTAS POR COBRAR</h4>
+              </div>
+              
+              <div className="flex justify-between items-center py-2">
+                <span>Banco neto: Cuotas reconocidas al corte</span>
+                <span className="font-mono text-right" data-testid="banco-neto-subtotal">
+                  {formatCurrency(metrics.bancoNetoCuotasReconocidas ?? 0)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2">
+                <span>(-) Cuentas por Cobrar</span>
+                <span className="font-mono text-right" data-testid="cuentas-por-cobrar-subtotal">
+                  {formatCurrency(metrics.cuentasPorCobrarNeto ?? 0)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2 bg-primary/10 px-3 -mx-3 rounded-md">
+                <span className="font-semibold">(1) Subtotal conciliación banco neto - cuentas por cobrar</span>
+                <span className="font-mono font-semibold text-right" data-testid="subtotal-conciliacion-banco-neto">
+                  {formatCurrency(metrics.subtotalConciliacionBancoNeto ?? 0)}
+                </span>
+              </div>
             </div>
           </div>
         </CardContent>
