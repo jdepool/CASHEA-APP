@@ -49,6 +49,14 @@ The application employs a client-server architecture, utilizing a React frontend
         - **NO DEPOSITADO** (orange badge): Order status is DONE but there is no payment received (no fecha de pago)
     - **STATUS Sorting**: Click STATUS column header to sort by: No status → ADELANTADO → A TIEMPO → ATRASADO → OTRO ALIADO → NO DEPOSITADO
 - **Payment Records View (`PAGO DE CUOTAS`)**: Allows uploading and viewing payment transactions with flexible columns, auto-detection/formatting of currencies, and a dashboard. Highlights partial payments and supports multi-installment payments.
+    - **Dashboard Metrics**: Five-card dashboard displaying:
+        - **Pago Iniciales**: Sum of initial payments (Cuota 0) in USD
+        - **Total Cuotas Pagadas**: Count of unique installments paid
+        - **Total Pagado**: Total sum of all payments in USD
+        - **No Depositadas**: Sum of payments with VERIFICACION = NO (not found in bank statements)
+        - **Deposito Banco**: Sum of payments with VERIFICACION = SI (verified in bank statements)
+    - **VERIFICACION Column**: Shows "SI" when payment reference and amount match bank statements, "NO" otherwise
+    - **Payment Verification**: Automatically cross-references payment records with bank statements based on reference number and amount matching
 - **Bank Statements View (`BANCO`)**: Displays bank statement data with flexible schema, complete replacement on upload, column sorting, and Excel export:
     - **File Upload**: Upload bank statement Excel files from the CARGAR DATOS tab
     - **Flexible Column Detection**: Automatically parses all columns from the Excel file
