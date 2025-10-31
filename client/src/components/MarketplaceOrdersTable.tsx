@@ -286,8 +286,26 @@ export function MarketplaceOrdersTable({
       return "-";
     }
 
+    const headerLower = header.toLowerCase();
+
+    // Check if this is a Referencia column - prevent scientific notation
+    if (headerLower.includes('referencia')) {
+      const valueStr = String(value);
+      // Check if it's in scientific notation
+      if (valueStr.includes('E') || valueStr.includes('e')) {
+        const numValue = parseFloat(valueStr);
+        if (!isNaN(numValue)) {
+          return numValue.toLocaleString('en-US', {
+            useGrouping: false,
+            maximumFractionDigits: 0
+          });
+        }
+      }
+      return valueStr;
+    }
+
     // Format dates
-    if (header.toLowerCase().includes("fecha") && value) {
+    if (headerLower.includes("fecha") && value) {
       const dateValue = new Date(value);
       if (!isNaN(dateValue.getTime())) {
         return dateValue.toLocaleDateString('es-ES', {
@@ -300,14 +318,14 @@ export function MarketplaceOrdersTable({
 
     // Format currency
     if (typeof value === 'number' && (
-      header.toLowerCase().includes('total') || 
-      header.toLowerCase().includes('usd') ||
-      header.toLowerCase().includes('monto') ||
-      header.toLowerCase().includes('bs')
+      headerLower.includes('total') || 
+      headerLower.includes('usd') ||
+      headerLower.includes('monto') ||
+      headerLower.includes('bs')
     )) {
       return new Intl.NumberFormat('es-ES', {
         style: 'currency',
-        currency: header.toLowerCase().includes('bs') ? 'VES' : 'USD'
+        currency: headerLower.includes('bs') ? 'VES' : 'USD'
       }).format(value);
     }
 

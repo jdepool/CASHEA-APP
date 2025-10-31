@@ -290,8 +290,25 @@ export function PaymentRecordsTable({ records, headers, ordersData, bankStatemen
       return "-";
     }
 
-    // Check if this is a currency column (VES or USD)
     const headerLower = header.toLowerCase();
+    
+    // Check if this is a Referencia column - prevent scientific notation
+    if (headerLower.includes('referencia')) {
+      const valueStr = String(value);
+      // Check if it's in scientific notation
+      if (valueStr.includes('E') || valueStr.includes('e')) {
+        const numValue = parseFloat(valueStr);
+        if (!isNaN(numValue)) {
+          return numValue.toLocaleString('en-US', {
+            useGrouping: false,
+            maximumFractionDigits: 0
+          });
+        }
+      }
+      return valueStr;
+    }
+    
+    // Check if this is a currency column (VES or USD)
     if (headerLower.includes('ves') || headerLower.includes('usd') || headerLower.includes('monto')) {
       // Use locale-aware parser to handle different number formats
       const numValue = normalizeNumber(value);

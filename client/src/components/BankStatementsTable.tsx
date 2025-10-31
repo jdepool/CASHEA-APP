@@ -259,14 +259,36 @@ export function BankStatementsTable({
                       {headers.map((header: string, cellIdx: number) => {
                         const value = row[header];
                         
+                        // Check if this is a Referencia column
+                        const isReferenciaColumn = header.toLowerCase().includes('referencia');
+                        
                         // Check if this is a numeric column (Debe, Haber, Saldo)
                         const isNumericColumn = header.toLowerCase().includes('debe') || 
                                                 header.toLowerCase().includes('haber') || 
                                                 header.toLowerCase().includes('saldo');
                         
-                        // Format numeric values
+                        // Format values
                         let displayValue = value;
-                        if (isNumericColumn && value && !isNaN(parseFloat(String(value).replace(/,/g, '')))) {
+                        
+                        // Format Referencia to avoid scientific notation
+                        if (isReferenciaColumn && value != null) {
+                          // Convert to string and check if it's in scientific notation
+                          const valueStr = String(value);
+                          if (valueStr.includes('E') || valueStr.includes('e')) {
+                            // Parse as number and convert to fixed string without scientific notation
+                            const numValue = parseFloat(valueStr);
+                            if (!isNaN(numValue)) {
+                              displayValue = numValue.toLocaleString('en-US', {
+                                useGrouping: false,
+                                maximumFractionDigits: 0
+                              });
+                            }
+                          } else {
+                            displayValue = valueStr;
+                          }
+                        }
+                        // Format numeric currency values
+                        else if (isNumericColumn && value && !isNaN(parseFloat(String(value).replace(/,/g, '')))) {
                           const numValue = parseFloat(String(value).replace(/,/g, ''));
                           displayValue = new Intl.NumberFormat('es-ES', {
                             minimumFractionDigits: 2,
