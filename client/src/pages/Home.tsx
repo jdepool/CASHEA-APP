@@ -9,6 +9,7 @@ import { PaymentRecords } from "@/components/PaymentRecords";
 import { MarketplaceOrdersTable } from "@/components/MarketplaceOrdersTable";
 import { CuotasTable } from "@/components/CuotasTable";
 import { MonthlyReport } from "@/components/MonthlyReport";
+import { MasterFilter } from "@/components/MasterFilter";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,11 @@ export default function Home() {
   const [tableData, setTableData] = useState<any[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Master filter state (applies across all tabs)
+  const [masterDateFrom, setMasterDateFrom] = useState<string>("");
+  const [masterDateTo, setMasterDateTo] = useState<string>("");
+  const [masterOrden, setMasterOrden] = useState<string>("");
   
   // TODAS LAS ORDENES tab filters
   const [dateFrom, setDateFrom] = useState<string>("");
@@ -285,6 +291,40 @@ export default function Home() {
     if (!tableData || tableData.length === 0) return [];
 
     return tableData.filter((row) => {
+      // MASTER FILTERS - Applied FIRST
+      // Master date range filter
+      if (masterDateFrom || masterDateTo) {
+        const fechaCompraHeader = headers.find(h => h.toLowerCase().includes('fecha de compra'));
+        if (fechaCompraHeader) {
+          const fechaValue = row[fechaCompraHeader];
+          const rowDate = parseExcelDate(fechaValue);
+
+          if (rowDate && !isNaN(rowDate.getTime())) {
+            if (masterDateFrom) {
+              const fromDate = parseDDMMYYYY(masterDateFrom);
+              if (fromDate && rowDate < fromDate) return false;
+            }
+            if (masterDateTo) {
+              const toDate = parseDDMMYYYY(masterDateTo);
+              if (toDate) {
+                toDate.setHours(23, 59, 59, 999);
+                if (rowDate > toDate) return false;
+              }
+            }
+          }
+        }
+      }
+
+      // Master orden filter
+      if (masterOrden) {
+        const ordenHeader = headers.find(h => h.toLowerCase() === 'orden');
+        if (ordenHeader) {
+          const ordenValue = String(row[ordenHeader] || '').toLowerCase();
+          if (!ordenValue.includes(masterOrden.toLowerCase())) return false;
+        }
+      }
+
+      // TAB-SPECIFIC FILTERS - Applied AFTER master filters
       // Date range filter
       if (dateFrom || dateTo) {
         const fechaCompraHeader = headers.find(h => h.toLowerCase().includes('fecha de compra'));
@@ -340,7 +380,7 @@ export default function Home() {
 
       return true;
     });
-  }, [tableData, headers, dateFrom, dateTo, ordenFilter, referenciaFilter, estadoCuotaFilter]);
+  }, [tableData, headers, dateFrom, dateTo, ordenFilter, referenciaFilter, estadoCuotaFilter, masterDateFrom, masterDateTo, masterOrden]);
 
   const handleExportOrders = () => {
     if (filteredTableData.length === 0) {
@@ -379,6 +419,12 @@ export default function Home() {
     });
   };
 
+  const clearMasterFilters = () => {
+    setMasterDateFrom("");
+    setMasterDateTo("");
+    setMasterOrden("");
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -408,6 +454,16 @@ export default function Home() {
 
           {!isProcessing && (
             <Tabs defaultValue="upload" className="space-y-4">
+              <MasterFilter
+                dateFrom={masterDateFrom}
+                dateTo={masterDateTo}
+                orden={masterOrden}
+                onDateFromChange={setMasterDateFrom}
+                onDateToChange={setMasterDateTo}
+                onOrdenChange={setMasterOrden}
+                onClearFilters={clearMasterFilters}
+              />
+              
               <div className="sticky top-[64px] z-20 bg-background pb-4">
                 <TabsList data-testid="tabs-list">
                   <TabsTrigger value="upload" data-testid="tab-upload">
@@ -675,6 +731,9 @@ export default function Home() {
                     setOrdenFilter={setCuotasOrdenFilter}
                     estadoFilter={cuotasEstadoFilter}
                     setEstadoFilter={setCuotasEstadoFilter}
+                    masterDateFrom={masterDateFrom}
+                    masterDateTo={masterDateTo}
+                    masterOrden={masterOrden}
                   />
                 ) : (
                   <div className="text-center py-12">
@@ -699,6 +758,9 @@ export default function Home() {
                   setOrdenFilter={setPaymentsOrdenFilter}
                   referenciaFilter={paymentsReferenciaFilter}
                   setReferenciaFilter={setPaymentsReferenciaFilter}
+                  masterDateFrom={masterDateFrom}
+                  masterDateTo={masterDateTo}
+                  masterOrden={masterOrden}
                 />
               </TabsContent>
 
@@ -718,6 +780,9 @@ export default function Home() {
                     setEstadoCuotaFilter={setInstallmentsEstadoCuotaFilter}
                     dateFieldFilter={installmentsDateFieldFilter}
                     setDateFieldFilter={setInstallmentsDateFieldFilter}
+                    masterDateFrom={masterDateFrom}
+                    masterDateTo={masterDateTo}
+                    masterOrden={masterOrden}
                   />
                 ) : (
                   <div className="text-center py-12">
@@ -750,6 +815,9 @@ export default function Home() {
                     setEstadoEntregaFilter={setMarketplaceEstadoEntregaFilter}
                     referenciaFilter={marketplaceReferenciaFilter}
                     setReferenciaFilter={setMarketplaceReferenciaFilter}
+                    masterDateFrom={masterDateFrom}
+                    masterDateTo={masterDateTo}
+                    masterOrden={masterOrden}
                   />
                 ) : (
                   <div className="text-center py-12">
@@ -771,6 +839,9 @@ export default function Home() {
                   ordenFilter={marketplaceOrdenFilter}
                   estadoEntregaFilter={marketplaceEstadoEntregaFilter}
                   referenciaFilter={marketplaceReferenciaFilter}
+                  masterDateFrom={masterDateFrom}
+                  masterDateTo={masterDateTo}
+                  masterOrden={masterOrden}
                 />
               </TabsContent>
             </Tabs>

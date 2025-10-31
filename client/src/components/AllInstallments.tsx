@@ -27,6 +27,9 @@ interface AllInstallmentsProps {
   setEstadoCuotaFilter: (estado: string) => void;
   dateFieldFilter: string;
   setDateFieldFilter: (field: string) => void;
+  masterDateFrom?: string;
+  masterDateTo?: string;
+  masterOrden?: string;
 }
 
 export function AllInstallments({ 
@@ -42,7 +45,10 @@ export function AllInstallments({
   estadoCuotaFilter,
   setEstadoCuotaFilter,
   dateFieldFilter,
-  setDateFieldFilter
+  setDateFieldFilter,
+  masterDateFrom,
+  masterDateTo,
+  masterOrden
 }: AllInstallmentsProps) {
   const { toast } = useToast();
 
@@ -263,6 +269,44 @@ export function AllInstallments({
   // Apply filters to installments
   const filteredInstallments = useMemo(() => {
     return allInstallments.filter((installment: any) => {
+      // MASTER FILTERS - Applied FIRST
+      // Master date range filter
+      if (masterDateFrom || masterDateTo) {
+        // Use fechaCuota as the primary date field for master filter
+        const effectiveDate = installment.fechaCuota;
+        
+        if (effectiveDate) {
+          const installmentDate = typeof effectiveDate === 'string' ? parseExcelDate(effectiveDate) : effectiveDate;
+          
+          if (installmentDate) {
+            const normalizedInstallmentDate = new Date(installmentDate);
+            normalizedInstallmentDate.setHours(0, 0, 0, 0);
+            
+            if (masterDateFrom) {
+              const fromDate = parseDDMMYYYY(masterDateFrom);
+              if (fromDate) {
+                fromDate.setHours(0, 0, 0, 0);
+                if (normalizedInstallmentDate < fromDate) return false;
+              }
+            }
+            if (masterDateTo) {
+              const toDate = parseDDMMYYYY(masterDateTo);
+              if (toDate) {
+                toDate.setHours(23, 59, 59, 999);
+                if (normalizedInstallmentDate > toDate) return false;
+              }
+            }
+          }
+        }
+      }
+
+      // Master orden filter
+      if (masterOrden) {
+        const ordenValue = String(installment.orden || '').toLowerCase();
+        if (!ordenValue.includes(masterOrden.toLowerCase())) return false;
+      }
+
+      // TAB-SPECIFIC FILTERS - Applied AFTER master filters
       // Filter based on which date field is selected
       if (dateFieldFilter === 'fechaPago') {
         // When "Fecha de Pago" is selected, only show payment-based entries
@@ -326,7 +370,7 @@ export function AllInstallments({
 
       return true;
     });
-  }, [allInstallments, dateFrom, dateTo, ordenFilter, estadoCuotaFilter, dateFieldFilter]);
+  }, [allInstallments, dateFrom, dateTo, ordenFilter, estadoCuotaFilter, dateFieldFilter, masterDateFrom, masterDateTo, masterOrden]);
 
   const clearFilters = () => {
     setDateFrom("");

@@ -31,6 +31,9 @@ interface MarketplaceOrdersTableProps {
   setEstadoEntregaFilter: (estado: string) => void;
   referenciaFilter: string;
   setReferenciaFilter: (ref: string) => void;
+  masterDateFrom?: string;
+  masterDateTo?: string;
+  masterOrden?: string;
 }
 
 type SortDirection = 'asc' | 'desc' | null;
@@ -52,7 +55,10 @@ export function MarketplaceOrdersTable({
   estadoEntregaFilter,
   setEstadoEntregaFilter,
   referenciaFilter,
-  setReferenciaFilter
+  setReferenciaFilter,
+  masterDateFrom,
+  masterDateTo,
+  masterOrden
 }: MarketplaceOrdersTableProps) {
   const { toast } = useToast();
   const [sortColumn, setSortColumn] = useState<string | null>(null);
@@ -92,6 +98,57 @@ export function MarketplaceOrdersTable({
   // Apply filters
   const filteredData = useMemo(() => {
     return data.filter(row => {
+      // MASTER FILTERS - Applied FIRST
+      // Master date filter
+      if (dateColumn && (masterDateFrom || masterDateTo)) {
+        const rowDate = row[dateColumn];
+        if (rowDate) {
+          let rowDateObj: Date | null = null;
+          if (typeof rowDate === 'string') {
+            const parsedDate = parseDDMMYYYY(rowDate);
+            if (parsedDate) {
+              rowDateObj = parsedDate;
+            } else {
+              rowDateObj = new Date(rowDate);
+              if (isNaN(rowDateObj.getTime())) {
+                rowDateObj = null;
+              }
+            }
+          } else if (rowDate instanceof Date) {
+            rowDateObj = rowDate;
+          } else if (typeof rowDate === 'number') {
+            const excelDate = parseExcelDate(rowDate);
+            if (excelDate) {
+              rowDateObj = excelDate;
+            } else {
+              rowDateObj = new Date(rowDate);
+            }
+          }
+
+          if (rowDateObj && !isNaN(rowDateObj.getTime())) {
+            if (masterDateFrom) {
+              const fromDate = parseDDMMYYYY(masterDateFrom);
+              if (fromDate && rowDateObj < fromDate) return false;
+            }
+            if (masterDateTo) {
+              const toDate = parseDDMMYYYY(masterDateTo);
+              if (toDate) {
+                const endOfDay = new Date(toDate);
+                endOfDay.setHours(23, 59, 59, 999);
+                if (rowDateObj > endOfDay) return false;
+              }
+            }
+          }
+        }
+      }
+
+      // Master orden filter
+      if (masterOrden) {
+        const rowOrden = String(row[ordenColumn] || "").toLowerCase();
+        if (!rowOrden.includes(masterOrden.toLowerCase())) return false;
+      }
+
+      // TAB-SPECIFIC FILTERS - Applied AFTER master filters
       // Date filter (if date column exists)
       if (dateColumn && (dateFrom || dateTo)) {
         const rowDate = row[dateColumn];
@@ -167,7 +224,7 @@ export function MarketplaceOrdersTable({
 
       return true;
     });
-  }, [data, dateFrom, dateTo, estadoFilter, ordenFilter, estadoEntregaFilter, referenciaFilter, dateColumn, estadoColumn, ordenColumn, estadoEntregaColumn, referenciaColumn]);
+  }, [data, dateFrom, dateTo, estadoFilter, ordenFilter, estadoEntregaFilter, referenciaFilter, dateColumn, estadoColumn, ordenColumn, estadoEntregaColumn, referenciaColumn, masterDateFrom, masterDateTo, masterOrden]);
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {

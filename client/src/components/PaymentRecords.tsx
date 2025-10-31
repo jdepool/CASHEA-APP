@@ -22,6 +22,9 @@ interface PaymentRecordsProps {
   setOrdenFilter: (orden: string) => void;
   referenciaFilter: string;
   setReferenciaFilter: (referencia: string) => void;
+  masterDateFrom?: string;
+  masterDateTo?: string;
+  masterOrden?: string;
 }
 
 export function PaymentRecords({
@@ -34,7 +37,10 @@ export function PaymentRecords({
   ordenFilter,
   setOrdenFilter,
   referenciaFilter,
-  setReferenciaFilter
+  setReferenciaFilter,
+  masterDateFrom,
+  masterDateTo,
+  masterOrden
 }: PaymentRecordsProps) {
   const { toast } = useToast();
 
@@ -85,6 +91,46 @@ export function PaymentRecords({
   // Apply filters
   const paymentData = useMemo(() => {
     return sortedPaymentData.filter((row: any) => {
+      // MASTER FILTERS - Applied FIRST
+      // Master date filter
+      if (masterDateFrom || masterDateTo) {
+        const transactionDateHeader = headers.find((h: string) => 
+          h.toLowerCase().includes('fecha') && h.toLowerCase().includes('transac')
+        );
+        
+        if (transactionDateHeader) {
+          const rowDate = parseExcelDate(row[transactionDateHeader]);
+          if (rowDate) {
+            if (masterDateFrom) {
+              const fromDate = parseDDMMYYYY(masterDateFrom);
+              if (fromDate) {
+                fromDate.setHours(0, 0, 0, 0);
+                if (rowDate < fromDate) return false;
+              }
+            }
+            if (masterDateTo) {
+              const toDate = parseDDMMYYYY(masterDateTo);
+              if (toDate) {
+                toDate.setHours(23, 59, 59, 999);
+                if (rowDate > toDate) return false;
+              }
+            }
+          }
+        }
+      }
+
+      // Master orden filter
+      if (masterOrden) {
+        const ordenHeader = headers.find((h: string) => 
+          h.toLowerCase().includes('orden') && !h.toLowerCase().includes('cuota')
+        );
+        if (ordenHeader) {
+          const ordenValue = String(row[ordenHeader] || '').toLowerCase();
+          if (!ordenValue.includes(masterOrden.toLowerCase())) return false;
+        }
+      }
+
+      // TAB-SPECIFIC FILTERS - Applied AFTER master filters
       // Date filter
       if (dateFrom || dateTo) {
         const transactionDateHeader = headers.find((h: string) => 
@@ -136,7 +182,7 @@ export function PaymentRecords({
 
       return true;
     });
-  }, [sortedPaymentData, headers, dateFrom, dateTo, ordenFilter, referenciaFilter]);
+  }, [sortedPaymentData, headers, dateFrom, dateTo, ordenFilter, referenciaFilter, masterDateFrom, masterDateTo, masterOrden]);
 
   const handleExport = () => {
     if (paymentData.length === 0) {

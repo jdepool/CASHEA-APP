@@ -23,6 +23,9 @@ interface CuotasTableProps {
   setOrdenFilter: (orden: string) => void;
   estadoFilter: string;
   setEstadoFilter: (estado: string) => void;
+  masterDateFrom?: string;
+  masterDateTo?: string;
+  masterOrden?: string;
 }
 
 type SortField = 'orden' | 'cuota' | 'fecha' | 'monto' | 'estado';
@@ -39,7 +42,10 @@ export function CuotasTable({
   ordenFilter,
   setOrdenFilter,
   estadoFilter,
-  setEstadoFilter
+  setEstadoFilter,
+  masterDateFrom,
+  masterDateTo,
+  masterOrden
 }: CuotasTableProps) {
   const { toast } = useToast();
   const [sortField, setSortField] = useState<SortField | null>(null);
@@ -61,6 +67,35 @@ export function CuotasTable({
   const filteredCuotas = useMemo(() => {
     let filtered = [...allCuotas];
 
+    // MASTER FILTERS - Applied FIRST
+    // Master date range filter
+    if (masterDateFrom || masterDateTo) {
+      const fromDate = masterDateFrom ? parseDDMMYYYY(masterDateFrom) : null;
+      const toDate = masterDateTo ? parseDDMMYYYY(masterDateTo) : null;
+      
+      if (toDate) {
+        toDate.setHours(23, 59, 59, 999);
+      }
+
+      filtered = filtered.filter((cuota) => {
+        if (!cuota.fechaCuota) return false;
+        const cuotaDate = typeof cuota.fechaCuota === 'string' ? parseExcelDate(cuota.fechaCuota) : cuota.fechaCuota;
+        if (!cuotaDate || isNaN(cuotaDate.getTime())) return false;
+
+        if (fromDate && cuotaDate < fromDate) return false;
+        if (toDate && cuotaDate > toDate) return false;
+        return true;
+      });
+    }
+
+    // Master orden filter
+    if (masterOrden) {
+      filtered = filtered.filter((cuota) => 
+        String(cuota.orden).toLowerCase().includes(masterOrden.toLowerCase())
+      );
+    }
+
+    // TAB-SPECIFIC FILTERS - Applied AFTER master filters
     // Filter by date range
     if (dateFrom || dateTo) {
       const fromDate = dateFrom ? parseDDMMYYYY(dateFrom) : null;
@@ -133,7 +168,7 @@ export function CuotasTable({
     }
 
     return filtered;
-  }, [allCuotas, dateFrom, dateTo, ordenFilter, estadoFilter, sortField, sortDirection]);
+  }, [allCuotas, dateFrom, dateTo, ordenFilter, estadoFilter, sortField, sortDirection, masterDateFrom, masterDateTo, masterOrden]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
