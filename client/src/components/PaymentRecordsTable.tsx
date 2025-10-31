@@ -10,9 +10,11 @@ interface PaymentRecordsTableProps {
   records: PaymentRecord[];
   headers: string[];
   ordersData: any[];
+  bankStatementRows: any[];
+  bankStatementHeaders: string[];
 }
 
-export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRecordsTableProps) {
+export function PaymentRecordsTable({ records, headers, ordersData, bankStatementRows, bankStatementHeaders }: PaymentRecordsTableProps) {
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   
@@ -28,8 +30,103 @@ export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRec
     });
     return map;
   }, [ordersData]);
+
+  // Function to verify if a payment exists in bank statements
+  const verifyPaymentInBankStatement = useMemo(() => {
+    // Find relevant headers in bank statement (case-insensitive)
+    const referenciaHeader = bankStatementHeaders.find(h => 
+      h.toLowerCase().includes('referencia')
+    );
+    const debeHeader = bankStatementHeaders.find(h => 
+      h.toLowerCase().includes('debe')
+    );
+    const haberHeader = bankStatementHeaders.find(h => 
+      h.toLowerCase().includes('haber')
+    );
+
+    return (record: PaymentRecord): string => {
+      // If no bank statements available, return "NO"
+      if (!bankStatementRows || bankStatementRows.length === 0) {
+        return 'NO';
+      }
+
+      const paymentRef = record['# Referencia'];
+      const paymentAmountVES = record['Monto Pagado en VES'];
+      const paymentAmountUSD = record['Monto Pagado en USD'];
+
+      // If no reference or amounts, can't verify
+      if (!paymentRef || (!paymentAmountVES && !paymentAmountUSD)) {
+        return 'NO';
+      }
+
+      // Normalize payment reference (remove spaces, leading zeros)
+      const normalizedPaymentRef = String(paymentRef).replace(/\s+/g, '').replace(/^0+/, '').toLowerCase();
+
+      // Normalize payment amounts
+      const normalizedVES = paymentAmountVES ? normalizeNumber(paymentAmountVES) : null;
+      const normalizedUSD = paymentAmountUSD ? normalizeNumber(paymentAmountUSD) : null;
+
+      // Search bank statements for matching reference and amount
+      const found = bankStatementRows.some(bankRow => {
+        // Check reference match
+        if (referenciaHeader) {
+          const bankRef = bankRow[referenciaHeader];
+          if (bankRef) {
+            const normalizedBankRef = String(bankRef).replace(/\s+/g, '').replace(/^0+/, '').toLowerCase();
+            if (normalizedBankRef !== normalizedPaymentRef) {
+              return false; // Reference doesn't match
+            }
+          } else {
+            return false; // No reference in bank statement
+          }
+        } else {
+          return false; // No reference header in bank statement
+        }
+
+        // Reference matches, now check amount
+        // Check both Debe and Haber columns
+        let amountFound = false;
+
+        if (debeHeader) {
+          const debeAmount = bankRow[debeHeader];
+          if (debeAmount) {
+            const normalizedDebe = normalizeNumber(debeAmount);
+            if (!isNaN(normalizedDebe)) {
+              // Check against both VES and USD amounts (bank could have either)
+              if (normalizedVES !== null && Math.abs(normalizedDebe - normalizedVES) < 0.01) {
+                amountFound = true;
+              }
+              if (normalizedUSD !== null && Math.abs(normalizedDebe - normalizedUSD) < 0.01) {
+                amountFound = true;
+              }
+            }
+          }
+        }
+
+        if (haberHeader && !amountFound) {
+          const haberAmount = bankRow[haberHeader];
+          if (haberAmount) {
+            const normalizedHaber = normalizeNumber(haberAmount);
+            if (!isNaN(normalizedHaber)) {
+              // Check against both VES and USD amounts
+              if (normalizedVES !== null && Math.abs(normalizedHaber - normalizedVES) < 0.01) {
+                amountFound = true;
+              }
+              if (normalizedUSD !== null && Math.abs(normalizedHaber - normalizedUSD) < 0.01) {
+                amountFound = true;
+              }
+            }
+          }
+        }
+
+        return amountFound;
+      });
+
+      return found ? 'SI' : 'NO';
+    };
+  }, [bankStatementRows, bankStatementHeaders]);
   
-  // Enrich records with Status Orden lookup
+  // Enrich records with Status Orden and Verificacion lookup
   const enrichedRecords = useMemo(() => {
     return records.map(record => {
       const ordenNum = record['# Orden'];
@@ -37,13 +134,16 @@ export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRec
         ? (orderStatusMap.get(String(ordenNum)) || 'NOT FOUND')
         : 'NOT FOUND';
       
+      const verificacion = verifyPaymentInBankStatement(record);
+      
       const enriched: PaymentRecord = {
         ...record,
-        'Status Orden': statusOrden
+        'Status Orden': statusOrden,
+        'VERIFICACION': verificacion
       };
       return enriched;
     });
-  }, [records, orderStatusMap]);
+  }, [records, orderStatusMap, verifyPaymentInBankStatement]);
   
   // Define the desired column order patterns (case-insensitive)
   const desiredOrderPatterns = [
@@ -52,6 +152,7 @@ export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRec
     { pattern: /^status\s*orden$/i, display: 'Status Orden' },
     { pattern: /^monto\s*pagado\s*en\s*ves$/i, display: 'Monto Pagado en VES' },
     { pattern: /^#\s*referencia$/i, display: '# Referencia' },
+    { pattern: /^verificacion$/i, display: 'VERIFICACION' },
     { pattern: /^m[eé]todo\s*de\s*pago$/i, display: 'Método de Pago' },
     { pattern: /^monto\s*pagado\s*en\s*usd$/i, display: 'Monto Pagado en USD' },
     { pattern: /^tasa\s*de\s*cambio$/i, display: 'Tasa de Cambio' },
@@ -66,6 +167,9 @@ export function PaymentRecordsTable({ records, headers, ordersData }: PaymentRec
     // First check if it's an enriched column
     if (pattern.test('Status Orden')) {
       return 'Status Orden';
+    }
+    if (pattern.test('VERIFICACION')) {
+      return 'VERIFICACION';
     }
     // Then check original headers
     return headers.find(h => pattern.test(h));
