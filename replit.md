@@ -116,7 +116,10 @@ The application employs a client-server architecture, utilizing a React frontend
 - **Modularity**: Reusable components and utility functions (`dateUtils.ts`, `installmentUtils.ts`, `numberUtils.ts`).
 - **Locale-aware Number Parsing**: `shared/numberUtils.ts` handles various numeric formats and separators, used consistently across the application.
 - **Empty Row Filtering**: Filters out empty rows during uploads to prevent inaccurate record counts.
-- **Scientific Notation Prevention**: Reference numbers automatically converted from scientific notation (e.g., "6.48145E+12") to full numbers (e.g., "6481450000000") in all tables (BANCO, PAGO DE CUOTAS, MARKETPLACE ORDERS).
+- **Scientific Notation Prevention**: Reference numbers automatically converted from scientific notation (e.g., "3.30055E+11") to full numbers (e.g., "330055487026") in all tables (BANCO, PAGO DE CUOTAS, MARKETPLACE ORDERS).
+  - **Server-side**: Excel parsing uses `raw: true` to preserve numeric precision during upload
+  - **Client-side**: Reference columns use `Math.round().toString()` to convert scientific notation without losing precision
+  - **Safe Range**: Handles reference numbers up to Number.MAX_SAFE_INTEGER (2^53-1, approximately 16 digits)
 
 ## External Dependencies
 - **Database**: PostgreSQL (Neon).
