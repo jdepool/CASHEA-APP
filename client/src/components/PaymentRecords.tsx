@@ -56,6 +56,12 @@ export function PaymentRecords({
     refetchOnWindowFocus: false,
   });
 
+  // Fetch bank statements for payment verification
+  const { data: bankStatementsData, isLoading: isLoadingBankStatements } = useQuery({
+    queryKey: ['/api/bank-statements'],
+    refetchOnWindowFocus: false,
+  });
+
   // Derive data directly from query result
   const data = paymentRecordsData as any;
   const rawPaymentData = data?.data?.rows || [];
@@ -63,6 +69,10 @@ export function PaymentRecords({
 
   // Extract orders data for comparing expected installment amounts
   const ordersTableData = (ordersData as any)?.data?.rows || [];
+
+  // Extract bank statement data for payment verification
+  const bankStatementRows = (bankStatementsData as any)?.data?.rows || [];
+  const bankStatementHeaders = (bankStatementsData as any)?.data?.headers || [];
 
   // Sort payment data by transaction date (newest to oldest)
   const sortedPaymentData = useMemo(() => {
@@ -221,7 +231,7 @@ export function PaymentRecords({
     });
   };
 
-  if (isLoadingPayments || isLoadingOrders) {
+  if (isLoadingPayments || isLoadingOrders || isLoadingBankStatements) {
     return (
       <div className="text-center py-8">
         <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
@@ -334,7 +344,13 @@ export function PaymentRecords({
             </div>
           )}
 
-          <PaymentRecordsTable records={paymentData} headers={headers} ordersData={ordersTableData} />
+          <PaymentRecordsTable 
+            records={paymentData} 
+            headers={headers} 
+            ordersData={ordersTableData}
+            bankStatementRows={bankStatementRows}
+            bankStatementHeaders={bankStatementHeaders}
+          />
         </>
       ) : (
         <div className="text-center py-12">
