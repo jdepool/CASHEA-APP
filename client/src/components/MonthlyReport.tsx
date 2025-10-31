@@ -211,6 +211,19 @@ export function MonthlyReport({
     const islrRetenido = 0;
     const totalServiciosTecnologicos = 0;
 
+    // TODO: Calculate reconciliation adjustments based on user's explanation
+    const devolucionesPagoClientes = 0;
+    const cupones = 0;
+    const subtotalIncidencias = 0;
+    const depositosOtrosAliados = 0;
+    const depositosBancoOtrosAliados = 0;
+    const subtotalErroresBancarios = 0;
+    const compensacionFacturasPendientes = 0;
+    const avanceCajaVencido = 0;
+    const servTecnologicoOrdenesCanceladas = 0;
+    const totalAvancesCaja = 0;
+    const totalReconocer = 0;
+
     return {
       totalVentas,
       totalPagoInicial,
@@ -222,6 +235,17 @@ export function MonthlyReport({
       ivaPagarCashea,
       islrRetenido,
       totalServiciosTecnologicos,
+      devolucionesPagoClientes,
+      cupones,
+      subtotalIncidencias,
+      depositosOtrosAliados,
+      depositosBancoOtrosAliados,
+      subtotalErroresBancarios,
+      compensacionFacturasPendientes,
+      avanceCajaVencido,
+      servTecnologicoOrdenesCanceladas,
+      totalAvancesCaja,
+      totalReconocer,
     };
   }, [filteredData, headers]);
 
@@ -342,6 +366,120 @@ export function MonthlyReport({
                 {formatCurrency(metrics.totalServiciosTecnologicos)}
               </span>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>III. AJUSTES QUE COMPENSAMOS PARA COMPLETAR LA CONCILIACIÓN</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            {/* INCIDENCIAS SOBRE COMPRADORES */}
+            <div className="space-y-3">
+              <div className="border-b pb-2 mb-2">
+                <h3 className="font-semibold mb-3">INCIDENCIAS SOBRE COMPRADORES</h3>
+              </div>
+              
+              <div className="flex justify-between items-center py-2">
+                <span>(+) Devoluciones por errores de pago de clientes</span>
+                <span className="font-mono text-right" data-testid="devoluciones-pago-clientes">
+                  {formatCurrency(metrics.devolucionesPagoClientes ?? 0)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2">
+                <span>(-) Cupones</span>
+                <span className="font-mono text-right" data-testid="cupones">
+                  {formatCurrency(metrics.cupones ?? 0)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2 bg-muted/50 px-3 -mx-3 rounded-md">
+                <span className="font-semibold">(2) Subtotal incidencias</span>
+                <span className="font-mono font-semibold text-right" data-testid="subtotal-incidencias">
+                  {formatCurrency(metrics.subtotalIncidencias ?? 0)}
+                </span>
+              </div>
+            </div>
+
+            {/* ERRORES BANCARIOS */}
+            <div className="space-y-3">
+              <div className="border-b pb-2 mb-2">
+                <h3 className="font-semibold mb-3">ERRORES BANCARIOS</h3>
+              </div>
+              
+              <div className="flex justify-between items-center py-2">
+                <span>(+) Depósitos de otros aliados</span>
+                <span className="font-mono text-right" data-testid="depositos-otros-aliados">
+                  {formatCurrency(metrics.depositosOtrosAliados ?? 0)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2">
+                <span>(-) Depósitos en banco de otros aliados</span>
+                <span className="font-mono text-right" data-testid="depositos-banco-otros-aliados">
+                  {formatCurrency(metrics.depositosBancoOtrosAliados ?? 0)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2 bg-muted/50 px-3 -mx-3 rounded-md">
+                <span className="font-semibold">(3) Subtotal Errores Bancarios</span>
+                <span className="font-mono font-semibold text-right" data-testid="subtotal-errores-bancarios">
+                  {formatCurrency(metrics.subtotalErroresBancarios ?? 0)}
+                </span>
+              </div>
+            </div>
+
+            {/* AVANCE DE CAJA - AJUSTES */}
+            <div className="space-y-3">
+              <div className="border-b pb-2 mb-2">
+                <h3 className="font-semibold mb-3">AVANCE DE CAJA - AJUSTES</h3>
+              </div>
+              
+              <div className="flex justify-between items-center py-2">
+                <span>Compensación de facturas pendientes</span>
+                <span className="font-mono text-right" data-testid="compensacion-facturas-pendientes">
+                  {formatCurrency(metrics.compensacionFacturasPendientes ?? 0)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2">
+                <span>Avance de caja vencido al 31/01/2025</span>
+                <span className="font-mono text-right" data-testid="avance-caja-vencido">
+                  {formatCurrency(metrics.avanceCajaVencido ?? 0)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2">
+                <span>(-) Serv Tecnológico Órdenes Canceladas</span>
+                <span className="font-mono text-right" data-testid="serv-tecnologico-ordenes-canceladas">
+                  {formatCurrency(metrics.servTecnologicoOrdenesCanceladas ?? 0)}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center py-2 bg-muted/50 px-3 -mx-3 rounded-md">
+                <span className="font-semibold">(4) Total avances de caja</span>
+                <span className="font-mono font-semibold text-right" data-testid="total-avances-caja">
+                  {formatCurrency(metrics.totalAvancesCaja ?? 0)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>IV. TOTAL A RECONOCER</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-between items-center py-2 bg-primary/10 px-3 -mx-3 rounded-md">
+            <span className="font-semibold text-lg">Total a reconocer Cáshea a BOXI SLEEP, C.A. (1) + (2) + (3) + (4)</span>
+            <span className="font-mono font-bold text-lg text-right" data-testid="total-reconocer">
+              {formatCurrency(metrics.totalReconocer ?? 0)}
+            </span>
           </div>
         </CardContent>
       </Card>
