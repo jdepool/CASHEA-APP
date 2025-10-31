@@ -29,6 +29,17 @@ The application employs a client-server architecture, utilizing a React frontend
 - **File Upload**: Drag & drop or file selection with client-side and backend validation for file types and expected headers for orders, payments, and marketplace orders.
 - **Data Persistence**: All processed data is automatically saved to PostgreSQL and reloaded on app start.
 - **Duplicate Handling**: Orders are replaced by new uploads based on `Orden` number. Payment records update based on `(# Orden, # Cuota Pagada, # Referencia)`, allowing multiple payments for the same installment if reference numbers differ.
+- **Master Filter System**: Global filtering that applies across all tabs before tab-specific filters:
+    - **Location**: Displayed above all tabs in a distinct card with primary border and "Filtro Master" label
+    - **Filter Fields**: 
+        - **Desde/Hasta** (Date Range): Two date picker fields for filtering by date ranges
+        - **Orden**: Text input for filtering by order number (case-insensitive substring match)
+    - **Filter Hierarchy**: Master filters apply FIRST to all data, then tab-specific filters apply on the already-filtered data
+    - **Persistence**: Master filter values persist when switching between tabs
+    - **Visual Indicator**: Shows "Activo" badge when any master filter is set
+    - **Clear Functionality**: "Limpiar filtros" button clears all master filter fields (Desde, Hasta, Orden)
+    - **Scope**: Applies to all six main tabs (MARKETPLACE ORDERS, TODAS LAS ÓRDENES, CUOTAS, PAGO DE CUOTAS, CONCILIACION DE CUOTAS, REPORTE MENSUAL)
+    - **Date Field Mapping**: Each tab uses appropriate date fields (fechaCuota for cuotas, fechaPago for payments, transaction date for payment records, etc.)
 - **Installments View (`CONCILIACION DE CUOTAS`)**: Displays all installments with collapsible filters (date range, order, status, date field selector: "Fecha de Pago" vs. "Fecha Cuota") and an `InstallmentsDashboard` showing status-based and total metrics.
     - **STATUS Column**: Categorizes payment timing with five statuses:
         - **ADELANTADO** (blue badge): Payment made at least 15 days before due date AND cuota month is after payment month
