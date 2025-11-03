@@ -517,6 +517,7 @@ export function MonthlyReport({
           const ordenNum = String(record[ordenHeaderPmt] || '').trim();
           const cuotaValue = String(record[cuotaHeaderPmt] || '').trim();
           const montoPagado = normalizeNumber(record[montoUsdHeader]);
+          const verificacion = record['VERIFICACION'] || 'NO';
           
           if (!ordenNum || isNaN(montoPagado)) return;
           
@@ -572,13 +573,14 @@ export function MonthlyReport({
               cuotaNum,
               monto: montoPagado / cuotaNumbers.length, // Divide amount by number of cuotas
               scheduledDate,
+              verificacion, // Include VERIFICACION status
             });
           });
         });
         
-        // Sum amounts for installments with no scheduled date (OTRO ALIADO)
+        // Sum amounts for installments with no scheduled date (OTRO ALIADO) AND VERIFICACION = SI
         paymentInstallments.forEach(inst => {
-          if (!inst.scheduledDate) {
+          if (!inst.scheduledDate && inst.verificacion === 'SI') {
             depositosOtrosAliadosBanco += inst.monto;
           }
         });
