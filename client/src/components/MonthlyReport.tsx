@@ -590,7 +590,96 @@ export function MonthlyReport({
     // 5. Banco neto = Recibido - Cuotas adelantadas - Pago inicial - Devoluciones - Depositos otros aliados
     const devolucionesPagoClientesBanco = 0; // Assume 0 as specified by user
     const bancoNetoCuotasReconocidas = recibidoEnBanco - cuotasAdelantadasClientes - pagoInicialClientesApp - devolucionesPagoClientesBanco - depositosOtrosAliadosBanco;
-    const cuentasPorCobrar = 0;
+    
+    // 6. Cuentas por Cobrar = sum of installment amounts within the date period
+    // This calculation matches the Dashboard component in "TODAS LAS ORDENES" tab
+    let cuentasPorCobrar = 0;
+    
+    // Helper function to check if an order is cancelled
+    const isCancelledOrder = (row: any): boolean => {
+      const statusOrden = String(row["STATUS ORDEN"] || "").toLowerCase().trim();
+      return statusOrden.includes("cancel");
+    };
+    
+    // Determine effective date range (combine master and local filters - most restrictive)
+    let effectiveDateFrom: Date | null = null;
+    let effectiveDateTo: Date | null = null;
+    
+    // Start with master filters
+    if (masterDateFrom) {
+      effectiveDateFrom = parseDDMMYYYY(masterDateFrom);
+    }
+    if (masterDateTo) {
+      effectiveDateTo = parseDDMMYYYY(masterDateTo);
+      if (effectiveDateTo) {
+        effectiveDateTo.setHours(23, 59, 59, 999);
+      }
+    }
+    
+    // Apply local filters (use the more restrictive date)
+    if (dateFrom) {
+      const localFrom = parseDDMMYYYY(dateFrom);
+      if (localFrom) {
+        if (!effectiveDateFrom || localFrom > effectiveDateFrom) {
+          effectiveDateFrom = localFrom;
+        }
+      }
+    }
+    if (dateTo) {
+      const localTo = parseDDMMYYYY(dateTo);
+      if (localTo) {
+        localTo.setHours(23, 59, 59, 999);
+        if (!effectiveDateTo || localTo < effectiveDateTo) {
+          effectiveDateTo = localTo;
+        }
+      }
+    }
+    
+    // Calculate cuentas por cobrar from ALL orders (not filteredOrders) to avoid double-filtering
+    // Only apply filters once: master orden filter + date range filter on installment dates
+    if (effectiveDateFrom || effectiveDateTo) {
+      ordersData.forEach((order: any) => {
+        // Skip cancelled orders
+        if (isCancelledOrder(order)) {
+          return;
+        }
+        
+        // Apply master orden filter
+        if (masterOrden) {
+          const ordenNum = String(order['Orden'] || "").toLowerCase();
+          if (!ordenNum.includes(masterOrden.toLowerCase())) {
+            return;
+          }
+        }
+        
+        // Process cuotas 1-14 (regular installments only, excluding Cuota 0/PAGO INICIAL)
+        for (let i = 1; i <= 14; i++) {
+          const fechaCuotaStr = order[`Fecha cuota ${i}`] || order[`Fecha Cuota ${i}`];
+          const cuotaMontoStr = order[`Cuota ${i}`];
+          
+          if (fechaCuotaStr && cuotaMontoStr) {
+            const cuotaMonto = normalizeNumber(cuotaMontoStr);
+            
+            if (!isNaN(cuotaMonto) && cuotaMonto > 0) {
+              // Parse the date using the proper utility function
+              const fechaCuota = parseExcelDate(fechaCuotaStr);
+              
+              if (fechaCuota && !isNaN(fechaCuota.getTime())) {
+                // Check if date is within the effective period
+                const withinPeriod = 
+                  (!effectiveDateFrom || fechaCuota >= effectiveDateFrom) && 
+                  (!effectiveDateTo || fechaCuota <= effectiveDateTo);
+                
+                if (withinPeriod) {
+                  cuentasPorCobrar += cuotaMonto;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+    
     const cuotasAdelantadasPeriodosAnteriores = 0;
     const cuentasPorCobrarNeto = 0;
     const subtotalConciliacionBancoNeto = 0;
