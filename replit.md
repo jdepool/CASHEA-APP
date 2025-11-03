@@ -65,7 +65,13 @@ The application employs a client-server architecture, utilizing a React frontend
             - **Pago Inicial Depositado**: Sum of Cuota 0 payments with VERIFICACION = SI (verified in bank)
             - **Pago Inicial No Depositado**: Sum of Cuota 0 payments with VERIFICACION = NO (not verified)
     - **VERIFICACION Column**: Shows "SI" when payment reference and amount match bank statements, "NO" otherwise
-    - **Payment Verification**: Automatically cross-references payment records with bank statements based on reference number and amount matching
+    - **Server-Side Verification**: VERIFICACION is calculated once during upload and stored in the database, not recalculated on every view
+    - **Payment Verification Process**:
+        - During payment record upload, server fetches latest bank statements
+        - Each payment row is enriched with VERIFICACION field before storage
+        - Verification logic: reference number normalization (remove spaces/leading zeros/lowercase) and amount tolerance (±$0.01)
+        - Returns 'SI' (verified) or 'NO' (not verified)
+        - Frontend reads VERIFICACION directly from stored data
 - **Bank Statements View (`BANCO`)**: Displays bank statement data with flexible schema, complete replacement on upload, column sorting, and Excel export:
     - **File Upload**: Upload bank statement Excel files from the CARGAR DATOS tab
     - **Flexible Column Detection**: Automatically parses all columns from the Excel file
