@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileSpreadsheet } from "lucide-react";
 import { normalizeNumber } from "@shared/numberUtils";
 import { parseDDMMYYYY, parseExcelDate } from "@/lib/dateUtils";
+import { calculateInstallmentStatus } from "@/lib/installmentUtils";
 
 interface MonthlyReportProps {
   marketplaceData: any;
@@ -680,9 +681,89 @@ export function MonthlyReport({
       });
     }
     
-    const cuotasAdelantadasPeriodosAnteriores = 0;
-    const cuentasPorCobrarNeto = 0;
-    const subtotalConciliacionBancoNeto = 0;
+    // 6. Cuotas adelantadas en periodos anteriores = sum of installments where Estado=done AND STATUS=ADELANTADO
+    let cuotasAdelantadasPeriodosAnteriores = 0;
+    
+    if (filteredOrders.length > 0 && filteredPaymentRecords.length > 0) {
+      // Extract installments from orders
+      const installments: any[] = [];
+      
+      filteredOrders.forEach((order: any) => {
+        const ordenNum = order['Orden'];
+        if (!ordenNum) return;
+        
+        // Process cuotas 1-14 (regular installments)
+        for (let i = 1; i <= 14; i++) {
+          const fechaCuotaKey = `Fecha cuota ${i}`;
+          const cuotaKey = `Cuota ${i}`;
+          const estadoCuotaKey = `Estado cuota ${i}`;
+          
+          const fechaCuotaValue = order[fechaCuotaKey];
+          const montoValue = order[cuotaKey];
+          const estadoValue = order[estadoCuotaKey];
+          
+          if (fechaCuotaValue && montoValue) {
+            const monto = normalizeNumber(montoValue);
+            const fechaCuota = parseExcelDate(fechaCuotaValue);
+            
+            if (!isNaN(monto) && monto > 0 && fechaCuota) {
+              installments.push({
+                orden: ordenNum,
+                cuotaNum: i,
+                monto,
+                fechaCuota,
+                estadoCuota: estadoValue || '',
+              });
+            }
+          }
+        }
+      });
+      
+      // For each installment, find payment and calculate STATUS
+      const ordenHeaderPmt = paymentRecordsHeaders.find((h: string) => 
+        h.toLowerCase().includes('orden') && !h.toLowerCase().includes('cuota')
+      );
+      const cuotaHeaderPmt = paymentRecordsHeaders.find((h: string) => 
+        h.toLowerCase().includes('cuota') && h.toLowerCase().includes('pagada')
+      );
+      const fechaPagoHeader = paymentRecordsHeaders.find((h: string) => 
+        h.toLowerCase().includes('fecha') && h.toLowerCase().includes('pago')
+      );
+      
+      if (ordenHeaderPmt && cuotaHeaderPmt && fechaPagoHeader) {
+        installments.forEach(inst => {
+          // Find payment record for this installment
+          const payment = filteredPaymentRecords.find((p: any) => {
+            const pOrden = String(p[ordenHeaderPmt] || '');
+            const pCuota = String(p[cuotaHeaderPmt] || '');
+            
+            // Check if payment matches this installment
+            const cuotaNumbers = pCuota.split(',').map(c => c.trim()).filter(c => c);
+            return pOrden === String(inst.orden) && cuotaNumbers.includes(String(inst.cuotaNum));
+          });
+          
+          if (payment) {
+            const fechaPagoValue = parseExcelDate(payment[fechaPagoHeader]);
+            
+            // Calculate STATUS using the utility function
+            const status = calculateInstallmentStatus({
+              fechaCuota: inst.fechaCuota,
+              fechaPagoReal: fechaPagoValue,
+              estadoCuota: inst.estadoCuota,
+            });
+            
+            // Check if Estado = done AND STATUS = ADELANTADO
+            const estadoNormalized = (inst.estadoCuota || '').trim().toLowerCase();
+            if (estadoNormalized === 'done' && status === 'ADELANTADO') {
+              cuotasAdelantadasPeriodosAnteriores += inst.monto;
+            }
+          }
+        });
+      }
+    }
+    
+    const cuentasPorCobrarNeto = cuentasPorCobrar - cuotasAdelantadasPeriodosAnteriores;
+    const subtotalConciliacionBancoNeto = bancoNetoCuotasReconocidas - cuentasPorCobrarNeto;
 
     // TODO: Calculate reconciliation adjustments based on user's explanation
     const devolucionesPagoClientes = 0;
