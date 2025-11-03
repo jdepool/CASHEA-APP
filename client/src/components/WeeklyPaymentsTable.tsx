@@ -118,6 +118,18 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
           comparison = aStatus - bStatus;
           break;
         }
+        case 'verificacion': {
+          const aVerif = (a as any).verificacion || '-';
+          const bVerif = (b as any).verificacion || '-';
+          // Sort order: SI (1) -> NO (2) -> — (3)
+          const getVerifValue = (v: string) => {
+            if (v === 'SI') return 1;
+            if (v === 'NO') return 2;
+            return 3;
+          };
+          comparison = getVerifValue(aVerif) - getVerifValue(bVerif);
+          break;
+        }
         default:
           comparison = 0;
       }
@@ -240,8 +252,19 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
                 )}
               </div>
             </th>
-            <th className="text-left py-3 px-4 font-semibold text-sm" data-testid="header-verificacion">
-              VERIFICACION
+            <th 
+              onClick={() => handleSort('verificacion')}
+              className="text-left py-3 px-4 font-semibold text-sm cursor-pointer hover-elevate" 
+              data-testid="header-verificacion"
+            >
+              <div className="flex items-center gap-1">
+                <span>VERIFICACION</span>
+                {sortColumn === 'verificacion' ? (
+                  sortDirection === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                ) : (
+                  <ArrowUpDown className="h-3 w-3 opacity-40" />
+                )}
+              </div>
             </th>
           </tr>
         </thead>
