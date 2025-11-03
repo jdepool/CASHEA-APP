@@ -33,7 +33,16 @@ The application employs a client-server architecture with a React frontend and a
 - **Bank Statements View (`BANCO`)**: Displays bank statement data with flexible schema, complete replacement on upload, column sorting, Excel export, master filter support, and a collapsible filter panel for `Referencia`.
 - **Cuotas View (`CUOTAS`)**: Displays installments vertically with collapsible filters (date range, order, status), and a period-based dashboard showing `CUOTAS DEL PERIODO` and `CUENTAS POR PAGAR`. Supports tri-state column sorting and Excel export.
 - **Marketplace Orders View (`MARKETPLACE ORDERS`)**: Displays marketplace order data with flexible schema, complete replacement on upload, sorting, Excel export, and collapsible filters for `Estado`, `Orden`, `Estado de Entrega`, and `# Referencia`.
-- **Monthly Report View (`REPORTE MENSUAL`)**: Displays dynamic financial summary metrics (`Ventas Totales`, `Monto Pagado en Caja`, `Monto Financiado`, `Porcentaje Financiado`) calculated from marketplace order data, synchronized with marketplace filters.
+- **Monthly Report View (`REPORTE MENSUAL`)**: Displays dynamic financial summary metrics and bank reconciliation calculations:
+  * **Summary Metrics**: `Ventas Totales`, `Monto Pagado en Caja`, `Monto Financiado`, `Porcentaje Financiado` (calculated from marketplace order data)
+  * **Bank Reconciliation (Conciliación Bancaria)**: Five deduction metrics and net calculation:
+    - `Recibido en Banco`: Sum of payment amounts where VERIFICACION = SI (bank verified)
+    - `Cuotas adelantadas de clientes`: Sum of installments with ADELANTADO status (payment ≥15 days early AND cuota month > payment month)
+    - `Pago inicial de clientes en App`: Sum of verified cuota 0 payments (Pago Inicial Depositado)
+    - `Devoluciones por errores de pago`: Currently 0 (user-specified placeholder)
+    - `Depositos de otros aliados`: Sum of payments for installments with STATUS=OTRO ALIADO (payment exists but no scheduled cuota date)
+    - `Banco neto`: Formula = Recibido - Cuotas adelantadas - Pago inicial - Devoluciones - Depositos otros aliados
+  * All metrics respect master filters and update dynamically
 - **Data Export**: Exports current table views to Excel.
 - **Table Sorting**: All major tables support column sorting.
 - **Date Handling**: Automatic conversion of Excel serial dates and various date formats.
