@@ -1,7 +1,7 @@
 # Gestor de Cuotas - Sistema de Gestión de Pagos
 
 ## Overview
-This project is a professional web application for managing purchase orders with installment payments. It enables users to import Excel data for orders, payments, and marketplace orders, visualize detailed installment information (up to 14 payments), track statuses, dates, and amounts. The system provides a weekly payments overview, ensures data persistence via PostgreSQL, and aims to offer a robust, user-friendly tool for efficient installment plan management, improving cash flow visibility and reducing manual data handling.
+This project is a professional web application for managing purchase orders with installment payments. It allows users to import Excel data for orders, payments, and marketplace orders, visualize detailed installment information, and track statuses, dates, and amounts. The system provides a weekly payments overview, ensures data persistence via PostgreSQL, and aims to offer a robust, user-friendly tool for efficient installment plan management, improving cash flow visibility and reducing manual data handling.
 
 ## User Preferences
 - I prefer clear and detailed explanations.
@@ -11,126 +11,43 @@ This project is a professional web application for managing purchase orders with
 - I need the application to handle flexible Excel formats for payment records, auto-detecting currency and adjusting table columns dynamically.
 
 ## System Architecture
-The application employs a client-server architecture, utilizing a React frontend and an Express.js backend.
+The application employs a client-server architecture with a React frontend and an Express.js backend.
 
 **UI/UX Decisions**:
-- **Design System**: Professional and clean UI with Tailwind CSS and Shadcn UI.
+- **Design System**: Professional and clean UI using Tailwind CSS and Shadcn UI.
 - **Theming**: Dark/light mode toggle with persistence.
-- **Layout**: Tabbed navigation for `CARGAR DATOS`, `MARKETPLACE ORDERS`, `TODAS LAS ÓRDENES`, `CUOTAS`, `BANCO`, `PAGO DE CUOTAS`, `CONCILIACION DE CUOTAS`, and `REPORTE MENSUAL`.
-- **Data Presentation**: Dashboards displaying key metrics (e.g., active orders, total sales, pending balance), DataTables with sticky headers and horizontal scroll for main order data, WeeklyPaymentsTable for installments, and PaymentRecordsTable with dynamic column adjustment. Semantic colored badges are used for payment statuses.
-- **User Feedback**: Toast notifications, animated spinners for loading, and clear empty states.
+- **Layout**: Tabbed navigation for core functionalities.
+- **Data Presentation**: Dashboards for key metrics, DataTables with sticky headers, WeeklyPaymentsTable, PaymentRecordsTable with dynamic columns, and semantic colored badges for statuses. Toast notifications, animated spinners, and clear empty states provide user feedback.
 
 **Technical Implementations**:
 - **Frontend**: React with TypeScript, React Query for data fetching, Wouter for routing, and SheetJS for client-side Excel handling.
-- **Backend**: Express.js server, Drizzle ORM for PostgreSQL interaction, Multer for file uploads, and SheetJS for server-side Excel processing.
-- **Database**: PostgreSQL (Neon-backed) with `orders`, `payment_records`, `marketplace_orders`, and `bank_statements` tables storing data as JSONB, managed by `drizzle-kit` for migrations.
+- **Backend**: Express.js server, Drizzle ORM for PostgreSQL, Multer for file uploads, and SheetJS for server-side Excel processing.
+- **Database**: PostgreSQL (Neon-backed) with `orders`, `payment_records`, `marketplace_orders`, and `bank_statements` tables storing data as JSONB, managed by `drizzle-kit`.
 
 **Feature Specifications**:
-- **File Upload**: Drag & drop or file selection with client-side and backend validation for file types and expected headers for orders, payments, and marketplace orders.
-- **Data Persistence**: All processed data is automatically saved to PostgreSQL and reloaded on app start.
-- **Duplicate Handling**: Orders are replaced by new uploads based on `Orden` number. Payment records update based on `(# Orden, # Cuota Pagada, # Referencia)`, allowing multiple payments for the same installment if reference numbers differ.
-- **Master Filter System**: Global filtering that applies across all tabs before tab-specific filters:
-    - **Location**: Displayed above all tabs in a distinct card with primary border and "Filtro Master" label
-    - **Filter Fields**: 
-        - **Desde/Hasta** (Date Range): Two date picker fields for filtering by date ranges
-        - **Orden**: Text input for filtering by order number (case-insensitive substring match)
-    - **Filter Hierarchy**: Master filters apply FIRST to all data, then tab-specific filters apply on the already-filtered data
-    - **Persistence**: Master filter values persist when switching between tabs
-    - **Visual Indicator**: Shows "Activo" badge when any master filter is set
-    - **Clear Functionality**: "Limpiar filtros" button clears all master filter fields (Desde, Hasta, Orden)
-    - **Scope**: Applies to all six main tabs (MARKETPLACE ORDERS, TODAS LAS ÓRDENES, CUOTAS, PAGO DE CUOTAS, CONCILIACION DE CUOTAS, REPORTE MENSUAL)
-    - **Date Field Mapping**: Each tab uses appropriate date fields (fechaCuota for cuotas, fechaPago for payments, transaction date for payment records, etc.)
-- **Installments View (`CONCILIACION DE CUOTAS`)**: Displays all installments with collapsible filters (date range, order, status, date field selector: "Fecha de Pago" vs. "Fecha Cuota") and an `InstallmentsDashboard` showing status-based and total metrics.
-    - **STATUS Column**: Categorizes payment timing with five statuses:
-        - **ADELANTADO** (blue badge): Payment made at least 15 days before due date AND cuota month is after payment month
-        - **A TIEMPO** (green badge): Payment made within 2 days of due date (before or after) OR payment early but not meeting ADELANTADO criteria
-        - **ATRASADO** (red badge): Payment made more than 2 days after the due date
-        - **OTRO ALIADO** (purple badge): Payment exists but there is no due date (fecha de cuota)
-        - **NO DEPOSITADO** (orange badge): Order status is DONE but there is no payment received (no fecha de pago)
-    - **STATUS Sorting**: Click STATUS column header to sort by: No status → ADELANTADO → A TIEMPO → ATRASADO → OTRO ALIADO → NO DEPOSITADO
-    - **VERIFICACION Column**: Shows bank statement verification status for each installment payment:
-        - **SI** (green badge): Payment found and verified in bank statements (matching reference and amount)
-        - **NO** (red badge): Payment record exists but not found in bank statements
-        - **—** (gray): No payment record for this installment
-        - Uses same verification logic as PAGO DE CUOTAS (cross-references reference number and amount from payment records with bank statements)
-- **Payment Records View (`PAGO DE CUOTAS`)**: Allows uploading and viewing payment transactions with flexible columns, auto-detection/formatting of currencies, and a dashboard. Highlights partial payments and supports multi-installment payments.
-    - **Dashboard Metrics**: Seven-card dashboard in two rows:
-        - **First Row (5 cards)**:
-            - **Pago Iniciales**: Sum of initial payments (Cuota 0) in USD
-            - **Total Cuotas Pagadas**: Count of unique installments paid
-            - **Total Pagado**: Total sum of all payments in USD
-            - **No Depositadas**: Sum of payments with VERIFICACION = NO (not found in bank statements)
-            - **Deposito Banco**: Sum of payments with VERIFICACION = SI (verified in bank statements)
-        - **Second Row (2 cards)**:
-            - **Pago Inicial Depositado**: Sum of Cuota 0 payments with VERIFICACION = SI (verified in bank)
-            - **Pago Inicial No Depositado**: Sum of Cuota 0 payments with VERIFICACION = NO (not verified)
-    - **VERIFICACION Column**: Shows "SI" when payment reference and amount match bank statements, "NO" otherwise
-    - **Server-Side Verification**: VERIFICACION is calculated once during upload and stored in the database, not recalculated on every view
-    - **Payment Verification Process**:
-        - During payment record upload, server fetches latest bank statements
-        - Each payment row is enriched with VERIFICACION field before storage
-        - Verification logic: reference number normalization (remove spaces/leading zeros/lowercase) and amount tolerance (±$0.01)
-        - Returns 'SI' (verified) or 'NO' (not verified)
-        - Frontend reads VERIFICACION directly from stored data
-- **Bank Statements View (`BANCO`)**: Displays bank statement data with flexible schema, complete replacement on upload, column sorting, and Excel export:
-    - **File Upload**: Upload bank statement Excel files from the CARGAR DATOS tab
-    - **Flexible Column Detection**: Automatically parses all columns from the Excel file
-    - **Numeric Formatting**: Automatically formats Debe, Haber, and Saldo columns as currency values
-    - **Master Filter Support**: Applies master date range and order filters to bank statement data
-    - **Date Filtering**: Filters by Fecha column when master date filters are applied
-    - **Search Functionality**: Master order filter searches across all text fields in the bank statement
-    - **Collapsible Filters**: Toggle button to show/hide filter panel with Referencia filter
-    - **Referencia Filter**: Text input for searching reference numbers (case-insensitive, applied after master filters)
-    - **Clear Filters**: One-click button to reset Referencia filter when active
-    - **Column Sorting**: Click any column header to sort in ascending, descending, or no order
-    - **Excel Export**: Export filtered bank statement data to Excel format
-    - **Complete Replacement**: Each new upload replaces all existing bank statement data
-- **Cuotas View (`CUOTAS`)**: Displays all installments vertically with collapsible filters (date range, order, status) and period-based dashboard metrics:
-    - **Filter State Persistence**: All filter state managed in Home.tsx parent component, persists when switching between tabs
-    - **Collapsible Filters**: Date range (Desde/Hasta), order number text filter, and status dropdown (Todas, Done, Pendiente, Vencido)
-    - **Period Dashboard**: Appears when date range is specified, showing:
-        - **CUOTAS DEL PERIODO**: Count of all cuotas (1-14) with due dates in the specified period (excludes Cuota 0/PAGO INICIAL)
-        - **CUENTAS POR PAGAR**: Total amount of all cuotas (1-14) with due dates in the specified period (excludes Cuota 0/PAGO INICIAL)
-    - **Tri-state Column Sorting**: All columns sortable with visual indicators (none → ascending → descending → none)
-    - **Excel Export**: Exports filtered cuotas with all columns
-    - **Note**: Only counts regular installments (Cuotas 1-14), excluding initial payment (Cuota 0)
-- **Marketplace Orders View (`MARKETPLACE ORDERS`)**: Displays marketplace order data with flexible schema, complete replacement on upload, sorting, Excel export, and comprehensive filtering.
-    - **Collapsible Filters**: Toggle button to show/hide filter panel with four filter fields:
-        - **Estado**: Dropdown filter for payment status
-        - **Orden**: Text input filter for order number
-        - **Estado de Entrega**: Dropdown filter for delivery status
-        - **# Referencia**: Text input filter for reference number
-    - **Combined Filtering**: All filters work together for precise data filtering
-    - **Filtered Count Display**: Shows "X de Y registros" when filters are active
-    - **Clear Filters**: One-click button to reset all filters
-    - **Flexible Column Detection**: Uses case-insensitive matching to find columns (e.g., "estado pago", "# orden")
-- **Monthly Report View (`REPORTE MENSUAL`)**: Displays financial summary metrics calculated from marketplace order data:
-    - **Dynamic Metrics**: All metrics update in real-time based on the same filters applied in the MARKETPLACE ORDERS tab
-    - **Ventas Totales (incluye IVA)**: Sum of "Total USD" column from filtered marketplace data
-    - **Monto Pagado en Caja**: Sum of "Pago Inicial USD" column from filtered marketplace data
-    - **Monto Financiado**: Calculated as `Ventas Totales - Monto Pagado en Caja`
-    - **Porcentaje Financiado**: Calculated as `(Monto Financiado / Ventas Totales) * 100`
-    - **Filter Synchronization**: Uses the same date range, estado, orden, estado de entrega, and referencia filters as MARKETPLACE ORDERS
-    - **Currency Formatting**: Values displayed with Spanish number formatting (comma as thousand separator, period as decimal)
-    - **Empty State**: Shows prompt to upload marketplace data when no data is available
-- **Data Export**: Export current table view to Excel.
-- **Table Sorting**: All major tables support column sorting with visual indicators.
+- **File Upload**: Drag & drop or selection with client-side and backend validation for orders, payments, and marketplace orders.
+- **Data Persistence & Duplication Handling**: All data is saved to PostgreSQL; new uploads replace existing orders by `Orden` number, and payment records update based on `(# Orden, # Cuota Pagada, # Referencia)`.
+- **Master Filter System**: Global filtering (date range, order number) applies across all main tabs (`MARKETPLACE ORDERS`, `TODAS LAS ÓRDENES`, `CUOTAS`, `PAGO DE CUOTAS`, `CONCILIACION DE CUOTAS`, `REPORTE MENSUAL`) before tab-specific filters. Filters persist across tabs and have clear/active indicators.
+- **Installments View (`CONCILIACION DE CUOTAS`)**: Displays installments with collapsible filters and an `InstallmentsDashboard`. Includes a `STATUS` column with five categories (ADELANTADO, A TIEMPO, ATRASADO, OTRO ALIADO, NO DEPOSITADO) and a sortable `VERIFICACION` column for bank statement matching.
+- **Payment Records View (`PAGO DE CUOTAS`)**: Uploads and views payment transactions with flexible columns, auto-detection of currencies, a dashboard with seven key metrics, and an automatic `VERIFICACION` column indicating bank statement matches. Verification logic includes reference normalization and amount tolerance.
+- **Bank Statements View (`BANCO`)**: Displays bank statement data with flexible schema, complete replacement on upload, column sorting, Excel export, master filter support, and a collapsible filter panel for `Referencia`.
+- **Cuotas View (`CUOTAS`)**: Displays installments vertically with collapsible filters (date range, order, status), and a period-based dashboard showing `CUOTAS DEL PERIODO` and `CUENTAS POR PAGAR`. Supports tri-state column sorting and Excel export.
+- **Marketplace Orders View (`MARKETPLACE ORDERS`)**: Displays marketplace order data with flexible schema, complete replacement on upload, sorting, Excel export, and collapsible filters for `Estado`, `Orden`, `Estado de Entrega`, and `# Referencia`.
+- **Monthly Report View (`REPORTE MENSUAL`)**: Displays dynamic financial summary metrics (`Ventas Totales`, `Monto Pagado en Caja`, `Monto Financiado`, `Porcentaje Financiado`) calculated from marketplace order data, synchronized with marketplace filters.
+- **Data Export**: Exports current table views to Excel.
+- **Table Sorting**: All major tables support column sorting.
 - **Date Handling**: Automatic conversion of Excel serial dates and various date formats.
-- **Installment Extraction**: Converts wide-format Excel installment data to long format, supporting "Cuota 0" (initial payments) with specific amount and status columns, using "FECHA DE COMPRA" as a fallback for scheduled dates, and generating synthetic installments for payment records without matching order installments.
-- **Column Mapping**: Flexible header mapping for display names, e.g., "PAGO INICIAL" maps to "Pago en Caja", and "STATUS ORDEN" maps to "Estado Orden".
-- **Filtering**: All main tabs include collapsible filter panels with specific filter options (date range, order, reference, status), including a "Solo activas" toggle for orders.
+- **Installment Extraction**: Converts wide-format Excel data to long format, supporting "Cuota 0" and generating synthetic installments.
+- **Column Mapping**: Flexible header mapping for display names.
 - **Dynamic Dashboard Metrics**: All dashboard metrics update in real-time based on active filters.
 
 **System Design Choices**:
-- **Robust Error Handling**: Comprehensive frontend and backend validation with clear user feedback.
+- **Robust Error Handling**: Comprehensive validation with clear user feedback.
 - **Separation of Concerns**: Clear distinction between frontend and backend.
-- **Modularity**: Reusable components and utility functions (`dateUtils.ts`, `installmentUtils.ts`, `numberUtils.ts`).
-- **Locale-aware Number Parsing**: `shared/numberUtils.ts` handles various numeric formats and separators, used consistently across the application.
-- **Empty Row Filtering**: Filters out empty rows during uploads to prevent inaccurate record counts.
-- **Scientific Notation Prevention**: Reference numbers automatically converted from scientific notation (e.g., "3.30055E+11") to full numbers (e.g., "330055487026") in all tables (BANCO, PAGO DE CUOTAS, MARKETPLACE ORDERS).
-  - **Server-side**: Excel parsing uses `raw: true` to preserve numeric precision during upload
-  - **Client-side**: Reference columns use `Math.round().toString()` to convert scientific notation without losing precision
-  - **Safe Range**: Handles reference numbers up to Number.MAX_SAFE_INTEGER (2^53-1, approximately 16 digits)
+- **Modularity**: Reusable components and utility functions.
+- **Locale-aware Number Parsing**: Handles various numeric formats and separators.
+- **Empty Row Filtering**: Filters empty rows during uploads.
+- **Scientific Notation Prevention**: Converts reference numbers from scientific notation to full numbers, both server-side and client-side, within safe numeric limits.
 
 ## External Dependencies
 - **Database**: PostgreSQL (Neon).
