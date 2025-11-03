@@ -92,6 +92,18 @@ export default function Home() {
     refetchOnWindowFocus: false,
   });
 
+  // Fetch payment records for MonthlyReport calculations
+  const { data: paymentRecordsData } = useQuery({
+    queryKey: ['/api/payment-records'],
+    refetchOnWindowFocus: false,
+  });
+
+  // Fetch bank statements for MonthlyReport calculations
+  const { data: bankStatementsData } = useQuery({
+    queryKey: ['/api/bank-statements'],
+    refetchOnWindowFocus: false,
+  });
+
   // Load persisted data when query succeeds
   useEffect(() => {
     if (ordersData) {
@@ -933,6 +945,11 @@ export default function Home() {
                   masterDateFrom={masterDateFrom}
                   masterDateTo={masterDateTo}
                   masterOrden={masterOrden}
+                  ordersData={(ordersData as any)?.data?.rows || []}
+                  paymentRecordsData={(paymentRecordsData as any)?.data?.rows || []}
+                  paymentRecordsHeaders={(paymentRecordsData as any)?.data?.headers || []}
+                  bankStatementRows={(bankStatementsData as any)?.data?.rows || []}
+                  bankStatementHeaders={(bankStatementsData as any)?.data?.headers || []}
                 />
               </TabsContent>
             </Tabs>
