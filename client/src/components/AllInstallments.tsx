@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Filter, X, Download } from "lucide-react";
-import { extractInstallments, filterInstallmentsByDateRange } from "@/lib/installmentUtils";
+import { extractInstallments, filterInstallmentsByDateRange, calculateInstallmentStatus } from "@/lib/installmentUtils";
 import { parseExcelDate, parseDDMMYYYY } from "@/lib/dateUtils";
 import { useQuery } from "@tanstack/react-query";
 import * as XLSX from "xlsx";
@@ -372,6 +372,12 @@ export function AllInstallments({
       
       return installment;
     });
+
+    // Add STATUS field to each installment for dashboard calculations
+    installments = installments.map((installment) => ({
+      ...installment,
+      status: calculateInstallmentStatus(installment)
+    }));
 
     return installments;
   }, [tableData, paymentRecordsData]);

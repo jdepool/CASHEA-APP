@@ -105,3 +105,61 @@ export function filterInstallmentsByDateRange(
 export function calculateTotalAmount(installments: Installment[]): number {
   return installments.reduce((sum, inst) => sum + inst.monto, 0);
 }
+
+/**
+ * Calculate STATUS string for an installment based on payment timing
+ * Returns one of: ADELANTADO, A TIEMPO, ATRASADO, OTRO ALIADO, NO DEPOSITADO, or empty string
+ */
+export function calculateInstallmentStatus(installment: any): string {
+  const fechaPago = installment.fechaPagoReal;
+  const fechaCuota = installment.fechaCuota;
+  const estadoCuota = (installment.estadoCuota || '').toLowerCase();
+  
+  // NO DEPOSITADO: Order is DONE but no payment received
+  if (!fechaPago && estadoCuota === 'done') {
+    return 'NO DEPOSITADO';
+  }
+  
+  // No status if no payment and order not done
+  if (!fechaPago) {
+    return '';
+  }
+  
+  // OTRO ALIADO: Payment exists but no due date
+  if (fechaCuota == null) {
+    return 'OTRO ALIADO';
+  }
+  
+  // If we have both dates, calculate the status
+  const pagoNormalized = new Date(fechaPago);
+  pagoNormalized.setHours(0, 0, 0, 0);
+  
+  const cuotaNormalized = new Date(fechaCuota);
+  cuotaNormalized.setHours(0, 0, 0, 0);
+  
+  // Calculate day difference: (Fecha de Pago - Fecha de Cuota)
+  const DAY_MS = 1000 * 60 * 60 * 24;
+  const daysDiff = Math.round((pagoNormalized.getTime() - cuotaNormalized.getTime()) / DAY_MS);
+  
+  // Get month/year for comparison
+  const pagoMonth = pagoNormalized.getMonth();
+  const pagoYear = pagoNormalized.getFullYear();
+  const cuotaMonth = cuotaNormalized.getMonth();
+  const cuotaYear = cuotaNormalized.getFullYear();
+  
+  // ADELANTADO: Payment made at least 15 days before due date AND cuota month is after payment month
+  if (daysDiff <= -15) {
+    // Check if cuota month is after payment month
+    if (cuotaYear > pagoYear || (cuotaYear === pagoYear && cuotaMonth > pagoMonth)) {
+      return 'ADELANTADO';
+    }
+  }
+  
+  // ATRASADO: Payment made MORE than 2 days after due date
+  if (daysDiff > 2) {
+    return 'ATRASADO';
+  }
+  
+  // A TIEMPO: Payment made within 2 days of due date or earlier (but not ADELANTADO)
+  return 'A TIEMPO';
+}
