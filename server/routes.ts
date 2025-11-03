@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import multer from "multer";
 import * as XLSX from "xlsx";
 import { storage } from "./storage";
+import { normalizeNumber } from "@shared/numberUtils";
 
 // Normalize header for flexible matching
 function normalizeHeader(header: string): string {
@@ -12,6 +13,102 @@ function normalizeHeader(header: string): string {
     .replace(/[#\s]+/g, '') // Remove # and spaces
     .normalize('NFD') // Decompose accented characters
     .replace(/[\u0300-\u036f]/g, ''); // Remove accent marks
+}
+
+/**
+ * Verify if a payment record exists in bank statements
+ * Returns 'SI' (verified), 'NO' (not verified)
+ */
+function verifyPaymentInBankStatement(
+  paymentRecord: any,
+  bankStatementRows: any[],
+  bankStatementHeaders: string[]
+): string {
+  // If no bank statements available, return "NO"
+  if (!bankStatementRows || bankStatementRows.length === 0) {
+    return 'NO';
+  }
+
+  const paymentRef = paymentRecord['# Referencia'] || paymentRecord['#Referencia'] || paymentRecord['Referencia'];
+  const paymentAmountVES = paymentRecord['Monto Pagado en VES'] || paymentRecord['Monto pagado en VES'];
+  const paymentAmountUSD = paymentRecord['Monto Pagado en USD'] || paymentRecord['Monto pagado en USD'];
+
+  // If no reference or amounts, can't verify
+  if (!paymentRef || (!paymentAmountVES && !paymentAmountUSD)) {
+    return 'NO';
+  }
+
+  // Find relevant headers in bank statement (case-insensitive)
+  const referenciaHeader = bankStatementHeaders.find(h => 
+    h.toLowerCase().includes('referencia')
+  );
+  const debeHeader = bankStatementHeaders.find(h => 
+    h.toLowerCase().includes('debe')
+  );
+  const haberHeader = bankStatementHeaders.find(h => 
+    h.toLowerCase().includes('haber')
+  );
+
+  // Normalize payment reference (remove spaces, leading zeros)
+  const normalizedPaymentRef = String(paymentRef).replace(/\s+/g, '').replace(/^0+/, '').toLowerCase();
+
+  // Normalize payment amounts
+  const normalizedVES = paymentAmountVES ? normalizeNumber(paymentAmountVES) : null;
+  const normalizedUSD = paymentAmountUSD ? normalizeNumber(paymentAmountUSD) : null;
+
+  // Search bank statements for matching reference and amount
+  const found = bankStatementRows.some(bankRow => {
+    // Check reference match
+    if (referenciaHeader) {
+      const bankRef = bankRow[referenciaHeader];
+      if (bankRef) {
+        const normalizedBankRef = String(bankRef).replace(/\s+/g, '').replace(/^0+/, '').toLowerCase();
+        
+        // If references don't match, skip this bank row
+        if (normalizedBankRef !== normalizedPaymentRef) {
+          return false;
+        }
+
+        // References match - now check amount in either Debe or Haber
+        let amountMatches = false;
+
+        // Check Debe column
+        if (debeHeader && bankRow[debeHeader]) {
+          const bankDebe = normalizeNumber(bankRow[debeHeader]);
+          if (!isNaN(bankDebe)) {
+            // Compare with VES
+            if (normalizedVES !== null && Math.abs(bankDebe - normalizedVES) < 0.01) {
+              amountMatches = true;
+            }
+            // Compare with USD
+            if (normalizedUSD !== null && Math.abs(bankDebe - normalizedUSD) < 0.01) {
+              amountMatches = true;
+            }
+          }
+        }
+
+        // Check Haber column
+        if (haberHeader && bankRow[haberHeader]) {
+          const bankHaber = normalizeNumber(bankRow[haberHeader]);
+          if (!isNaN(bankHaber)) {
+            // Compare with VES
+            if (normalizedVES !== null && Math.abs(bankHaber - normalizedVES) < 0.01) {
+              amountMatches = true;
+            }
+            // Compare with USD
+            if (normalizedUSD !== null && Math.abs(bankHaber - normalizedUSD) < 0.01) {
+              amountMatches = true;
+            }
+          }
+        }
+
+        return amountMatches;
+      }
+    }
+    return false;
+  });
+
+  return found ? 'SI' : 'NO';
 }
 
 const uploadStorage = multer.memoryStorage();
@@ -150,8 +247,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstRow: rows[0]
       });
 
+      // Fetch bank statements to calculate VERIFICACION
+      const latestBankStatement = await storage.getLatestBankStatement();
+      const bankStatementRows = latestBankStatement?.rows || [];
+      const bankStatementHeaders = latestBankStatement?.headers || [];
+
+      console.log(`Found ${bankStatementRows.length} bank statement rows for verification`);
+
+      // Add VERIFICACION field to each payment row
+      const enrichedRows = rows.map(row => {
+        const verificacion = verifyPaymentInBankStatement(row, bankStatementRows, bankStatementHeaders);
+        return {
+          ...row,
+          VERIFICACION: verificacion
+        };
+      });
+
+      console.log('Payment records enriched with VERIFICACION field');
+
       // Merge with existing payment records (skip duplicates by Orden + Cuota)
-      const mergeResult = await storage.mergePaymentRecords(rows, req.file.originalname, allHeaders);
+      const mergeResult = await storage.mergePaymentRecords(enrichedRows, req.file.originalname, allHeaders);
 
       // Log summary of the merge operation
       console.log('\n=== RESUMEN DE CARGA DE PAGOS ===');
