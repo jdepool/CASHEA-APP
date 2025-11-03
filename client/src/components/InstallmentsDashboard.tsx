@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle2, Clock, XCircle, AlertCircle, CreditCard, DollarSign } from "lucide-react";
+import { CheckCircle2, Clock, XCircle, AlertCircle, CreditCard, DollarSign, TrendingUp } from "lucide-react";
 import { calculateTotalAmount } from "@/lib/installmentUtils";
 
 interface InstallmentsDashboardProps {
@@ -19,6 +19,8 @@ export function InstallmentsDashboard({ installments }: InstallmentsDashboardPro
     let montoAtrasadas = 0;
     let montoOtroAliadoVerificado = 0;
     let cuotasOtroAliadoVerificado = 0;
+    let montoAdelantadasPeriodosAnteriores = 0;
+    let cuotasAdelantadasPeriodosAnteriores = 0;
 
     installments.forEach((installment) => {
       const estado = (installment.estadoCuota || '').trim().toLowerCase();
@@ -30,6 +32,13 @@ export function InstallmentsDashboard({ installments }: InstallmentsDashboardPro
       if (status === 'OTRO ALIADO' && verificacion === 'SI') {
         montoOtroAliadoVerificado += monto;
         cuotasOtroAliadoVerificado++;
+      }
+      
+      // Calculate CUOTAS ADELANTADAS EN PERIODOS ANTERIORES metric
+      // Estado Cuota = Done AND STATUS = ADELANTADO
+      if (estado === 'done' && status === 'ADELANTADO') {
+        montoAdelantadasPeriodosAnteriores += monto;
+        cuotasAdelantadasPeriodosAnteriores++;
       }
       
       if (estado === 'done') {
@@ -63,6 +72,8 @@ export function InstallmentsDashboard({ installments }: InstallmentsDashboardPro
       totalMonto,
       montoOtroAliadoVerificado,
       cuotasOtroAliadoVerificado,
+      montoAdelantadasPeriodosAnteriores,
+      cuotasAdelantadasPeriodosAnteriores,
     };
   }, [installments]);
 
@@ -156,8 +167,8 @@ export function InstallmentsDashboard({ installments }: InstallmentsDashboardPro
         </Card>
       </div>
 
-      {/* Total metrics (3 cards) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Total metrics (4 cards) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -206,6 +217,25 @@ export function InstallmentsDashboard({ installments }: InstallmentsDashboardPro
               </div>
               <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
                 <DollarSign className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Cuotas Adelantadas Periodos Anteriores</p>
+                <p className="text-3xl font-bold text-amber-600 dark:text-amber-400" data-testid="metric-adelantadas-periodos-anteriores">
+                  {formatCurrency(metrics.montoAdelantadasPeriodosAnteriores)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {metrics.cuotasAdelantadasPeriodosAnteriores} cuotas pagadas adelantadas
+                </p>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-amber-100 dark:bg-amber-900/20 flex items-center justify-center">
+                <TrendingUp className="h-6 w-6 text-amber-600 dark:text-amber-400" />
               </div>
             </div>
           </CardContent>
