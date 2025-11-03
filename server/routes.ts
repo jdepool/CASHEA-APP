@@ -49,8 +49,12 @@ function verifyPaymentInBankStatement(
     String(h).toLowerCase().includes('haber')
   );
 
-  // Normalize payment reference (remove spaces, leading zeros)
-  const normalizedPaymentRef = String(paymentRef).replace(/\s+/g, '').replace(/^0+/, '').toLowerCase();
+  // Normalize payment reference (remove spaces, leading zeros, and quotes)
+  const normalizedPaymentRef = String(paymentRef)
+    .replace(/^["']|["']$/g, '') // Remove leading/trailing quotes
+    .replace(/\s+/g, '')         // Remove spaces
+    .replace(/^0+/, '')           // Remove leading zeros
+    .toLowerCase();
 
   // Normalize payment amounts
   const normalizedVES = paymentAmountVES ? normalizeNumber(paymentAmountVES) : null;
@@ -62,7 +66,11 @@ function verifyPaymentInBankStatement(
     if (referenciaHeader) {
       const bankRef = bankRow[referenciaHeader];
       if (bankRef) {
-        const normalizedBankRef = String(bankRef).replace(/\s+/g, '').replace(/^0+/, '').toLowerCase();
+        const normalizedBankRef = String(bankRef)
+          .replace(/^["']|["']$/g, '') // Remove leading/trailing quotes
+          .replace(/\s+/g, '')         // Remove spaces
+          .replace(/^0+/, '')           // Remove leading zeros
+          .toLowerCase();
         
         // If references don't match, skip this bank row
         if (normalizedBankRef !== normalizedPaymentRef) {
@@ -252,34 +260,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const bankStatementRows = latestBankStatement?.rows || [];
       const bankStatementHeaders = latestBankStatement?.headers || [];
 
-      console.log(`Found ${bankStatementRows.length} bank statement rows for verification`);
-      
-      // Debug: Log bank statement structure
-      if (bankStatementRows.length > 0) {
-        const referenciaHeader = bankStatementHeaders.find(h => 
-          String(h).toLowerCase().includes('referencia')
-        );
-        const debeHeader = bankStatementHeaders.find(h => 
-          String(h).toLowerCase().includes('debe')
-        );
-        const haberHeader = bankStatementHeaders.find(h => 
-          String(h).toLowerCase().includes('haber')
-        );
-        
-        console.log('Bank statement headers found:', {
-          referencia: referenciaHeader,
-          debe: debeHeader,
-          haber: haberHeader,
-          allHeaders: bankStatementHeaders
-        });
-        
-        console.log('Sample bank row:', bankStatementRows[0]);
-      }
-      
-      // Debug: Log payment record structure
-      if (rows.length > 0) {
-        console.log('Sample payment record keys:', Object.keys(rows[0]));
-        console.log('Sample payment record:', rows[0]);
+      if (bankStatementRows.length === 0) {
+        console.log('⚠️  WARNING: No bank statements found. All payments will have VERIFICACION = "NO"');
+        console.log('   Please upload bank statements FIRST, then re-upload payment records for verification');
+      } else {
+        console.log(`✓ Found ${bankStatementRows.length} bank statement rows for verification`);
       }
 
       // Add VERIFICACION field to each payment row
@@ -291,7 +276,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       });
 
-      console.log('Payment records enriched with VERIFICACION field');
+      // Count verification results
+      const verifiedCount = enrichedRows.filter(r => r.VERIFICACION === 'SI').length;
+      const notVerifiedCount = enrichedRows.filter(r => r.VERIFICACION === 'NO').length;
+      
+      console.log(`Payment verification complete: ${verifiedCount} verified (SI), ${notVerifiedCount} not verified (NO)`);
 
       // Include VERIFICACION in headers
       const enrichedHeaders = [...allHeaders, 'VERIFICACION'];
