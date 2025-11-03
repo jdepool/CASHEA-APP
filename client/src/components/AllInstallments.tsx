@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { WeeklyPaymentsTable } from "./WeeklyPaymentsTable";
 import { InstallmentsDashboard } from "./InstallmentsDashboard";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { parseExcelDate, parseDDMMYYYY } from "@/lib/dateUtils";
 import { useQuery } from "@tanstack/react-query";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
+import { normalizeNumber } from "@shared/numberUtils";
 
 interface AllInstallmentsProps {
   tableData: any[];
@@ -57,6 +58,107 @@ export function AllInstallments({
     queryKey: ['/api/payment-records'],
     refetchOnWindowFocus: false,
   });
+
+  // Fetch bank statements for verification
+  const { data: bankStatementData } = useQuery({
+    queryKey: ['/api/bank-statements'],
+    refetchOnWindowFocus: false,
+  });
+
+  // Extract bank statement data
+  const bankApiData = bankStatementData as any;
+  const bankStatementRows = bankApiData?.data?.rows || [];
+  const bankStatementHeaders = bankApiData?.data?.headers || [];
+
+  // Function to verify payment in bank statement
+  const verifyPaymentInBankStatement = useCallback((paymentRecord: any): 'SI' | 'NO' | '-' => {
+    if (!paymentRecord) return '-';
+    if (!bankStatementRows || bankStatementRows.length === 0) {
+      return '-';
+    }
+
+    const paymentRef = paymentRecord['# Referencia'] || paymentRecord['#Referencia'] || paymentRecord['Referencia'];
+    const paymentAmountVES = paymentRecord['Monto Pagado en VES'] || paymentRecord['Monto pagado en VES'] || paymentRecord['MONTO PAGADO EN VES'];
+    const paymentAmountUSD = paymentRecord['Monto Pagado en USD'] || paymentRecord['Monto pagado en USD'] || paymentRecord['MONTO PAGADO EN USD'];
+
+    // If no reference or amounts, can't verify
+    if (!paymentRef || (!paymentAmountVES && !paymentAmountUSD)) {
+      return '-';
+    }
+
+    // Find bank statement column headers (case-insensitive)
+    const referenciaHeader = bankStatementHeaders.find((h: string) => 
+      h.toLowerCase().includes('referencia')
+    );
+    const debeHeader = bankStatementHeaders.find((h: string) => 
+      h.toLowerCase().includes('debe')
+    );
+    const haberHeader = bankStatementHeaders.find((h: string) => 
+      h.toLowerCase().includes('haber')
+    );
+
+    if (!referenciaHeader) {
+      return '-';
+    }
+
+    // Normalize payment reference (remove spaces, leading zeros)
+    const normalizedPaymentRef = String(paymentRef).replace(/\s+/g, '').replace(/^0+/, '').toLowerCase();
+
+    // Normalize payment amounts
+    const normalizedVES = paymentAmountVES ? normalizeNumber(paymentAmountVES) : null;
+    const normalizedUSD = paymentAmountUSD ? normalizeNumber(paymentAmountUSD) : null;
+
+    // Search bank statements for matching reference and amount
+    const found = bankStatementRows.some((bankRow: any) => {
+      // Check reference match
+      const bankRef = bankRow[referenciaHeader];
+      if (!bankRef) return false;
+      
+      const normalizedBankRef = String(bankRef).replace(/\s+/g, '').replace(/^0+/, '').toLowerCase();
+      if (normalizedBankRef !== normalizedPaymentRef) {
+        return false; // Reference doesn't match
+      }
+
+      // Reference matches, now check amount
+      let amountFound = false;
+
+      if (debeHeader) {
+        const debeAmount = bankRow[debeHeader];
+        if (debeAmount) {
+          const normalizedDebe = normalizeNumber(debeAmount);
+          if (!isNaN(normalizedDebe)) {
+            // Check against both VES and USD amounts (bank could have either)
+            if (normalizedVES !== null && Math.abs(normalizedDebe - normalizedVES) < 0.01) {
+              amountFound = true;
+            }
+            if (normalizedUSD !== null && Math.abs(normalizedDebe - normalizedUSD) < 0.01) {
+              amountFound = true;
+            }
+          }
+        }
+      }
+
+      if (haberHeader && !amountFound) {
+        const haberAmount = bankRow[haberHeader];
+        if (haberAmount) {
+          const normalizedHaber = normalizeNumber(haberAmount);
+          if (!isNaN(normalizedHaber)) {
+            // Check against both VES and USD amounts
+            if (normalizedVES !== null && Math.abs(normalizedHaber - normalizedVES) < 0.01) {
+              amountFound = true;
+            }
+            if (normalizedUSD !== null && Math.abs(normalizedHaber - normalizedUSD) < 0.01) {
+              amountFound = true;
+            }
+          }
+        }
+      }
+
+      return amountFound;
+    });
+
+    return found ? 'SI' : 'NO';
+  }, [bankStatementRows, bankStatementHeaders]);
 
   // Helper function to check if an order is cancelled
   const isCancelledOrder = (row: any): boolean => {
@@ -115,6 +217,9 @@ export function AllInstallments({
           const parsedDate = fechaTasaCambio ? parseExcelDate(fechaTasaCambio) : null;
           
           if (parsedDate) {
+            // Verify payment in bank statement
+            const verificacion = verifyPaymentInBankStatement(matchingPayment);
+            
             return { 
               ...installment, 
               fechaPagoReal: parsedDate,
@@ -124,7 +229,8 @@ export function AllInstallments({
                 montoPagadoUSD: matchingPayment['Monto Pagado en USD'] || matchingPayment['MONTO PAGADO EN USD'] || matchingPayment['Monto'],
                 montoPagadoVES: matchingPayment['Monto Pagado en VES'] || matchingPayment['MONTO PAGADO EN VES'],
                 tasaCambio: matchingPayment['Tasa de Cambio'] || matchingPayment['TASA DE CAMBIO']
-              }
+              },
+              verificacion
             };
           }
         }
@@ -197,6 +303,9 @@ export function AllInstallments({
               }
             }
             
+            // Verify payment in bank statement
+            const verificacion = verifyPaymentInBankStatement(payment);
+            
             paymentBasedEntries.push({
               orden: paymentOrder,
               fechaCuota: fechaCuotaValue,
@@ -212,7 +321,8 @@ export function AllInstallments({
                 montoPagadoUSD: payment['Monto Pagado en USD'] || payment['MONTO PAGADO EN USD'] || payment['Monto'],
                 montoPagadoVES: payment['Monto Pagado en VES'] || payment['MONTO PAGADO EN VES'],
                 tasaCambio: payment['Tasa de Cambio'] || payment['TASA DE CAMBIO']
-              }
+              },
+              verificacion
             });
           });
         }
@@ -264,7 +374,7 @@ export function AllInstallments({
     });
 
     return installments;
-  }, [tableData, paymentRecordsData]);
+  }, [tableData, paymentRecordsData, verifyPaymentInBankStatement]);
 
   // Apply filters to installments
   const filteredInstallments = useMemo(() => {
@@ -412,6 +522,8 @@ export function AllInstallments({
         'Estado': inst.estadoCuota,
         'Fecha Pago Real': formatDate(inst.fechaPagoReal),
         'Fecha Pago': formatDate(inst.fechaPago),
+        'Referencia': inst.paymentDetails?.referencia || '',
+        'Verificacion': inst.verificacion || '-',
       };
     });
 

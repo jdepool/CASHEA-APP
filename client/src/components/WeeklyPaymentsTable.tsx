@@ -240,6 +240,9 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
                 )}
               </div>
             </th>
+            <th className="text-left py-3 px-4 font-semibold text-sm" data-testid="header-verificacion">
+              VERIFICACION
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -359,6 +362,30 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
                   return (
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}`}>
                       {status}
+                    </span>
+                  );
+                })()}
+              </td>
+              <td className="py-3 px-4 text-sm" data-testid={`cell-verificacion-${idx}`}>
+                {(() => {
+                  const verificacion = (inst as any).verificacion;
+                  
+                  if (!verificacion || verificacion === '-') {
+                    return <span className="text-muted-foreground text-xs">—</span>;
+                  }
+                  
+                  if (verificacion === 'SI') {
+                    return (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                        SI
+                      </span>
+                    );
+                  }
+                  
+                  // verificacion === 'NO'
+                  return (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+                      NO
                     </span>
                   );
                 })()}

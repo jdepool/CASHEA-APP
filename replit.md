@@ -48,6 +48,11 @@ The application employs a client-server architecture, utilizing a React frontend
         - **OTRO ALIADO** (purple badge): Payment exists but there is no due date (fecha de cuota)
         - **NO DEPOSITADO** (orange badge): Order status is DONE but there is no payment received (no fecha de pago)
     - **STATUS Sorting**: Click STATUS column header to sort by: No status → ADELANTADO → A TIEMPO → ATRASADO → OTRO ALIADO → NO DEPOSITADO
+    - **VERIFICACION Column**: Shows bank statement verification status for each installment payment:
+        - **SI** (green badge): Payment found and verified in bank statements (matching reference and amount)
+        - **NO** (red badge): Payment record exists but not found in bank statements
+        - **—** (gray): No payment record for this installment
+        - Uses same verification logic as PAGO DE CUOTAS (cross-references reference number and amount from payment records with bank statements)
 - **Payment Records View (`PAGO DE CUOTAS`)**: Allows uploading and viewing payment transactions with flexible columns, auto-detection/formatting of currencies, and a dashboard. Highlights partial payments and supports multi-installment payments.
     - **Dashboard Metrics**: Seven-card dashboard in two rows:
         - **First Row (5 cards)**:
