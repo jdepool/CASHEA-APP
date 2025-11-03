@@ -17,10 +17,20 @@ export function InstallmentsDashboard({ installments }: InstallmentsDashboardPro
     let montoProgramadas = 0;
     let montoCanceladas = 0;
     let montoAtrasadas = 0;
+    let montoOtroAliadoVerificado = 0;
+    let cuotasOtroAliadoVerificado = 0;
 
     installments.forEach((installment) => {
       const estado = (installment.estadoCuota || '').trim().toLowerCase();
       const monto = installment.monto || 0;
+      const status = (installment.status || '').trim().toUpperCase();
+      const verificacion = (installment.verificacion || '').trim().toUpperCase();
+      
+      // Calculate OTRO ALIADO + VERIFICACION = SI metric
+      if (status === 'OTRO ALIADO' && verificacion === 'SI') {
+        montoOtroAliadoVerificado += monto;
+        cuotasOtroAliadoVerificado++;
+      }
       
       if (estado === 'done') {
         cuotasPagadas++;
@@ -51,6 +61,8 @@ export function InstallmentsDashboard({ installments }: InstallmentsDashboardPro
       montoAtrasadas,
       totalCuotas,
       totalMonto,
+      montoOtroAliadoVerificado,
+      cuotasOtroAliadoVerificado,
     };
   }, [installments]);
 
@@ -144,8 +156,8 @@ export function InstallmentsDashboard({ installments }: InstallmentsDashboardPro
         </Card>
       </div>
 
-      {/* Total metrics (2 cards) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Total metrics (3 cards) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -175,6 +187,25 @@ export function InstallmentsDashboard({ installments }: InstallmentsDashboardPro
               </div>
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
                 <DollarSign className="h-6 w-6 text-primary" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Depósitos Otros Aliados</p>
+                <p className="text-3xl font-bold text-purple-600 dark:text-purple-400" data-testid="metric-otro-aliado-verificado">
+                  {formatCurrency(metrics.montoOtroAliadoVerificado)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {metrics.cuotasOtroAliadoVerificado} cuotas verificadas
+                </p>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
+                <DollarSign className="h-6 w-6 text-purple-600 dark:text-purple-400" />
               </div>
             </div>
           </CardContent>
