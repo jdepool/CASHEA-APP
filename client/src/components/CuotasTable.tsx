@@ -229,39 +229,24 @@ export function CuotasTable({
 
   const hasActiveFilters = dateFrom || dateTo || ordenFilter || (estadoFilter && estadoFilter !== 'all');
 
-  // Calculate period metrics (for cuotas in the date range)
+  // Calculate period metrics from filtered cuotas (respects ALL filters including master filters)
   const periodMetrics = useMemo(() => {
-    if (!dateFrom && !dateTo) {
-      // No date range specified, return null
+    // Show dashboard if there are any active filters (date, orden, estado) or master filters
+    const hasMasterFilters = masterDateFrom || masterDateTo || masterOrden;
+    if (!hasActiveFilters && !hasMasterFilters) {
+      // No filters specified, return null
       return null;
     }
 
-    const fromDate = dateFrom ? parseDDMMYYYY(dateFrom) : null;
-    const toDate = dateTo ? parseDDMMYYYY(dateTo) : null;
-    
-    if (toDate) {
-      toDate.setHours(23, 59, 59, 999);
-    }
-
-    // Filter cuotas within the date range
-    const cuotasInPeriod = allCuotas.filter((cuota) => {
-      if (!cuota.fechaCuota) return false;
-      const cuotaDate = typeof cuota.fechaCuota === 'string' ? parseExcelDate(cuota.fechaCuota) : cuota.fechaCuota;
-      if (!cuotaDate || isNaN(cuotaDate.getTime())) return false;
-
-      if (fromDate && cuotaDate < fromDate) return false;
-      if (toDate && cuotaDate > toDate) return false;
-      return true;
-    });
-
-    const totalCuotas = cuotasInPeriod.length;
-    const totalAmount = cuotasInPeriod.reduce((sum, cuota) => sum + (cuota.monto || 0), 0);
+    // Use filteredCuotas which already respects all master and tab-specific filters
+    const totalCuotas = filteredCuotas.length;
+    const totalAmount = filteredCuotas.reduce((sum, cuota) => sum + (cuota.monto || 0), 0);
 
     return {
       totalCuotas,
       totalAmount
     };
-  }, [allCuotas, dateFrom, dateTo]);
+  }, [filteredCuotas, hasActiveFilters, masterDateFrom, masterDateTo, masterOrden]);
 
   return (
     <div className="space-y-4">
@@ -325,8 +310,8 @@ export function CuotasTable({
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">CUENTAS POR PAGAR</p>
-                  <p className="text-2xl font-bold mt-2" data-testid="metric-cuentas-por-pagar">
+                  <p className="text-sm font-medium text-muted-foreground">CUENTAS POR COBRAR</p>
+                  <p className="text-2xl font-bold mt-2" data-testid="metric-cuentas-por-cobrar">
                     ${periodMetrics.totalAmount.toFixed(2)}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
