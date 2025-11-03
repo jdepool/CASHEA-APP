@@ -684,6 +684,12 @@ export function MonthlyReport({
     // 6. Cuotas adelantadas en periodos anteriores = sum of installments where Estado=done AND STATUS=ADELANTADO
     let cuotasAdelantadasPeriodosAnteriores = 0;
     
+    console.log('[MonthlyReport] Calculating cuotasAdelantadasPeriodosAnteriores', {
+      filteredOrdersCount: filteredOrders.length,
+      filteredPaymentRecordsCount: filteredPaymentRecords.length,
+      paymentRecordsHeaders,
+    });
+    
     if (filteredOrders.length > 0 && filteredPaymentRecords.length > 0) {
       // Extract installments from orders
       const installments: any[] = [];
@@ -694,13 +700,10 @@ export function MonthlyReport({
         
         // Process cuotas 1-14 (regular installments)
         for (let i = 1; i <= 14; i++) {
-          const fechaCuotaKey = `Fecha cuota ${i}`;
-          const cuotaKey = `Cuota ${i}`;
-          const estadoCuotaKey = `Estado cuota ${i}`;
-          
-          const fechaCuotaValue = order[fechaCuotaKey];
-          const montoValue = order[cuotaKey];
-          const estadoValue = order[estadoCuotaKey];
+          // Try both casing variations
+          const fechaCuotaValue = order[`Fecha cuota ${i}`] || order[`Fecha Cuota ${i}`];
+          const montoValue = order[`Cuota ${i}`];
+          const estadoValue = order[`Estado cuota ${i}`] || order[`Estado Cuota ${i}`];
           
           if (fechaCuotaValue && montoValue) {
             const monto = normalizeNumber(montoValue);
@@ -730,7 +733,13 @@ export function MonthlyReport({
         h.toLowerCase().includes('fecha') && h.toLowerCase().includes('pago')
       );
       
+      console.log('[MonthlyReport] Found headers', { ordenHeaderPmt, cuotaHeaderPmt, fechaPagoHeader });
+      console.log('[MonthlyReport] Total installments extracted:', installments.length);
+      
       if (ordenHeaderPmt && cuotaHeaderPmt && fechaPagoHeader) {
+        let matchedCount = 0;
+        let adelantadoCount = 0;
+        
         installments.forEach(inst => {
           // Find payment record for this installment
           const payment = filteredPaymentRecords.find((p: any) => {
@@ -743,6 +752,7 @@ export function MonthlyReport({
           });
           
           if (payment) {
+            matchedCount++;
             const fechaPagoValue = parseExcelDate(payment[fechaPagoHeader]);
             
             // Calculate STATUS using the utility function
@@ -755,12 +765,28 @@ export function MonthlyReport({
             // Check if Estado = done AND STATUS = ADELANTADO
             const estadoNormalized = (inst.estadoCuota || '').trim().toLowerCase();
             if (estadoNormalized === 'done' && status === 'ADELANTADO') {
+              adelantadoCount++;
               cuotasAdelantadasPeriodosAnteriores += inst.monto;
+              console.log('[MonthlyReport] Found ADELANTADO installment', {
+                orden: inst.orden,
+                cuotaNum: inst.cuotaNum,
+                monto: inst.monto,
+                status,
+                estadoCuota: inst.estadoCuota,
+              });
             }
           }
         });
+        
+        console.log('[MonthlyReport] Summary', {
+          matchedCount,
+          adelantadoCount,
+          totalAmount: cuotasAdelantadasPeriodosAnteriores,
+        });
       }
     }
+    
+    console.log('[MonthlyReport] Final cuotasAdelantadasPeriodosAnteriores:', cuotasAdelantadasPeriodosAnteriores);
     
     const cuentasPorCobrarNeto = cuentasPorCobrar - cuotasAdelantadasPeriodosAnteriores;
     const subtotalConciliacionBancoNeto = bancoNetoCuotasReconocidas - cuentasPorCobrarNeto;
