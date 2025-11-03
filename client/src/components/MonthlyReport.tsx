@@ -813,7 +813,8 @@ export function MonthlyReport({
     const devolucionesPagoClientes = 0;
     const cupones = 0;
     const subtotalIncidencias = 0;
-    const depositosOtrosAliados = 0;
+    // Make (+) Depósitos de otros aliados equal to (-) Depósitos de otros aliados from Resumen de banco
+    const depositosOtrosAliados = depositosOtrosAliadosBanco;
     const depositosBancoOtrosAliados = 0;
     const subtotalErroresBancarios = 0;
     const compensacionFacturasPendientes = 0;
