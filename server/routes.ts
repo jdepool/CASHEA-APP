@@ -133,6 +133,16 @@ function verifyPaymentInBankStatement(
   const normalizedVES = paymentAmountVES ? normalizeNumber(paymentAmountVES) : null;
   const normalizedUSD = paymentAmountUSD ? normalizeNumber(paymentAmountUSD) : null;
 
+  // Debug logging for specific problematic references
+  const debugRefs = ['464524697468', '53049629446', '53048081139'];
+  const shouldDebug = debugRefs.includes(String(paymentRef));
+  
+  if (shouldDebug) {
+    console.log(`\n🔍 DEBUG Payment Ref: ${paymentRef}`);
+    console.log(`   Normalized: ${normalizedPaymentRef}`);
+    console.log(`   Amounts - VES: ${normalizedVES}, USD: ${normalizedUSD}`);
+  }
+
   // Search bank statements for matching reference and amount
   const found = bankStatementRows.some(bankRow => {
     // Check reference match
@@ -149,6 +159,11 @@ function verifyPaymentInBankStatement(
         const exactMatch = normalizedBankRef === normalizedPaymentRef;
         const partialMatch = hasEightDigitMatch(normalizedPaymentRef, normalizedBankRef);
         
+        if (shouldDebug && (exactMatch || partialMatch)) {
+          console.log(`   🔗 Bank Ref: ${bankRef} → ${normalizedBankRef}`);
+          console.log(`   Exact Match: ${exactMatch}, Partial Match: ${partialMatch}`);
+        }
+        
         if (!exactMatch && !partialMatch) {
           return false;
         }
@@ -163,10 +178,12 @@ function verifyPaymentInBankStatement(
             // Compare with VES
             if (normalizedVES !== null && Math.abs(bankDebe - normalizedVES) < 0.01) {
               amountMatches = true;
+              if (shouldDebug) console.log(`   ✓ Amount match in Debe (VES): ${bankDebe} ≈ ${normalizedVES}`);
             }
             // Compare with USD
             if (normalizedUSD !== null && Math.abs(bankDebe - normalizedUSD) < 0.01) {
               amountMatches = true;
+              if (shouldDebug) console.log(`   ✓ Amount match in Debe (USD): ${bankDebe} ≈ ${normalizedUSD}`);
             }
           }
         }
@@ -178,12 +195,18 @@ function verifyPaymentInBankStatement(
             // Compare with VES
             if (normalizedVES !== null && Math.abs(bankHaber - normalizedVES) < 0.01) {
               amountMatches = true;
+              if (shouldDebug) console.log(`   ✓ Amount match in Haber (VES): ${bankHaber} ≈ ${normalizedVES}`);
             }
             // Compare with USD
             if (normalizedUSD !== null && Math.abs(bankHaber - normalizedUSD) < 0.01) {
               amountMatches = true;
+              if (shouldDebug) console.log(`   ✓ Amount match in Haber (USD): ${bankHaber} ≈ ${normalizedUSD}`);
             }
           }
+        }
+
+        if (shouldDebug) {
+          console.log(`   Amount Matches: ${amountMatches}`);
         }
 
         return amountMatches;
@@ -191,6 +214,10 @@ function verifyPaymentInBankStatement(
     }
     return false;
   });
+  
+  if (shouldDebug) {
+    console.log(`   RESULT: ${found ? 'SI' : 'NO'}\n`);
+  }
 
   return found ? 'SI' : 'NO';
 }
