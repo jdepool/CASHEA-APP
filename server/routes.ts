@@ -59,6 +59,36 @@ async function reverifyAllPaymentRecords(
 }
 
 /**
+ * Check if two reference strings have at least 8 consecutive matching digits
+ */
+function hasEightDigitMatch(ref1: string, ref2: string): boolean {
+  // Extract all numeric sequences from both references
+  const digits1 = ref1.replace(/\D/g, '');
+  const digits2 = ref2.replace(/\D/g, '');
+  
+  if (digits1.length < 8 || digits2.length < 8) {
+    return false;
+  }
+  
+  // Check if either string contains an 8-digit substring of the other
+  for (let i = 0; i <= digits1.length - 8; i++) {
+    const substring = digits1.substring(i, i + 8);
+    if (digits2.includes(substring)) {
+      return true;
+    }
+  }
+  
+  for (let i = 0; i <= digits2.length - 8; i++) {
+    const substring = digits2.substring(i, i + 8);
+    if (digits1.includes(substring)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+/**
  * Verify if a payment record exists in bank statements
  * Returns 'SI' (verified), 'NO' (not verified)
  */
@@ -115,8 +145,11 @@ function verifyPaymentInBankStatement(
           .replace(/^0+/, '')           // Remove leading zeros
           .toLowerCase();
         
-        // If references don't match, skip this bank row
-        if (normalizedBankRef !== normalizedPaymentRef) {
+        // Check for exact match OR 8+ digit partial match
+        const exactMatch = normalizedBankRef === normalizedPaymentRef;
+        const partialMatch = hasEightDigitMatch(normalizedPaymentRef, normalizedBankRef);
+        
+        if (!exactMatch && !partialMatch) {
           return false;
         }
 
