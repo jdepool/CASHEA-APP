@@ -8,7 +8,6 @@ import { useQuery } from "@tanstack/react-query";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { parseExcelDate, parseDDMMYYYY } from "@/lib/dateUtils";
-import { BankStatementsDashboard } from "./BankStatementsDashboard";
 
 interface BankStatementsTableProps {
   masterDateFrom?: string;
@@ -231,8 +230,6 @@ export function BankStatementsTable({
               )}
             </div>
           )}
-
-          <BankStatementsDashboard statements={sortedData} headers={headers} />
           
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
