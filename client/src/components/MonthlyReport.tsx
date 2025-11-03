@@ -683,15 +683,64 @@ export function MonthlyReport({
       });
     }
     
-    // 6. Calculate cuotasAdelantadasPeriodosAnteriores from ALL orders (not filtered by marketplace filters)
+    // 6. Calculate cuotasAdelantadasPeriodosAnteriores respecting MASTER filters (same as CONCILIACION DE CUOTAS)
     // This should match what's shown in CONCILIACION DE CUOTAS dashboard
     let calculatedCuotasAdelantadas = 0;
     
     if (ordersData.length > 0 && paymentRecordsData.length > 0) {
-      // Extract installments from ALL orders
+      // Apply master orden filter to orders
+      const masterFilteredOrders = ordersData.filter((order: any) => {
+        if (masterOrden) {
+          const ordenNum = String(order['Orden'] || "").toLowerCase();
+          if (!ordenNum.includes(masterOrden.toLowerCase())) return false;
+        }
+        return true;
+      });
+      
+      // Apply master filters to payment records
+      const masterFilteredPayments = paymentRecordsData.filter((record: any) => {
+        // Master orden filter
+        if (masterOrden) {
+          const ordenHeader = paymentRecordsHeaders.find((h: string) => 
+            h.toLowerCase().includes('orden') && !h.toLowerCase().includes('cuota')
+          );
+          if (ordenHeader) {
+            const recordOrden = String(record[ordenHeader] || "").toLowerCase();
+            if (!recordOrden.includes(masterOrden.toLowerCase())) return false;
+          }
+        }
+        
+        // Master date filter (using transaction date)
+        if (masterDateFrom || masterDateTo) {
+          const fechaTransaccionHeader = paymentRecordsHeaders.find((h: string) => 
+            h.toLowerCase().includes('fecha') && h.toLowerCase().includes('transac')
+          );
+          if (fechaTransaccionHeader) {
+            const recordDate = parseExcelDate(record[fechaTransaccionHeader]);
+            if (recordDate) {
+              if (masterDateFrom) {
+                const fromDate = parseDDMMYYYY(masterDateFrom);
+                if (fromDate && recordDate < fromDate) return false;
+              }
+              if (masterDateTo) {
+                const toDate = parseDDMMYYYY(masterDateTo);
+                if (toDate) {
+                  const endOfDay = new Date(toDate);
+                  endOfDay.setHours(23, 59, 59, 999);
+                  if (recordDate > endOfDay) return false;
+                }
+              }
+            }
+          }
+        }
+        
+        return true;
+      });
+      
+      // Extract installments from filtered orders
       const installments: any[] = [];
       
-      ordersData.forEach((order: any) => {
+      masterFilteredOrders.forEach((order: any) => {
         const ordenNum = order['Orden'];
         if (!ordenNum) return;
         
@@ -731,7 +780,7 @@ export function MonthlyReport({
       
       if (ordenHeaderPmt && cuotaHeaderPmt && fechaPagoHeader) {
         installments.forEach(inst => {
-          const payment = paymentRecordsData.find((p: any) => {
+          const payment = masterFilteredPayments.find((p: any) => {
             const pOrden = String(p[ordenHeaderPmt] || '');
             const pCuota = String(p[cuotaHeaderPmt] || '');
             const cuotaNumbers = pCuota.split(',').map(c => c.trim()).filter(c => c);
