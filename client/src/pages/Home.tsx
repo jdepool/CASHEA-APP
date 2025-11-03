@@ -319,8 +319,9 @@ export default function Home() {
       return response.json();
     },
     onSuccess: async (data) => {
-      // Refetch bank statements query
+      // Refetch bank statements query AND payment records (VERIFICACION was updated)
       await queryClient.refetchQueries({ queryKey: ['/api/bank-statements'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/payment-records'] });
       
       toast({
         title: "Estado de cuenta cargado",
