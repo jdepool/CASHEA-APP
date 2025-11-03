@@ -15,6 +15,11 @@ interface MonthlyReportProps {
   masterDateFrom?: string;
   masterDateTo?: string;
   masterOrden?: string;
+  paymentRecordsData?: any[];
+  paymentRecordsHeaders?: string[];
+  ordersData?: any[];
+  bankStatementRows?: any[];
+  bankStatementHeaders?: string[];
 }
 
 export function MonthlyReport({ 
@@ -27,7 +32,12 @@ export function MonthlyReport({
   referenciaFilter,
   masterDateFrom,
   masterDateTo,
-  masterOrden
+  masterOrden,
+  paymentRecordsData = [],
+  paymentRecordsHeaders = [],
+  ordersData = [],
+  bankStatementRows = [],
+  bankStatementHeaders = []
 }: MonthlyReportProps) {
   const data = marketplaceData?.data?.rows || [];
   const headers = marketplaceData?.data?.headers || [];
