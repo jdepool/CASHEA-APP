@@ -497,9 +497,97 @@ export function MonthlyReport({
         }
       });
     }
-    const devolucionesPagoClientesBanco = 0;
-    const depositosOtrosAliadosBanco = 0;
-    const bancoNetoCuotasReconocidas = 0;
+    // 4. Depositos de otros aliados = sum of installments with STATUS=OTRO ALIADO
+    // OTRO ALIADO: Payment exists but no scheduled cuota date (fechaCuota == null)
+    // Create payment-based installment entries similar to AllInstallments logic
+    let depositosOtrosAliadosBanco = 0;
+    if (filteredPaymentRecords.length > 0 && ordersData.length > 0) {
+      const ordenHeaderPmt = paymentRecordsHeaders.find((h: string) => 
+        h.toLowerCase().includes('orden') && !h.toLowerCase().includes('cuota')
+      );
+      const cuotaHeaderPmt = paymentRecordsHeaders.find((h: string) => 
+        h.toLowerCase().includes('cuota') && h.toLowerCase().includes('pagada')
+      );
+      
+      if (ordenHeaderPmt && cuotaHeaderPmt && montoUsdHeader) {
+        // Create installment entries from payment records (one per cuota)
+        const paymentInstallments: any[] = [];
+        
+        filteredPaymentRecords.forEach((record: any) => {
+          const ordenNum = String(record[ordenHeaderPmt] || '').trim();
+          const cuotaValue = String(record[cuotaHeaderPmt] || '').trim();
+          const montoPagado = normalizeNumber(record[montoUsdHeader]);
+          
+          if (!ordenNum || isNaN(montoPagado)) return;
+          
+          // Parse cuota numbers (split by comma)
+          const cuotaNumbers: number[] = [];
+          if (cuotaValue) {
+            const parts = cuotaValue.split(',').map(s => s.trim());
+            for (const part of parts) {
+              const parsed = parseInt(part, 10);
+              if (!isNaN(parsed)) {
+                cuotaNumbers.push(parsed);
+              }
+            }
+          }
+          
+          // If no valid cuota numbers, use -1 as sentinel
+          if (cuotaNumbers.length === 0) {
+            cuotaNumbers.push(-1);
+          }
+          
+          // Create one installment entry per cuota
+          cuotaNumbers.forEach(cuotaNum => {
+            // Look up scheduled date from orders (with order number normalization)
+            let scheduledDate = null;
+            const matchingOrder = ordersData.find((o: any) => {
+              const orderNum = String(o['Orden'] || '').trim();
+              // Normalize order numbers: remove leading zeros and compare
+              const normalizedOrderNum = orderNum.replace(/^0+/, '') || '0';
+              const normalizedPaymentOrder = ordenNum.replace(/^0+/, '') || '0';
+              return normalizedOrderNum === normalizedPaymentOrder;
+            });
+            
+            if (matchingOrder && cuotaNum >= 0) {
+              if (cuotaNum === 0) {
+                // For cuota 0, use purchase date
+                const fechaCompra = matchingOrder['FECHA DE COMPRA'] || 
+                                   matchingOrder['Fecha de Compra'] || 
+                                   matchingOrder['Fecha de compra'] || 
+                                   matchingOrder['Fecha Compra'];
+                if (fechaCompra) {
+                  scheduledDate = fechaCompra;
+                }
+              } else {
+                // For other cuotas, look for scheduled date (try both capitalizations)
+                const cuotaDateKey1 = `Fecha Cuota ${cuotaNum}`;
+                const cuotaDateKey2 = `Fecha cuota ${cuotaNum}`;
+                scheduledDate = matchingOrder[cuotaDateKey1] || matchingOrder[cuotaDateKey2];
+              }
+            }
+            
+            paymentInstallments.push({
+              orden: ordenNum,
+              cuotaNum,
+              monto: montoPagado / cuotaNumbers.length, // Divide amount by number of cuotas
+              scheduledDate,
+            });
+          });
+        });
+        
+        // Sum amounts for installments with no scheduled date (OTRO ALIADO)
+        paymentInstallments.forEach(inst => {
+          if (!inst.scheduledDate) {
+            depositosOtrosAliadosBanco += inst.monto;
+          }
+        });
+      }
+    }
+    
+    // 5. Banco neto = Recibido - Cuotas adelantadas - Pago inicial - Devoluciones - Depositos otros aliados
+    const devolucionesPagoClientesBanco = 0; // Assume 0 as specified by user
+    const bancoNetoCuotasReconocidas = recibidoEnBanco - cuotasAdelantadasClientes - pagoInicialClientesApp - devolucionesPagoClientesBanco - depositosOtrosAliadosBanco;
     const cuentasPorCobrar = 0;
     const cuotasAdelantadasPeriodosAnteriores = 0;
     const cuentasPorCobrarNeto = 0;
