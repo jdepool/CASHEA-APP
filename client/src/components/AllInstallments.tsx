@@ -429,8 +429,11 @@ export function AllInstallments({
         // Match PAGO DE CUOTAS: don't require a parseable payment date
         if (!installment.isPaymentBased) return false;
       } else {
-        // When "Fecha Cuota" is selected, only show scheduled installments (not payment-based)
-        if (installment.isPaymentBased) return false;
+        // When "Fecha Cuota" is selected, show scheduled installments
+        // BUT also show OTRO ALIADO entries (payment-based with no scheduled cuota date)
+        // OTRO ALIADO entries have isPaymentBased=true and fechaCuota=null
+        const isOtroAliado = installment.isPaymentBased && !installment.fechaCuota;
+        if (installment.isPaymentBased && !isOtroAliado) return false;
       }
       
       // Date range filter

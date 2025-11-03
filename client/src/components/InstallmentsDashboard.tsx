@@ -26,18 +26,6 @@ export function InstallmentsDashboard({ installments }: InstallmentsDashboardPro
       const status = (installment.status || '').trim().toUpperCase();
       const verificacion = (installment.verificacion || '').trim().toUpperCase();
       
-      // Debug logging for OTRO ALIADO installments
-      if (status === 'OTRO ALIADO') {
-        console.log('Found OTRO ALIADO installment:', {
-          orden: installment.orden,
-          status,
-          verificacion,
-          monto,
-          fechaPagoReal: installment.fechaPagoReal,
-          fechaCuota: installment.fechaCuota
-        });
-      }
-      
       // Calculate OTRO ALIADO + VERIFICACION = SI metric
       if (status === 'OTRO ALIADO' && verificacion === 'SI') {
         montoOtroAliadoVerificado += monto;
