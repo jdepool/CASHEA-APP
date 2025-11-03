@@ -46,6 +46,7 @@ export interface IStorage {
   createPaymentRecord(paymentRecord: InsertPaymentRecord): Promise<PaymentRecord>;
   mergePaymentRecords(newRecords: any[], fileName: string, headers: string[]): Promise<MergeResult>;
   getLatestPaymentRecord(): Promise<PaymentRecord | undefined>;
+  updatePaymentRecordsVerification(updatedRows: any[], updatedHeaders: string[]): Promise<void>;
   
   createMarketplaceOrder(marketplaceOrder: InsertMarketplaceOrder): Promise<MarketplaceOrder>;
   getLatestMarketplaceOrder(): Promise<MarketplaceOrder | undefined>;
@@ -133,6 +134,32 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(paymentRecords.uploadedAt))
       .limit(1);
     return paymentRecord || undefined;
+  }
+
+  async updatePaymentRecordsVerification(updatedRows: any[], updatedHeaders: string[]): Promise<void> {
+    // Get the latest payment record
+    const latestRecord = await this.getLatestPaymentRecord();
+    
+    if (!latestRecord) {
+      console.log('No payment records found to update verification');
+      return;
+    }
+
+    // Update the payment record with new rows and headers
+    await db.transaction(async (tx) => {
+      await tx.delete(paymentRecords);
+      
+      await tx
+        .insert(paymentRecords)
+        .values({
+          fileName: latestRecord.fileName,
+          headers: updatedHeaders as any,
+          rows: updatedRows as any,
+          rowCount: String(updatedRows.length),
+        });
+    });
+
+    console.log(`✓ Updated VERIFICACION for ${updatedRows.length} payment records`);
   }
 
   async mergeOrders(newOrders: any[], fileName: string, headers: string[]): Promise<MergeResult> {

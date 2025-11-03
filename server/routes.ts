@@ -16,6 +16,49 @@ function normalizeHeader(header: string): string {
 }
 
 /**
+ * Re-verify all existing payment records against current bank statements
+ * Called automatically when bank statements are uploaded
+ */
+async function reverifyAllPaymentRecords(
+  bankStatementRows: any[],
+  bankStatementHeaders: string[]
+): Promise<void> {
+  const latestPaymentRecord = await storage.getLatestPaymentRecord();
+  
+  if (!latestPaymentRecord || !latestPaymentRecord.rows || latestPaymentRecord.rows.length === 0) {
+    console.log('No payment records found to re-verify');
+    return;
+  }
+
+  const paymentRows = latestPaymentRecord.rows as any[];
+  const paymentHeaders = latestPaymentRecord.headers as string[];
+
+  console.log(`\n🔄 Re-verifying ${paymentRows.length} payment records against bank statements...`);
+
+  // Ensure VERIFICACION is in headers
+  const hasVerificacion = paymentHeaders.includes('VERIFICACION');
+  const updatedHeaders = hasVerificacion ? paymentHeaders : [...paymentHeaders, 'VERIFICACION'];
+
+  // Re-verify each payment record
+  const updatedRows = paymentRows.map(row => {
+    const verificacion = verifyPaymentInBankStatement(row, bankStatementRows, bankStatementHeaders);
+    return {
+      ...row,
+      VERIFICACION: verificacion
+    };
+  });
+
+  // Count verification results
+  const verifiedCount = updatedRows.filter(r => r.VERIFICACION === 'SI').length;
+  const notVerifiedCount = updatedRows.filter(r => r.VERIFICACION === 'NO').length;
+
+  // Update payment records in database
+  await storage.updatePaymentRecordsVerification(updatedRows, updatedHeaders);
+
+  console.log(`✓ Re-verification complete: ${verifiedCount} verified (SI), ${notVerifiedCount} not verified (NO)\n`);
+}
+
+/**
  * Verify if a payment record exists in bank statements
  * Returns 'SI' (verified), 'NO' (not verified)
  */
@@ -922,6 +965,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Archivo: ${req.file.originalname}`);
       console.log(`Registros cargados: ${rows.length}`);
       console.log('=============================================\n');
+
+      // Automatically re-verify all payment records with new bank statement
+      await reverifyAllPaymentRecords(rows, allHeaders);
 
       res.json({
         success: true,
