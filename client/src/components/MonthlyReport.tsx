@@ -47,6 +47,98 @@ export function MonthlyReport({
     return headers.find((h: string) => h.toLowerCase().includes(name.toLowerCase()));
   };
 
+  // Function to verify if a payment exists in bank statements (reused from PaymentRecordsDashboard)
+  const verifyPaymentInBankStatement = useMemo(() => {
+    // Find relevant headers in bank statement (case-insensitive)
+    const referenciaHeader = bankStatementHeaders?.find(h => 
+      h.toLowerCase().includes('referencia')
+    );
+    const debeHeader = bankStatementHeaders?.find(h => 
+      h.toLowerCase().includes('debe')
+    );
+    const haberHeader = bankStatementHeaders?.find(h => 
+      h.toLowerCase().includes('haber')
+    );
+
+    return (record: any): string => {
+      // If no bank statements available, return "NO"
+      if (!bankStatementRows || bankStatementRows.length === 0) {
+        return 'NO';
+      }
+
+      const paymentRef = record['# Referencia'];
+      const paymentAmountVES = record['Monto Pagado en VES'] || record['Monto pagado en VES'];
+      const paymentAmountUSD = record['Monto Pagado en USD'] || record['Monto pagado en USD'];
+
+      // If no reference or amounts, can't verify
+      if (!paymentRef || (!paymentAmountVES && !paymentAmountUSD)) {
+        return 'NO';
+      }
+
+      // Normalize payment reference (remove spaces, leading zeros, quotes)
+      const normalizedPaymentRef = String(paymentRef).replace(/\s+/g, '').replace(/^0+/, '').replace(/['"]/g, '').toLowerCase();
+
+      // Normalize payment amounts
+      const normalizedVES = paymentAmountVES ? normalizeNumber(paymentAmountVES) : null;
+      const normalizedUSD = paymentAmountUSD ? normalizeNumber(paymentAmountUSD) : null;
+
+      // Search bank statements for matching reference and amount
+      const found = bankStatementRows.some(bankRow => {
+        // Check reference match
+        if (referenciaHeader) {
+          const bankRef = bankRow[referenciaHeader];
+          if (bankRef) {
+            const normalizedBankRef = String(bankRef).replace(/\s+/g, '').replace(/^0+/, '').replace(/['"]/g, '').toLowerCase();
+            if (normalizedBankRef !== normalizedPaymentRef) {
+              return false;
+            }
+          } else {
+            return false;
+          }
+        } else {
+          return false;
+        }
+
+        // Reference matches, now check amount
+        let amountFound = false;
+
+        if (debeHeader) {
+          const debeAmount = bankRow[debeHeader];
+          if (debeAmount) {
+            const normalizedDebe = normalizeNumber(debeAmount);
+            if (!isNaN(normalizedDebe)) {
+              if (normalizedVES !== null && Math.abs(normalizedDebe - normalizedVES) < 0.01) {
+                amountFound = true;
+              }
+              if (normalizedUSD !== null && Math.abs(normalizedDebe - normalizedUSD) < 0.01) {
+                amountFound = true;
+              }
+            }
+          }
+        }
+
+        if (haberHeader && !amountFound) {
+          const haberAmount = bankRow[haberHeader];
+          if (haberAmount) {
+            const normalizedHaber = normalizeNumber(haberAmount);
+            if (!isNaN(normalizedHaber)) {
+              if (normalizedVES !== null && Math.abs(normalizedHaber - normalizedVES) < 0.01) {
+                amountFound = true;
+              }
+              if (normalizedUSD !== null && Math.abs(normalizedHaber - normalizedUSD) < 0.01) {
+                amountFound = true;
+              }
+            }
+          }
+        }
+
+        return amountFound;
+      });
+
+      return found ? 'SI' : 'NO';
+    };
+  }, [bankStatementRows, bankStatementHeaders]);
+
   const estadoColumn = findColumn("estado pago");
   const ordenColumn = findColumn("# orden") || findColumn("orden");
   const estadoEntregaColumn = findColumn("estado de entrega") || findColumn("entrega");
@@ -179,6 +271,56 @@ export function MonthlyReport({
   }, [data, dateFrom, dateTo, estadoFilter, ordenFilter, estadoEntregaFilter, referenciaFilter, dateColumn, estadoColumn, ordenColumn, estadoEntregaColumn, referenciaColumn, masterDateFrom, masterDateTo, masterOrden]);
 
   const metrics = useMemo(() => {
+    // Apply master filters to payment records data
+    const filteredPaymentRecords = paymentRecordsData.filter((record: any) => {
+      // Master date filter
+      const fechaTransaccionHeader = paymentRecordsHeaders.find((h: string) => 
+        h.toLowerCase().includes('fecha') && h.toLowerCase().includes('transac')
+      );
+      
+      if ((masterDateFrom || masterDateTo) && fechaTransaccionHeader) {
+        const recordDate = parseExcelDate(record[fechaTransaccionHeader]);
+        if (recordDate) {
+          if (masterDateFrom) {
+            const fromDate = parseDDMMYYYY(masterDateFrom);
+            if (fromDate && recordDate < fromDate) return false;
+          }
+          if (masterDateTo) {
+            const toDate = parseDDMMYYYY(masterDateTo);
+            if (toDate) {
+              const endOfDay = new Date(toDate);
+              endOfDay.setHours(23, 59, 59, 999);
+              if (recordDate > endOfDay) return false;
+            }
+          }
+        }
+      }
+      
+      // Master orden filter
+      if (masterOrden) {
+        const ordenHeader = paymentRecordsHeaders.find((h: string) => 
+          h.toLowerCase().includes('orden') && !h.toLowerCase().includes('cuota')
+        );
+        if (ordenHeader) {
+          const recordOrden = String(record[ordenHeader] || "").toLowerCase();
+          if (!recordOrden.includes(masterOrden.toLowerCase())) return false;
+        }
+      }
+      
+      return true;
+    });
+    
+    // Apply master filters to orders data
+    const filteredOrders = ordersData.filter((order: any) => {
+      // Master orden filter
+      if (masterOrden) {
+        const ordenNum = String(order['Orden'] || "").toLowerCase();
+        if (!ordenNum.includes(masterOrden.toLowerCase())) return false;
+      }
+      
+      return true;
+    });
+    
     if (!filteredData || filteredData.length === 0) {
       return {
         totalVentas: 0,
@@ -221,10 +363,140 @@ export function MonthlyReport({
     const islrRetenido = 0;
     const totalServiciosTecnologicos = 0;
 
-    // TODO: Calculate bank reconciliation based on user's explanation
-    const recibidoEnBanco = 0;
-    const cuotasAdelantadasClientes = 0;
-    const pagoInicialClientesApp = 0;
+    // Calculate bank reconciliation values
+    
+    // 1. Recibido en Banco = sum of payment amounts where verificacion = SI
+    let recibidoEnBanco = 0;
+    const montoUsdHeader = paymentRecordsHeaders.find((h: string) => 
+      h.toLowerCase().includes('monto') && 
+      h.toLowerCase().includes('pagado') && 
+      h.toLowerCase().includes('usd')
+    );
+    
+    if (montoUsdHeader && filteredPaymentRecords.length > 0) {
+      filteredPaymentRecords.forEach((record: any) => {
+        const verificacion = verifyPaymentInBankStatement(record);
+        if (verificacion === 'SI') {
+          const montoValue = normalizeNumber(record[montoUsdHeader]);
+          if (!isNaN(montoValue)) {
+            recibidoEnBanco += montoValue;
+          }
+        }
+      });
+    }
+    
+    // 2. Cuotas adelantadas de clientes = sum of installments with ADELANTADO status
+    // We need to calculate this from ordersData by extracting installments and checking status
+    let cuotasAdelantadasClientes = 0;
+    if (filteredOrders.length > 0 && filteredPaymentRecords.length > 0) {
+      // Extract installments from orders (similar to WeeklyPaymentsTable logic)
+      const installments: any[] = [];
+      
+      filteredOrders.forEach((order: any) => {
+        const ordenNum = order['Orden'];
+        if (!ordenNum) return;
+        
+        // Find all cuota columns
+        const cuotaKeys = Object.keys(order).filter(key => 
+          key.toLowerCase().includes('cuota') && 
+          key !== 'Cuota 0' && 
+          key !== 'Estado de cuota'
+        );
+        
+        cuotaKeys.forEach(cuotaKey => {
+          const match = cuotaKey.match(/Cuota\s+(\d+)/i);
+          if (match) {
+            const cuotaNum = parseInt(match[1]);
+            const cuotaAmount = order[cuotaKey];
+            const cuotaDate = order[`Fecha Cuota ${cuotaNum}`];
+            
+            if (cuotaAmount && cuotaDate) {
+              installments.push({
+                orden: ordenNum,
+                cuotaNum,
+                cuotaAmount: normalizeNumber(cuotaAmount),
+                cuotaDate,
+              });
+            }
+          }
+        });
+      });
+      
+      // For each installment, find payment and check if ADELANTADO
+      installments.forEach(inst => {
+        // Find payment record for this installment
+        const ordenHeader = paymentRecordsHeaders.find((h: string) => 
+          h.toLowerCase().includes('orden') && !h.toLowerCase().includes('cuota')
+        );
+        const cuotaHeader = paymentRecordsHeaders.find((h: string) => 
+          h.toLowerCase().includes('cuota') && h.toLowerCase().includes('pagada')
+        );
+        const fechaPagoHeader = paymentRecordsHeaders.find((h: string) => 
+          h.toLowerCase().includes('fecha') && h.toLowerCase().includes('pago')
+        );
+        
+        if (!ordenHeader || !cuotaHeader || !fechaPagoHeader) return;
+        
+        const payment = filteredPaymentRecords.find((p: any) => {
+          const pOrden = String(p[ordenHeader] || '');
+          const pCuota = String(p[cuotaHeader] || '');
+          
+          return pOrden === String(inst.orden) && pCuota === String(inst.cuotaNum);
+        });
+        
+        if (payment) {
+          const fechaPago = parseExcelDate(payment[fechaPagoHeader]);
+          const fechaCuota = parseExcelDate(inst.cuotaDate);
+          
+          if (fechaPago && fechaCuota) {
+            const daysDiff = Math.floor((fechaCuota.getTime() - fechaPago.getTime()) / (1000 * 60 * 60 * 24));
+            const pagoMonth = fechaPago.getMonth();
+            const pagoYear = fechaPago.getFullYear();
+            const cuotaMonth = fechaCuota.getMonth();
+            const cuotaYear = fechaCuota.getFullYear();
+            
+            // ADELANTADO: Payment made at least 15 days before due date AND cuota month is after payment month
+            if (daysDiff <= -15) {
+              if (cuotaYear > pagoYear || (cuotaYear === pagoYear && cuotaMonth > pagoMonth)) {
+                cuotasAdelantadasClientes += inst.cuotaAmount;
+              }
+            }
+          }
+        }
+      });
+    }
+    
+    // 3. Pago inicial de clientes en App = Pago Inicial Depositado (cuota 0 with verificacion = SI)
+    let pagoInicialClientesApp = 0;
+    const ordenHeaderPayment = paymentRecordsHeaders.find((h: string) => 
+      h.toLowerCase().includes('orden') && !h.toLowerCase().includes('cuota')
+    );
+    const cuotaHeaderPayment = paymentRecordsHeaders.find((h: string) => 
+      h.toLowerCase().includes('cuota') && h.toLowerCase().includes('pagada')
+    );
+    
+    if (ordenHeaderPayment && cuotaHeaderPayment && montoUsdHeader) {
+      filteredPaymentRecords.forEach((record: any) => {
+        const cuotaValue = String(record[cuotaHeaderPayment] || '');
+        const cuotaNumbers = cuotaValue.split(',').map(c => c.trim()).filter(c => c);
+        
+        // Check if this is exactly cuota 0 (not multi-installment like "0,1,2")
+        if (cuotaNumbers.length === 1 && parseInt(cuotaNumbers[0]) === 0) {
+          const ordenNum = record[ordenHeaderPayment];
+          
+          // Only include if order exists in filteredOrders
+          if (ordenNum && filteredOrders.some((o: any) => String(o['Orden']) === String(ordenNum))) {
+            const verificacion = verifyPaymentInBankStatement(record);
+            if (verificacion === 'SI') {
+              const montoValue = normalizeNumber(record[montoUsdHeader]);
+              if (!isNaN(montoValue)) {
+                pagoInicialClientesApp += montoValue;
+              }
+            }
+          }
+        }
+      });
+    }
     const devolucionesPagoClientesBanco = 0;
     const depositosOtrosAliadosBanco = 0;
     const bancoNetoCuotasReconocidas = 0;
@@ -293,7 +565,7 @@ export function MonthlyReport({
       totalReconocerFinal,
       totalPagarCashea,
     };
-  }, [filteredData, headers]);
+  }, [filteredData, headers, paymentRecordsData, paymentRecordsHeaders, ordersData, bankStatementRows, bankStatementHeaders, masterDateFrom, masterDateTo, masterOrden, verifyPaymentInBankStatement]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {
