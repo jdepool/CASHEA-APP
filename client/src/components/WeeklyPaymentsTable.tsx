@@ -72,20 +72,6 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
 
   // Sort installments based on selected column
   const sortedInstallments = useMemo(() => {
-    // Debug logging for verificacion sorting
-    if (sortColumn === 'verificacion') {
-      const verifCounts = { SI: 0, NO: 0, dash: 0 };
-      installments.forEach((inst: any) => {
-        const v = inst.verificacion || '-';
-        if (v === 'SI') verifCounts.SI++;
-        else if (v === 'NO') verifCounts.NO++;
-        else verifCounts.dash++;
-      });
-      console.log('[WeeklyPaymentsTable] VERIFICACION sort - counts:', verifCounts);
-      console.log('[WeeklyPaymentsTable] First 5 verificacion values:', 
-        installments.slice(0, 5).map((inst: any) => inst.verificacion || '-'));
-    }
-
     return [...installments].sort((a, b) => {
       let comparison = 0;
 
