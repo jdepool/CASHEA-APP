@@ -127,7 +127,7 @@ export function PaymentRecordsTable({ records, headers, ordersData, bankStatemen
     };
   }, [bankStatementRows, bankStatementHeaders]);
   
-  // Enrich records with Status Orden and Verificacion lookup
+  // Enrich records with Status Orden and read VERIFICACION from stored data
   const enrichedRecords = useMemo(() => {
     return records.map(record => {
       const ordenNum = record['# Orden'];
@@ -135,7 +135,8 @@ export function PaymentRecordsTable({ records, headers, ordersData, bankStatemen
         ? (orderStatusMap.get(String(ordenNum)) || 'NOT FOUND')
         : 'NOT FOUND';
       
-      const verificacion = verifyPaymentInBankStatement(record);
+      // Read VERIFICACION from stored data (calculated server-side during upload)
+      const verificacion = record['VERIFICACION'] || 'NO';
       
       const enriched: PaymentRecord = {
         ...record,
@@ -144,7 +145,7 @@ export function PaymentRecordsTable({ records, headers, ordersData, bankStatemen
       };
       return enriched;
     });
-  }, [records, orderStatusMap, verifyPaymentInBankStatement]);
+  }, [records, orderStatusMap]);
   
   // Define the desired column order patterns (case-insensitive)
   const desiredOrderPatterns = [

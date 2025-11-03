@@ -217,8 +217,8 @@ export function AllInstallments({
           const parsedDate = fechaTasaCambio ? parseExcelDate(fechaTasaCambio) : null;
           
           if (parsedDate) {
-            // Verify payment in bank statement
-            const verificacion = verifyPaymentInBankStatement(matchingPayment);
+            // Read VERIFICACION from stored data (calculated server-side during upload)
+            const verificacion = matchingPayment['VERIFICACION'] || '-';
             
             return { 
               ...installment, 
@@ -303,8 +303,8 @@ export function AllInstallments({
               }
             }
             
-            // Verify payment in bank statement
-            const verificacion = verifyPaymentInBankStatement(payment);
+            // Read VERIFICACION from stored data (calculated server-side during upload)
+            const verificacion = payment['VERIFICACION'] || '-';
             
             paymentBasedEntries.push({
               orden: paymentOrder,
@@ -374,7 +374,7 @@ export function AllInstallments({
     });
 
     return installments;
-  }, [tableData, paymentRecordsData, verifyPaymentInBankStatement]);
+  }, [tableData, paymentRecordsData]);
 
   // Apply filters to installments
   const filteredInstallments = useMemo(() => {

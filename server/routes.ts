@@ -265,8 +265,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('Payment records enriched with VERIFICACION field');
 
+      // Include VERIFICACION in headers
+      const enrichedHeaders = [...allHeaders, 'VERIFICACION'];
+
       // Merge with existing payment records (skip duplicates by Orden + Cuota)
-      const mergeResult = await storage.mergePaymentRecords(enrichedRows, req.file.originalname, allHeaders);
+      const mergeResult = await storage.mergePaymentRecords(enrichedRows, req.file.originalname, enrichedHeaders);
 
       // Log summary of the merge operation
       console.log('\n=== RESUMEN DE CARGA DE PAGOS ===');
@@ -284,10 +287,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         success: true,
         data: {
-          headers: allHeaders,
-          rows,
+          headers: enrichedHeaders,
+          rows: enrichedRows,
           fileName: req.file.originalname,
-          rowCount: rows.length,
+          rowCount: enrichedRows.length,
         },
         merge: {
           added: mergeResult.added,
