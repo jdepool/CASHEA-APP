@@ -21,6 +21,7 @@ interface MonthlyReportProps {
   ordersData?: any[];
   bankStatementRows?: any[];
   bankStatementHeaders?: string[];
+  cuotasAdelantadasPeriodosAnteriores?: number;
 }
 
 export function MonthlyReport({ 
@@ -38,7 +39,8 @@ export function MonthlyReport({
   paymentRecordsHeaders = [],
   ordersData = [],
   bankStatementRows = [],
-  bankStatementHeaders = []
+  bankStatementHeaders = [],
+  cuotasAdelantadasPeriodosAnteriores = 0,
 }: MonthlyReportProps) {
   const data = marketplaceData?.data?.rows || [];
   const headers = marketplaceData?.data?.headers || [];
@@ -681,29 +683,23 @@ export function MonthlyReport({
       });
     }
     
-    // 6. Cuotas adelantadas en periodos anteriores = sum of installments where Estado=done AND STATUS=ADELANTADO
-    let cuotasAdelantadasPeriodosAnteriores = 0;
+    // 6. Calculate cuotasAdelantadasPeriodosAnteriores from ALL orders (not filtered by marketplace filters)
+    // This should match what's shown in CONCILIACION DE CUOTAS dashboard
+    let calculatedCuotasAdelantadas = 0;
     
-    console.log('[MonthlyReport] Calculating cuotasAdelantadasPeriodosAnteriores', {
-      filteredOrdersCount: filteredOrders.length,
-      filteredPaymentRecordsCount: filteredPaymentRecords.length,
-      paymentRecordsHeaders,
-    });
-    
-    if (filteredOrders.length > 0 && filteredPaymentRecords.length > 0) {
-      // Extract installments from orders
+    if (ordersData.length > 0 && paymentRecordsData.length > 0) {
+      // Extract installments from ALL orders
       const installments: any[] = [];
       
-      filteredOrders.forEach((order: any) => {
+      ordersData.forEach((order: any) => {
         const ordenNum = order['Orden'];
         if (!ordenNum) return;
         
         // Process cuotas 1-14 (regular installments)
         for (let i = 1; i <= 14; i++) {
-          // Try both casing variations
           const fechaCuotaValue = order[`Fecha cuota ${i}`] || order[`Fecha Cuota ${i}`];
           const montoValue = order[`Cuota ${i}`];
-          const estadoValue = order[`Estado cuota ${i}`] || order[`Estado Cuota ${i}`];
+          const estadoValue = order[`Estado cuota ${i}`] || order[`Estado Cuota ${i}`] || order[`Estado de cuota ${i}`];
           
           if (fechaCuotaValue && montoValue) {
             const monto = normalizeNumber(montoValue);
@@ -722,7 +718,7 @@ export function MonthlyReport({
         }
       });
       
-      // For each installment, find payment and calculate STATUS
+      // Match with payments
       const ordenHeaderPmt = paymentRecordsHeaders.find((h: string) => 
         h.toLowerCase().includes('orden') && !h.toLowerCase().includes('cuota')
       );
@@ -730,65 +726,38 @@ export function MonthlyReport({
         h.toLowerCase().includes('cuota') && h.toLowerCase().includes('pagada')
       );
       const fechaPagoHeader = paymentRecordsHeaders.find((h: string) => 
-        h.toLowerCase().includes('fecha') && h.toLowerCase().includes('pago')
+        h.toLowerCase().includes('fecha') && (h.toLowerCase().includes('pago') || h.toLowerCase().includes('transac'))
       );
       
-      console.log('[MonthlyReport] Found headers', { ordenHeaderPmt, cuotaHeaderPmt, fechaPagoHeader });
-      console.log('[MonthlyReport] Total installments extracted:', installments.length);
-      
       if (ordenHeaderPmt && cuotaHeaderPmt && fechaPagoHeader) {
-        let matchedCount = 0;
-        let adelantadoCount = 0;
-        
         installments.forEach(inst => {
-          // Find payment record for this installment
-          const payment = filteredPaymentRecords.find((p: any) => {
+          const payment = paymentRecordsData.find((p: any) => {
             const pOrden = String(p[ordenHeaderPmt] || '');
             const pCuota = String(p[cuotaHeaderPmt] || '');
-            
-            // Check if payment matches this installment
             const cuotaNumbers = pCuota.split(',').map(c => c.trim()).filter(c => c);
             return pOrden === String(inst.orden) && cuotaNumbers.includes(String(inst.cuotaNum));
           });
           
           if (payment) {
-            matchedCount++;
             const fechaPagoValue = parseExcelDate(payment[fechaPagoHeader]);
-            
-            // Calculate STATUS using the utility function
             const status = calculateInstallmentStatus({
               fechaCuota: inst.fechaCuota,
               fechaPagoReal: fechaPagoValue,
               estadoCuota: inst.estadoCuota,
             });
             
-            // Check if Estado = done AND STATUS = ADELANTADO
             const estadoNormalized = (inst.estadoCuota || '').trim().toLowerCase();
             if (estadoNormalized === 'done' && status === 'ADELANTADO') {
-              adelantadoCount++;
-              cuotasAdelantadasPeriodosAnteriores += inst.monto;
-              console.log('[MonthlyReport] Found ADELANTADO installment', {
-                orden: inst.orden,
-                cuotaNum: inst.cuotaNum,
-                monto: inst.monto,
-                status,
-                estadoCuota: inst.estadoCuota,
-              });
+              calculatedCuotasAdelantadas += inst.monto;
             }
           }
-        });
-        
-        console.log('[MonthlyReport] Summary', {
-          matchedCount,
-          adelantadoCount,
-          totalAmount: cuotasAdelantadasPeriodosAnteriores,
         });
       }
     }
     
-    console.log('[MonthlyReport] Final cuotasAdelantadasPeriodosAnteriores:', cuotasAdelantadasPeriodosAnteriores);
-    
-    const cuentasPorCobrarNeto = cuentasPorCobrar - cuotasAdelantadasPeriodosAnteriores;
+    // Use calculated value (ignoring the prop for now since it's always 0)
+    const finalCuotasAdelantadas = calculatedCuotasAdelantadas;
+    const cuentasPorCobrarNeto = cuentasPorCobrar - finalCuotasAdelantadas;
     const subtotalConciliacionBancoNeto = bancoNetoCuotasReconocidas - cuentasPorCobrarNeto;
 
     // TODO: Calculate reconciliation adjustments based on user's explanation
@@ -830,7 +799,7 @@ export function MonthlyReport({
       depositosOtrosAliadosBanco,
       bancoNetoCuotasReconocidas,
       cuentasPorCobrar,
-      cuotasAdelantadasPeriodosAnteriores,
+      cuotasAdelantadasPeriodosAnteriores: finalCuotasAdelantadas,
       cuentasPorCobrarNeto,
       subtotalConciliacionBancoNeto,
       devolucionesPagoClientes,

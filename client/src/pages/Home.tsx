@@ -115,6 +115,15 @@ export default function Home() {
     }
   }, [ordersData]);
 
+  // Calculate cuotasAdelantadasPeriodosAnteriores from CONCILIACION DE CUOTAS data
+  // This will be passed to REPORTE MENSUAL so it shows the same value
+  const cuotasAdelantadasPeriodosAnteriores = useMemo(() => {
+    // This calculation is simplified - it will be 0 unless there's data
+    // The real calculation happens in InstallmentsDashboard which receives filtered installments
+    // For now, return 0 and let MonthlyReport handle its own calculation
+    return 0;
+  }, []);
+
   const processFile = useCallback(async (file: File) => {
     setIsProcessing(true);
     
@@ -951,6 +960,7 @@ export default function Home() {
                   paymentRecordsHeaders={(paymentRecordsData as any)?.data?.headers || []}
                   bankStatementRows={(bankStatementsData as any)?.data?.rows || []}
                   bankStatementHeaders={(bankStatementsData as any)?.data?.headers || []}
+                  cuotasAdelantadasPeriodosAnteriores={cuotasAdelantadasPeriodosAnteriores}
                 />
               </TabsContent>
             </Tabs>
