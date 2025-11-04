@@ -116,16 +116,41 @@ export default function Home() {
     refetchOnWindowFocus: false,
   });
 
+  // Helper function to deduplicate orders by order number
+  const deduplicateOrders = useCallback((rows: any[], headers: string[]) => {
+    const ordenHeader = headers.find((h: string) => h.toLowerCase() === 'orden');
+    if (!ordenHeader) return rows;
+    
+    const seenOrders = new Set<string>();
+    return rows.filter((row: any) => {
+      const ordenValue = String(row[ordenHeader] || '').trim();
+      if (!ordenValue) return true; // Keep rows without order number
+      
+      if (seenOrders.has(ordenValue)) {
+        return false; // Skip duplicate
+      }
+      
+      seenOrders.add(ordenValue);
+      return true; // Keep first occurrence
+    });
+  }, []);
+
   // Load persisted data when query succeeds
   useEffect(() => {
     if (ordersData) {
       const data = ordersData as any;
       if (data.data) {
-        setHeaders(data.data.headers || []);
-        setTableData(data.data.rows || []);
+        const headers = data.data.headers || [];
+        const rows = data.data.rows || [];
+        
+        // Deduplicate orders by order number before setting state
+        const deduplicatedRows = deduplicateOrders(rows, headers);
+        
+        setHeaders(headers);
+        setTableData(deduplicatedRows);
       }
     }
-  }, [ordersData]);
+  }, [ordersData, deduplicateOrders]);
 
   // Calculate cuotasAdelantadasPeriodosAnteriores from CONCILIACION DE CUOTAS data
   // This will be passed to REPORTE MENSUAL so it shows the same value
@@ -160,8 +185,14 @@ export default function Home() {
         const ordersResult = await ordersResponse.json();
         
         if (ordersResult.success && ordersResult.data) {
-          setHeaders(ordersResult.data.headers);
-          setTableData(ordersResult.data.rows);
+          const headers = ordersResult.data.headers;
+          const rows = ordersResult.data.rows;
+          
+          // Deduplicate orders before setting state
+          const deduplicatedRows = deduplicateOrders(rows, headers);
+          
+          setHeaders(headers);
+          setTableData(deduplicatedRows);
         }
         
         // Show merge statistics

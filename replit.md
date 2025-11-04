@@ -66,7 +66,11 @@ The application employs a client-server architecture with a React frontend and a
 - **Deduplication Strategy**: 
   * Backend deduplicates during upload (removes duplicate order numbers before storing)
   * Database merge operation deduplicates when combining new uploads with existing data
-  * Frontend applies additional deduplication in TODAS LAS ORDENES tab as a defensive measure, ensuring unique orders are displayed by keeping first occurrence of each order number
+  * Frontend applies deduplication at three levels as a defensive measure:
+    - When loading data from database (in useEffect)
+    - After file upload when refetching data (in processFile)
+    - In TODAS LAS ORDENES tab filtering logic (defensive final layer)
+  * This ensures all tabs (TODAS LAS ORDENES, CUOTAS, CONCILIACION DE CUOTAS, etc.) show unique orders by keeping first occurrence of each order number
 
 ## External Dependencies
 - **Database**: PostgreSQL (Neon).
