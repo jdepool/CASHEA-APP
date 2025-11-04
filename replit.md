@@ -70,7 +70,9 @@ The application employs a client-server architecture with a React frontend and a
     - When loading data from database (in useEffect)
     - After file upload when refetching data (in processFile)
     - In TODAS LAS ORDENES tab filtering logic (defensive final layer)
-  * This ensures all tabs (TODAS LAS ORDENES, CUOTAS, CONCILIACION DE CUOTAS, etc.) show unique orders by keeping first occurrence of each order number
+  * All tabs receive deduplicated data: TODAS LAS ORDENES, CUOTAS, CONCILIACION DE CUOTAS, CONCILIACION DE PAGOS, and REPORTE MENSUAL
+  * REPORTE MENSUAL uses deduplicated `tableData` for all financial calculations ensuring accurate metrics without inflated values from duplicate orders
+  * Deduplication keeps first occurrence of each unique order number, discarding subsequent duplicates
 
 ## External Dependencies
 - **Database**: PostgreSQL (Neon).

@@ -220,7 +220,7 @@ export default function Home() {
     } finally {
       setIsProcessing(false);
     }
-  }, [toast]);
+  }, [toast, deduplicateOrders]);
 
   const handleFileSelect = useCallback((file: File) => {
     setSelectedFile(file);
