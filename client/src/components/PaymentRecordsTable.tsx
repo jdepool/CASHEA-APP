@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
 import { normalizeNumber } from "@shared/numberUtils";
-import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle } from "lucide-react";
+import { calculatePaymentSplits, getPaymentSplitKey } from "@/lib/paymentUtils";
+import { Badge } from "@/components/ui/badge";
 
 interface PaymentRecord {
   [key: string]: any;
@@ -146,6 +148,11 @@ export function PaymentRecordsTable({ records, headers, ordersData, bankStatemen
       return enriched;
     });
   }, [records, orderStatusMap]);
+
+  // Calculate payment splits for multi-cuota payments
+  const paymentSplitsMap = useMemo(() => {
+    return calculatePaymentSplits(enrichedRecords, headers, ordersData);
+  }, [enrichedRecords, headers, ordersData]);
   
   // Define the desired column order patterns (case-insensitive)
   const desiredOrderPatterns = [
@@ -286,7 +293,7 @@ export function PaymentRecordsTable({ records, headers, ordersData, bankStatemen
     return paidAmount < (totalExpectedAmount - 0.25);
   };
 
-  const formatValue = (value: any, header: string) => {
+  const formatValue = (value: any, header: string, record?: PaymentRecord) => {
     if (value === null || value === undefined || value === "") {
       return "-";
     }
@@ -319,12 +326,27 @@ export function PaymentRecordsTable({ records, headers, ordersData, bankStatemen
     
     // Check if this is a currency column (VES or USD)
     if (headerLower.includes('ves') || headerLower.includes('usd') || headerLower.includes('monto')) {
+      // Check if we have split info for this payment
+      let displayValue = value;
+      if (record) {
+        const splitKey = getPaymentSplitKey(record, headers);
+        const splitInfo = paymentSplitsMap.get(splitKey);
+        
+        // Use split amount if available and this is the matching currency
+        if (splitInfo && splitInfo.numberOfCuotas > 1) {
+          if ((headerLower.includes('ves') && splitInfo.currency === 'VES') ||
+              (headerLower.includes('usd') && splitInfo.currency === 'USD')) {
+            displayValue = splitInfo.splitAmount;
+          }
+        }
+      }
+      
       // Use locale-aware parser to handle different number formats
-      const numValue = normalizeNumber(value);
+      const numValue = normalizeNumber(displayValue);
       
       // Handle invalid numbers
       if (isNaN(numValue)) {
-        return String(value); // Show original value if can't parse
+        return String(displayValue); // Show original value if can't parse
       }
 
       const currency = headerLower.includes('ves') ? 'VES' : 'USD';
@@ -428,23 +450,52 @@ export function PaymentRecordsTable({ records, headers, ordersData, bankStatemen
         <tbody>
           {sortedRecords.map((record, rowIdx) => {
             const isDuplicate = isDuplicatePayment(record);
+            const splitKey = getPaymentSplitKey(record, headers);
+            const splitInfo = paymentSplitsMap.get(splitKey);
+            const hasMultipleCuotas = splitInfo && splitInfo.numberOfCuotas > 1;
+            const hasSplitWarning = splitInfo && splitInfo.hasWarning;
+            
             return (
               <tr
                 key={rowIdx}
                 className={`border-b hover-elevate ${isDuplicate ? 'text-red-600 dark:text-red-400 font-bold' : ''}`}
                 data-testid={`row-${rowIdx}`}
               >
-                {orderedHeaders.map((header, colIdx) => (
-                  <td
-                    key={colIdx}
-                    className={`px-4 py-3 whitespace-nowrap ${
-                      isNumericColumn(header) ? 'text-right font-mono' : ''
-                    } ${colIdx === 0 ? 'sticky left-0 z-10 bg-card' : ''}`}
-                    data-testid={`cell-${rowIdx}-${colIdx}`}
-                  >
-                    {formatValue(record[header], header)}
-                  </td>
-                ))}
+                {orderedHeaders.map((header, colIdx) => {
+                  const headerLower = header.toLowerCase();
+                  const isCurrencyColumn = headerLower.includes('monto') && (headerLower.includes('ves') || headerLower.includes('usd'));
+                  const showSplitWarning = isCurrencyColumn && hasMultipleCuotas && hasSplitWarning;
+                  
+                  return (
+                    <td
+                      key={colIdx}
+                      className={`px-4 py-3 whitespace-nowrap ${
+                        isNumericColumn(header) ? 'text-right font-mono' : ''
+                      } ${colIdx === 0 ? 'sticky left-0 z-10 bg-card' : ''}`}
+                      data-testid={`cell-${rowIdx}-${colIdx}`}
+                    >
+                      <div className="flex items-center gap-2 justify-end">
+                        {formatValue(record[header], header, record)}
+                        {hasMultipleCuotas && isCurrencyColumn && (
+                          <Badge 
+                            variant={hasSplitWarning ? "destructive" : "secondary"}
+                            className="text-xs"
+                            title={splitInfo.warningMessage || `Pago dividido entre ${splitInfo.numberOfCuotas} cuotas`}
+                          >
+                            {splitInfo.numberOfCuotas} cuotas
+                          </Badge>
+                        )}
+                        {showSplitWarning && splitInfo.warningMessage && (
+                          <span title={splitInfo.warningMessage}>
+                            <AlertTriangle 
+                              className="h-4 w-4 text-destructive"
+                            />
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  );
+                })}
               </tr>
             );
           })}
