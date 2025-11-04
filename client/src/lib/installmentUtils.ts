@@ -120,7 +120,12 @@ export function calculateInstallmentStatus(installment: any): string {
     return 'NO DEPOSITADO';
   }
   
-  // No status if no payment and order not done
+  // ATRASADO: Installment is delayed but not paid yet
+  if (!fechaPago && estadoCuota === 'delayed') {
+    return 'ATRASADO';
+  }
+  
+  // No status if no payment and order not done/delayed
   if (!fechaPago) {
     return '';
   }
