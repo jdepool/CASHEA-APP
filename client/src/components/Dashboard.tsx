@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, ShoppingCart, CreditCard, AlertCircle, Wallet, Receipt, Calendar } from "lucide-react";
+import { DollarSign, ShoppingCart, CreditCard, AlertCircle, Wallet, Receipt, Calendar, XCircle } from "lucide-react";
 import { parseDDMMYYYY, parseExcelDate } from "@/lib/dateUtils";
 
 interface DashboardProps {
@@ -28,6 +28,9 @@ export function Dashboard({ data, allData, headers, dateFrom, dateTo }: Dashboar
     let saldoPendiente = 0; // Sum of individual positive saldos only
     let cuotasDelPeriodo = 0;
     let cuentasPorCobrar = 0;
+    let ordenesCanceladas = 0;
+    let ventaTotalCanceladas = 0;
+    let montoInicialCanceladas = 0;
     
     // Parse date range for filtering installments using DD/MM/YYYY format
     const fromDate = dateFrom ? parseDDMMYYYY(dateFrom) : null;
@@ -44,7 +47,7 @@ export function Dashboard({ data, allData, headers, dateFrom, dateTo }: Dashboar
         // Check if order is cancelled first
         const isCancelled = isCancelledOrder(row);
 
-        // Get Venta Total (exclude cancelled orders)
+        // Get Venta Total
         const ventaTotalStr = row["Venta total"];
         const ventaTotal = parseFloat(ventaTotalStr || 0);
         
@@ -52,6 +55,9 @@ export function Dashboard({ data, allData, headers, dateFrom, dateTo }: Dashboar
           montoVentas += 0;
         } else if (!isCancelled) {
           montoVentas += ventaTotal;
+        } else {
+          // Add to cancelled orders metrics
+          ventaTotalCanceladas += ventaTotal;
         }
 
         // Get PAGO INICIAL for this row
@@ -59,9 +65,12 @@ export function Dashboard({ data, allData, headers, dateFrom, dateTo }: Dashboar
         const pagoInicial = parseFloat(pagoInicialStr || 0);
         const pagoInicialValue = isNaN(pagoInicial) ? 0 : pagoInicial;
         
-        // Add to Pago Inicial total (exclude cancelled orders)
+        // Add to Pago Inicial total or cancelled totals
         if (!isCancelled) {
           pagoInicialTotal += pagoInicialValue;
+        } else {
+          montoInicialCanceladas += pagoInicialValue;
+          ordenesCanceladas++;
         }
         
         let totalPagadoRow = pagoInicialValue;
@@ -143,6 +152,9 @@ export function Dashboard({ data, allData, headers, dateFrom, dateTo }: Dashboar
       saldo: saldoPendiente,
       cuotasDelPeriodo,
       cuentasPorCobrar,
+      ordenesCanceladas,
+      ventaTotalCanceladas,
+      montoInicialCanceladas,
     };
   }, [data, allData, dateFrom, dateTo]);
 
@@ -155,7 +167,7 @@ export function Dashboard({ data, allData, headers, dateFrom, dateTo }: Dashboar
   };
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 mb-6">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7 mb-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">
@@ -237,6 +249,40 @@ export function Dashboard({ data, allData, headers, dateFrom, dateTo }: Dashboar
           </div>
           <p className="text-xs text-muted-foreground">
             {dateFrom || dateTo ? 'Suma del periodo' : 'Selecciona fechas'}
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">
+            Órdenes Canceladas
+          </CardTitle>
+          <XCircle className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold" data-testid="metric-ordenes-canceladas">
+            {metrics.ordenesCanceladas}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Venta Total: {formatCurrency(metrics.ventaTotalCanceladas)}
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">
+            Monto Inicial Canceladas
+          </CardTitle>
+          <Wallet className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold" data-testid="metric-monto-inicial-canceladas">
+            {formatCurrency(metrics.montoInicialCanceladas)}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Pago inicial de canceladas
           </p>
         </CardContent>
       </Card>
