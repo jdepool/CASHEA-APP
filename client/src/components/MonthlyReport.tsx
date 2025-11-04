@@ -23,7 +23,7 @@ interface MonthlyReportProps {
   bankStatementHeaders?: string[];
   cuotasAdelantadasPeriodosAnteriores?: number;
   filteredInstallmentsData?: any[];
-  filteredPagosInstallmentsData?: any[];
+  filteredPagosMasterOnlyData?: any[];
 }
 
 export function MonthlyReport({ 
@@ -44,7 +44,7 @@ export function MonthlyReport({
   bankStatementHeaders = [],
   cuotasAdelantadasPeriodosAnteriores = 0,
   filteredInstallmentsData = [],
-  filteredPagosInstallmentsData = [],
+  filteredPagosMasterOnlyData = [],
 }: MonthlyReportProps) {
   const data = marketplaceData?.data?.rows || [];
   const headers = marketplaceData?.data?.headers || [];
@@ -393,8 +393,8 @@ export function MonthlyReport({
     }
     
     // 2. Cuotas adelantadas de clientes = sum of installments with ADELANTADO status
-    // Calculated from payment-date-filtered installments (CONCILIACION DE PAGOS view)
-    const cuotasAdelantadasClientes = calculateCuotasAdelantadas(filteredPagosInstallmentsData);
+    // Calculated from payment-date-filtered installments with master filters only
+    const cuotasAdelantadasClientes = calculateCuotasAdelantadas(filteredPagosMasterOnlyData);
     
     // 3. Pago inicial de clientes en App = Pago Inicial Depositado (cuota 0 with verificacion = SI)
     let pagoInicialClientesApp = 0;

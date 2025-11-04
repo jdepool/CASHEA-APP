@@ -58,6 +58,7 @@ export default function Home() {
   const [installmentsDateFieldFilter, setInstallmentsDateFieldFilter] = useState<string>("fechaCuota");
   const [filteredInstallmentsData, setFilteredInstallmentsData] = useState<any[]>([]);
   const [filteredPagosInstallmentsData, setFilteredPagosInstallmentsData] = useState<any[]>([]);
+  const [filteredPagosMasterOnlyData, setFilteredPagosMasterOnlyData] = useState<any[]>([]);
   
   // CONCILIACION DE PAGOS tab filters
   const [pagosShowFilters, setPagosShowFilters] = useState<boolean>(false);
@@ -571,6 +572,19 @@ export default function Home() {
                       onFilteredInstallmentsChange={setFilteredPagosInstallmentsData}
                     />
                   </div>
+                  <div style={{ display: 'none' }}>
+                    <AllPagosInstallments 
+                      tableData={tableData}
+                      dateFrom=""
+                      dateTo=""
+                      ordenFilter=""
+                      estadoCuotaFilter="all"
+                      masterDateFrom={masterDateFrom}
+                      masterDateTo={masterDateTo}
+                      masterOrden={masterOrden}
+                      onFilteredInstallmentsChange={setFilteredPagosMasterOnlyData}
+                    />
+                  </div>
                 </>
               )}
               
@@ -1046,7 +1060,7 @@ export default function Home() {
                   bankStatementRows={(bankStatementsData as any)?.data?.rows || []}
                   bankStatementHeaders={(bankStatementsData as any)?.data?.headers || []}
                   filteredInstallmentsData={filteredInstallmentsData}
-                  filteredPagosInstallmentsData={filteredPagosInstallmentsData}
+                  filteredPagosMasterOnlyData={filteredPagosMasterOnlyData}
                   cuotasAdelantadasPeriodosAnteriores={cuotasAdelantadasPeriodosAnteriores}
                 />
               </TabsContent>
