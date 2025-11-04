@@ -386,7 +386,16 @@ export function AllInstallments({
 
   // Apply filters to installments
   const filteredInstallments = useMemo(() => {
+    // Get list of valid order numbers from tableData
+    const validOrderNumbers = new Set(
+      tableData.map((row: any) => String(row['Orden'] || '').trim()).filter(Boolean)
+    );
+
     return allInstallments.filter((installment: any) => {
+      // ONLY show cuotas for orders that exist in the database (tableData)
+      const ordenValue = String(installment.orden || '').trim();
+      if (!validOrderNumbers.has(ordenValue)) return false;
+
       // MASTER FILTERS - Applied FIRST
       // Master date range filter
       if (masterDateFrom || masterDateTo) {
@@ -436,27 +445,28 @@ export function AllInstallments({
       if ((dateFrom || dateTo) && !masterDateFrom && !masterDateTo) {
         const effectiveDate = installment.fechaCuota;
         
-        if (effectiveDate) {
-          const installmentDate = typeof effectiveDate === 'string' ? parseExcelDate(effectiveDate) : effectiveDate;
+        // When date filtering is active, exclude cuotas without fechaCuota
+        if (!effectiveDate) return false;
+        
+        const installmentDate = typeof effectiveDate === 'string' ? parseExcelDate(effectiveDate) : effectiveDate;
+        
+        if (installmentDate) {
+          // Normalize installment date to midnight for date-only comparison
+          const normalizedInstallmentDate = new Date(installmentDate);
+          normalizedInstallmentDate.setHours(0, 0, 0, 0);
           
-          if (installmentDate) {
-            // Normalize installment date to midnight for date-only comparison
-            const normalizedInstallmentDate = new Date(installmentDate);
-            normalizedInstallmentDate.setHours(0, 0, 0, 0);
-            
-            if (dateFrom) {
-              const fromDate = parseDDMMYYYY(dateFrom);
-              if (fromDate) {
-                fromDate.setHours(0, 0, 0, 0);
-                if (normalizedInstallmentDate < fromDate) return false;
-              }
+          if (dateFrom) {
+            const fromDate = parseDDMMYYYY(dateFrom);
+            if (fromDate) {
+              fromDate.setHours(0, 0, 0, 0);
+              if (normalizedInstallmentDate < fromDate) return false;
             }
-            if (dateTo) {
-              const toDate = parseDDMMYYYY(dateTo);
-              if (toDate) {
-                toDate.setHours(23, 59, 59, 999);
-                if (normalizedInstallmentDate > toDate) return false;
-              }
+          }
+          if (dateTo) {
+            const toDate = parseDDMMYYYY(dateTo);
+            if (toDate) {
+              toDate.setHours(23, 59, 59, 999);
+              if (normalizedInstallmentDate > toDate) return false;
             }
           }
         }
@@ -476,7 +486,7 @@ export function AllInstallments({
 
       return true;
     });
-  }, [allInstallments, dateFrom, dateTo, ordenFilter, estadoCuotaFilter, masterDateFrom, masterDateTo, masterOrden]);
+  }, [allInstallments, dateFrom, dateTo, ordenFilter, estadoCuotaFilter, masterDateFrom, masterDateTo, masterOrden, tableData]);
 
   // Notify parent component when filtered installments change
   useEffect(() => {
