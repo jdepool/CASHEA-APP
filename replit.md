@@ -27,8 +27,9 @@ The application employs a client-server architecture with a React frontend and a
 **Feature Specifications**:
 - **File Upload**: Drag & drop or selection with client-side and backend validation for orders, payments, and marketplace orders.
 - **Data Persistence & Duplication Handling**: All data is saved to PostgreSQL; new uploads replace existing orders by `Orden` number, and payment records update based on `(# Orden, # Cuota Pagada, # Referencia)`.
-- **Master Filter System**: Global filtering (date range, order number) applies across all main tabs (`MARKETPLACE ORDERS`, `TODAS LAS ÓRDENES`, `CUOTAS`, `PAGO DE CUOTAS`, `CONCILIACION DE CUOTAS`, `REPORTE MENSUAL`) before tab-specific filters. Filters persist across tabs and have clear/active indicators.
+- **Master Filter System**: Global filtering (date range, order number) applies across all main tabs (`MARKETPLACE ORDERS`, `TODAS LAS ÓRDENES`, `CUOTAS`, `PAGO DE CUOTAS`, `CONCILIACION DE CUOTAS`, `CONCILIACION DE PAGOS`, `REPORTE MENSUAL`) before tab-specific filters. Filters persist across tabs and have clear/active indicators.
 - **Installments View (`CONCILIACION DE CUOTAS`)**: Displays installments with collapsible filters and an `InstallmentsDashboard`. Includes a `STATUS` column with five categories (ADELANTADO, A TIEMPO, ATRASADO, OTRO ALIADO, NO DEPOSITADO) and a sortable `VERIFICACION` column for bank statement matching. Dashboard shows "Depósitos Otros Aliados" metric (total MONTO for STATUS=OTRO ALIADO + VERIFICACION=SI installments) that updates based on active filters.
+- **Payment-based Installments View (`CONCILIACION DE PAGOS`)**: Displays installments filtered by payment date (Fecha de Pago) rather than scheduled date. Shows only payment-based entries with collapsible filters and a `ConciliacionPagosDashboard`. Dashboard displays "Cuotas Adelantadas" metric (sum of MONTO where STATUS=ADELANTADO) that updates based on master + local filters.
 - **Payment Records View (`PAGO DE CUOTAS`)**: Uploads and views payment transactions with flexible columns, auto-detection of currencies, a dashboard with seven key metrics, and an automatic `VERIFICACION` column indicating bank statement matches. Verification logic includes reference normalization (case-insensitive, remove spaces/leading zeros/quotes), 8-digit partial matching (accepts references with at least 8 consecutive matching digits), and dual-currency amount tolerance (±$0.01).
 - **Bank Statements View (`BANCO`)**: Displays bank statement data with flexible schema, complete replacement on upload, column sorting, Excel export, master filter support, and a collapsible filter panel for `Referencia`.
 - **Cuotas View (`CUOTAS`)**: Displays installments vertically with collapsible filters (date range, order, status), and a period-based dashboard showing `CUOTAS DEL PERIODO` (count of filtered cuotas) and `CUENTAS POR COBRAR` (sum of filtered cuotas' amounts). Dashboard respects ALL filters (both master and tab-specific) and updates dynamically. Supports tri-state column sorting and Excel export.
@@ -37,7 +38,7 @@ The application employs a client-server architecture with a React frontend and a
   * **Summary Metrics**: `Ventas Totales`, `Monto Pagado en Caja`, `Monto Financiado`, `Porcentaje Financiado` (calculated from marketplace order data)
   * **Bank Reconciliation (Conciliación Bancaria)**: Five deduction metrics and net calculation:
     - `Recibido en Banco`: Sum of payment amounts where VERIFICACION = SI (bank verified)
-    - `Cuotas adelantadas de clientes`: Sum of installments with ADELANTADO status (payment ≥15 days early AND cuota month > payment month)
+    - `Cuotas adelantadas de clientes (corresponde a otro periodo)`: Sum of payment-based installments with ADELANTADO status, calculated using master filters only to maintain consistency across tabs
     - `Pago inicial de clientes en App`: Sum of verified cuota 0 payments (Pago Inicial Depositado)
     - `Devoluciones por errores de pago`: Currently 0 (user-specified placeholder)
     - `Depositos de otros aliados`: Sum of payments for installments with STATUS=OTRO ALIADO (payment exists but no scheduled cuota date) AND VERIFICACION=SI (bank verified)
@@ -57,7 +58,15 @@ The application employs a client-server architecture with a React frontend and a
 - **Locale-aware Number Parsing**: Handles various numeric formats and separators.
 - **Empty Row Filtering**: Filters empty rows during uploads.
 - **Scientific Notation Prevention**: Converts reference numbers from scientific notation to full numbers, both server-side and client-side, within safe numeric limits.
-- **Shared Dashboard Data**: REPORTE MENSUAL and CONCILIACION DE CUOTAS share identical filtered installments data via a hidden AllInstallments component that renders on page load. This ensures "Depósitos Otros Bancos" dashboard metric and "(-) Depósitos en banco de otros aliados" REPORTE MENSUAL value are always identical, regardless of navigation order. The utility function `calculateDepositosOtrosBancos` in `installmentUtils.ts` provides consistent calculations across both views.
+- **Shared Dashboard Data Architecture**: 
+  * REPORTE MENSUAL and CONCILIACION DE CUOTAS share identical filtered installments data via a hidden AllInstallments component
+  * REPORTE MENSUAL and CONCILIACION DE PAGOS use shared calculation utilities but different datasets: CONCILIACION DE PAGOS uses master+local filtered data (via AllPagosInstallments with local filters), while REPORTE MENSUAL uses master-filter-only data (via separate AllPagosInstallments instance with empty local filters)
+  * This ensures dashboard metrics in CONCILIACION DE PAGOS update based on tab-specific filters while REPORTE MENSUAL metrics remain consistent using only master filters
+  * Shared utility functions (`calculateDepositosOtrosBancos`, `calculateCuotasAdelantadas`) in `installmentUtils.ts` provide consistent calculations across all views
+- **Deduplication Strategy**: 
+  * Backend deduplicates during upload (removes duplicate order numbers before storing)
+  * Database merge operation deduplicates when combining new uploads with existing data
+  * Frontend applies additional deduplication in TODAS LAS ORDENES tab as a defensive measure, ensuring unique orders are displayed by keeping first occurrence of each order number
 
 ## External Dependencies
 - **Database**: PostgreSQL (Neon).
