@@ -21,6 +21,8 @@ export function InstallmentsDashboard({ installments }: InstallmentsDashboardPro
     let cuotasOtroAliadoVerificado = 0;
     let montoAdelantadasPeriodosAnteriores = 0;
     let cuotasAdelantadasPeriodosAnteriores = 0;
+    let montoDepositosOtrosBancos = 0;
+    let cuotasDepositosOtrosBancos = 0;
 
     installments.forEach((installment) => {
       const estado = (installment.estadoCuota || '').trim().toLowerCase();
@@ -39,6 +41,13 @@ export function InstallmentsDashboard({ installments }: InstallmentsDashboardPro
       if (estado === 'done' && status === 'ADELANTADO') {
         montoAdelantadasPeriodosAnteriores += monto;
         cuotasAdelantadasPeriodosAnteriores++;
+      }
+      
+      // Calculate DEPOSITOS OTROS BANCOS metric
+      // Estado Cuota = Done AND STATUS = NO DEPOSITADO
+      if (estado === 'done' && status === 'NO DEPOSITADO') {
+        montoDepositosOtrosBancos += monto;
+        cuotasDepositosOtrosBancos++;
       }
       
       if (estado === 'done') {
@@ -74,6 +83,8 @@ export function InstallmentsDashboard({ installments }: InstallmentsDashboardPro
       cuotasOtroAliadoVerificado,
       montoAdelantadasPeriodosAnteriores,
       cuotasAdelantadasPeriodosAnteriores,
+      montoDepositosOtrosBancos,
+      cuotasDepositosOtrosBancos,
     };
   }, [installments]);
 
@@ -236,6 +247,25 @@ export function InstallmentsDashboard({ installments }: InstallmentsDashboardPro
               </div>
               <div className="h-12 w-12 rounded-full bg-amber-100 dark:bg-amber-900/20 flex items-center justify-center">
                 <TrendingUp className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Depósitos Otros Bancos</p>
+                <p className="text-3xl font-bold text-rose-600 dark:text-rose-400" data-testid="metric-depositos-otros-bancos">
+                  {formatCurrency(metrics.montoDepositosOtrosBancos)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {metrics.cuotasDepositosOtrosBancos} cuotas no depositadas
+                </p>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-rose-100 dark:bg-rose-900/20 flex items-center justify-center">
+                <AlertCircle className="h-6 w-6 text-rose-600 dark:text-rose-400" />
               </div>
             </div>
           </CardContent>
