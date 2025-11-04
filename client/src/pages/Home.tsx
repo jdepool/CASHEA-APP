@@ -1103,7 +1103,7 @@ export default function Home() {
                   masterDateFrom={masterDateFrom}
                   masterDateTo={masterDateTo}
                   masterOrden={masterOrden}
-                  ordersData={(ordersData as any)?.data?.rows || []}
+                  ordersData={tableData}
                   paymentRecordsData={(paymentRecordsData as any)?.data?.rows || []}
                   paymentRecordsHeaders={(paymentRecordsData as any)?.data?.headers || []}
                   bankStatementRows={(bankStatementsData as any)?.data?.rows || []}
