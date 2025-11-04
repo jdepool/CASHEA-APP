@@ -324,6 +324,10 @@ export function AllPagosInstallments({
         if (estado !== estadoCuotaFilter.toLowerCase()) return false;
       }
 
+      // CRITICAL: Only include payment-based entries (matching ConciliacionPagosTable logic)
+      // This ensures consistency between AllPagosInstallments and ConciliacionPagosTable
+      if (!installment.isPaymentBased) return false;
+
       return true;
     });
   }, [allInstallments, dateFrom, dateTo, ordenFilter, estadoCuotaFilter, masterDateFrom, masterDateTo, masterOrden, tableData]);
