@@ -441,41 +441,71 @@ export class DatabaseStorage implements IStorage {
     
     // Create a function to generate a unique key for a row to detect duplicates
     const generateRowKey = (row: any): string => {
+      if (!row || typeof row !== 'object') {
+        return JSON.stringify(row || {});
+      }
+      
       // Use multiple fields to create a unique identifier
       const keyParts: string[] = [];
       
       // Common bank statement fields (case-insensitive search)
       const dateFields = ['fecha', 'date'];
-      const refFields = ['referencia', 'reference', 'ref'];
-      const amountFields = ['monto', 'amount', 'debe', 'haber'];
-      const descFields = ['descripcion', 'descripción', 'description', 'detalle'];
+      const refFields = ['referencia', 'reference', 'ref', 'número', 'numero', 'documento'];
+      const amountFields = ['monto', 'amount', 'debe', 'haber', 'débito', 'debito', 'crédito', 'credito'];
+      const descFields = ['descripcion', 'descripción', 'description', 'detalle', 'concepto', 'tipo'];
       
-      const rowKeys = Object.keys(row || {}).map(k => k.toLowerCase());
+      const getOriginalKey = (lowerKey: string): string | undefined => {
+        return Object.keys(row).find(k => k.toLowerCase() === lowerKey);
+      };
+      
+      const rowKeys = Object.keys(row).map(k => k.toLowerCase());
       
       // Find and normalize date
       const dateKey = rowKeys.find(k => dateFields.some(df => k.includes(df)));
-      if (dateKey && row[Object.keys(row).find(k => k.toLowerCase() === dateKey)!]) {
-        keyParts.push(String(row[Object.keys(row).find(k => k.toLowerCase() === dateKey)!]));
+      if (dateKey) {
+        const originalKey = getOriginalKey(dateKey);
+        if (originalKey && row[originalKey]) {
+          keyParts.push(String(row[originalKey]).trim());
+        }
       }
       
       // Find and normalize reference
       const refKey = rowKeys.find(k => refFields.some(rf => k.includes(rf)));
-      if (refKey && row[Object.keys(row).find(k => k.toLowerCase() === refKey)!]) {
-        keyParts.push(String(row[Object.keys(row).find(k => k.toLowerCase() === refKey)!]));
+      if (refKey) {
+        const originalKey = getOriginalKey(refKey);
+        if (originalKey && row[originalKey]) {
+          keyParts.push(String(row[originalKey]).trim());
+        }
       }
       
       // Find and normalize amounts
       amountFields.forEach(af => {
         const amountKey = rowKeys.find(k => k.includes(af));
-        if (amountKey && row[Object.keys(row).find(k => k.toLowerCase() === amountKey)!]) {
-          keyParts.push(String(row[Object.keys(row).find(k => k.toLowerCase() === amountKey)!]));
+        if (amountKey) {
+          const originalKey = getOriginalKey(amountKey);
+          if (originalKey && row[originalKey] !== null && row[originalKey] !== undefined && row[originalKey] !== '') {
+            // Normalize number to avoid floating point issues
+            const numStr = String(row[originalKey]).replace(/[^0-9.-]/g, '');
+            if (numStr) {
+              keyParts.push(numStr);
+            }
+          }
         }
       });
       
       // Find and normalize description
       const descKey = rowKeys.find(k => descFields.some(df => k.includes(df)));
-      if (descKey && row[Object.keys(row).find(k => k.toLowerCase() === descKey)!]) {
-        keyParts.push(String(row[Object.keys(row).find(k => k.toLowerCase() === descKey)!]));
+      if (descKey) {
+        const originalKey = getOriginalKey(descKey);
+        if (originalKey && row[originalKey]) {
+          keyParts.push(String(row[originalKey]).trim());
+        }
+      }
+      
+      // If we couldn't find any identifying fields, serialize the entire row as fallback
+      // This ensures all rows are kept, but might allow some duplicates through
+      if (keyParts.length === 0) {
+        return JSON.stringify(row);
       }
       
       return keyParts.join('|').toLowerCase().trim();
@@ -485,9 +515,13 @@ export class DatabaseStorage implements IStorage {
     const existingRowKeys = new Set(existingRows.map(generateRowKey));
     
     // Filter out duplicate rows from new upload
+    // Keep row if: (1) key doesn't exist in existing data, OR (2) row has no key (empty object fallback)
     const newRows = (insertBankStatement.rows as any[]).filter(row => {
       const rowKey = generateRowKey(row);
-      return rowKey && !existingRowKeys.has(rowKey);
+      // Don't filter out rows without keys - keep them to preserve all data
+      if (!rowKey || rowKey.trim() === '') return true;
+      // Only filter out if this exact key exists in existing data
+      return !existingRowKeys.has(rowKey);
     });
     
     // Merge headers
