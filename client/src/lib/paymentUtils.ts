@@ -17,6 +17,8 @@ export interface PaymentRecord {
 /**
  * Groups payment records by reference number and calculates split amounts.
  * When a single payment covers multiple cuotas, the amount is divided equally.
+ * Handles both multi-row payments (same reference in multiple rows) and 
+ * single-row multi-cuota payments (comma-separated cuotas like "4,5,6").
  */
 export function calculatePaymentSplits(
   paymentRecords: PaymentRecord[],
@@ -46,7 +48,7 @@ export function calculatePaymentSplits(
     return splitInfoMap;
   }
 
-  // Group payment records by reference number
+  // Group payment records by reference number to handle multi-row payments
   const paymentsByReference = new Map<string, PaymentRecord[]>();
   
   paymentRecords.forEach(record => {
@@ -59,47 +61,66 @@ export function calculatePaymentSplits(
     paymentsByReference.get(referencia)!.push(record);
   });
 
-  // Calculate split amounts for each group
+  // Process each reference group
   paymentsByReference.forEach((records, referencia) => {
     if (records.length === 0) return;
 
-    // Get the payment amount (VES or USD)
+    // Get the payment amount (use first record's amount)
+    // Prioritize USD over VES
     const firstRecord = records[0];
     let originalAmount = 0;
     let currency: 'VES' | 'USD' = 'USD';
     
-    if (montoVESHeader) {
-      const vesAmount = normalizeNumber(firstRecord[montoVESHeader]);
-      if (vesAmount && vesAmount > 0) {
-        originalAmount = vesAmount;
-        currency = 'VES';
-      }
-    }
-    
-    if (originalAmount === 0 && montoUSDHeader) {
+    if (montoUSDHeader) {
       const usdAmount = normalizeNumber(firstRecord[montoUSDHeader]);
       if (usdAmount && usdAmount > 0) {
         originalAmount = usdAmount;
         currency = 'USD';
       }
     }
+    
+    if (originalAmount === 0 && montoVESHeader) {
+      const vesAmount = normalizeNumber(firstRecord[montoVESHeader]);
+      if (vesAmount && vesAmount > 0) {
+        originalAmount = vesAmount;
+        currency = 'VES';
+      }
+    }
 
     if (originalAmount === 0) return;
 
-    const numberOfCuotas = records.length;
-    const splitAmount = originalAmount / numberOfCuotas;
-
-    // For each record, validate against expected cuota amount
+    // Collect all cuota numbers from all rows in this reference group
+    const allCuotas: Array<{ orden: string; cuotaNum: string }> = [];
+    
     records.forEach(record => {
       const orden = String(record[ordenHeader] || '');
-      const cuotaNum = String(record[cuotaPagadaHeader] || '');
+      const cuotaValue = String(record[cuotaPagadaHeader] || '');
       
+      if (!orden || !cuotaValue) return;
+      
+      // Parse comma-separated cuota numbers (e.g., "4,5,6" means cuotas 4, 5, and 6)
+      const cuotaNumbers = cuotaValue.split(',').map(c => c.trim()).filter(c => c);
+      
+      // Add each cuota to the list
+      cuotaNumbers.forEach(cuotaNum => {
+        allCuotas.push({ orden, cuotaNum });
+      });
+    });
+
+    // Skip if no cuotas found
+    if (allCuotas.length === 0) return;
+
+    const numberOfCuotas = allCuotas.length;
+    const splitAmount = originalAmount / numberOfCuotas;
+
+    // Create split info for each cuota
+    allCuotas.forEach(({ orden, cuotaNum }) => {
       // Find expected cuota amount from orders data
       let expectedCuotaAmount: number | null = null;
       let hasWarning = false;
       let warningMessage: string | null = null;
 
-      if (orden && cuotaNum && ordersData.length > 0) {
+      if (ordersData.length > 0) {
         // Find the order in orders data
         const orderRecord = ordersData.find(orderRow => {
           const orderOrden = String(orderRow['Orden'] || orderRow['ORDEN'] || '');
@@ -147,7 +168,9 @@ export function calculatePaymentSplits(
 }
 
 /**
- * Gets the split info key for a payment record
+ * Gets the split info key for a payment record.
+ * For records with comma-separated cuotas (e.g., "4,5,6"), returns the key for the first cuota.
+ * This is because all cuotas in a multi-cuota payment share the same split amount and metadata.
  */
 export function getPaymentSplitKey(
   record: PaymentRecord,
@@ -165,7 +188,11 @@ export function getPaymentSplitKey(
 
   const referencia = String(record[referenciaHeader || ''] || '');
   const orden = String(record[ordenHeader || ''] || '');
-  const cuotaNum = String(record[cuotaPagadaHeader || ''] || '');
+  const cuotaValue = String(record[cuotaPagadaHeader || ''] || '');
+  
+  // Parse comma-separated cuota numbers and use the first one
+  const cuotaNumbers = cuotaValue.split(',').map(c => c.trim()).filter(c => c);
+  const firstCuota = cuotaNumbers.length > 0 ? cuotaNumbers[0] : cuotaValue;
 
-  return `${referencia}-${orden}-${cuotaNum}`;
+  return `${referencia}-${orden}-${firstCuota}`;
 }

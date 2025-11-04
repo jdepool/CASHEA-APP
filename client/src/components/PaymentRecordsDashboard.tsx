@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Receipt, DollarSign, Wallet, XCircle, CheckCircle, BadgeCheck, AlertCircle } from "lucide-react";
 import { normalizeNumber } from "@shared/numberUtils";
+import { calculatePaymentSplits, getPaymentSplitKey } from "@/lib/paymentUtils";
 
 interface PaymentRecordsDashboardProps {
   data: any[];
@@ -133,6 +134,11 @@ export function PaymentRecordsDashboard({ data, headers, ordersData, bankStateme
     };
   }, [bankStatementRows, bankStatementHeaders]);
 
+  // Calculate payment splits for multi-cuota payments
+  const paymentSplitsMap = useMemo(() => {
+    return calculatePaymentSplits(data, headers, ordersData);
+  }, [data, headers, ordersData]);
+
   const metrics = useMemo(() => {
     if (!data || data.length === 0) {
       return {
@@ -175,9 +181,18 @@ export function PaymentRecordsDashboard({ data, headers, ordersData, bankStateme
       // Get installment number(s) - could be single or comma-separated (e.g., "4,5,6")
       const cuotaValue = String(row[cuotaHeader || ''] || '');
       
-      // Get amount paid in USD
+      // Get amount paid in USD - use split amount if available
       const montoUsdValue = row[montoUsdHeader || ''];
-      const montoPagado = normalizeNumber(montoUsdValue);
+      let montoPagado = normalizeNumber(montoUsdValue);
+      
+      // Check if we have split info for this payment
+      const splitKey = getPaymentSplitKey(row, headers);
+      const splitInfo = paymentSplitsMap.get(splitKey);
+      
+      // Use split amount if this payment covers multiple cuotas
+      if (splitInfo && splitInfo.numberOfCuotas > 1 && splitInfo.currency === 'USD') {
+        montoPagado = splitInfo.splitAmount;
+      }
       
       if (!isNaN(montoPagado)) {
         totalPagado += montoPagado;
@@ -235,7 +250,7 @@ export function PaymentRecordsDashboard({ data, headers, ordersData, bankStateme
       pagoInicialesDepositado,
       pagoInicialesNoDepositado,
     };
-  }, [data, headers, orderStatusMap, verifyPaymentInBankStatement]);
+  }, [data, headers, orderStatusMap, verifyPaymentInBankStatement, paymentSplitsMap]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {
