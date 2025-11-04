@@ -420,20 +420,97 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBankStatement(insertBankStatement: InsertBankStatement): Promise<BankStatement> {
+    // Get all existing bank statement rows to merge with new data
+    const existingStatements = await db
+      .select()
+      .from(bankStatements)
+      .orderBy(desc(bankStatements.uploadedAt));
+    
+    // Collect all existing rows and headers
+    let existingRows: any[] = [];
+    const existingHeadersSet = new Set<string>();
+    
+    for (const statement of existingStatements) {
+      if (statement.rows && Array.isArray(statement.rows)) {
+        existingRows = existingRows.concat(statement.rows as any[]);
+      }
+      if (statement.headers && Array.isArray(statement.headers)) {
+        (statement.headers as string[]).forEach(h => existingHeadersSet.add(h));
+      }
+    }
+    
+    // Create a function to generate a unique key for a row to detect duplicates
+    const generateRowKey = (row: any): string => {
+      // Use multiple fields to create a unique identifier
+      const keyParts: string[] = [];
+      
+      // Common bank statement fields (case-insensitive search)
+      const dateFields = ['fecha', 'date'];
+      const refFields = ['referencia', 'reference', 'ref'];
+      const amountFields = ['monto', 'amount', 'debe', 'haber'];
+      const descFields = ['descripcion', 'descripción', 'description', 'detalle'];
+      
+      const rowKeys = Object.keys(row || {}).map(k => k.toLowerCase());
+      
+      // Find and normalize date
+      const dateKey = rowKeys.find(k => dateFields.some(df => k.includes(df)));
+      if (dateKey && row[Object.keys(row).find(k => k.toLowerCase() === dateKey)!]) {
+        keyParts.push(String(row[Object.keys(row).find(k => k.toLowerCase() === dateKey)!]));
+      }
+      
+      // Find and normalize reference
+      const refKey = rowKeys.find(k => refFields.some(rf => k.includes(rf)));
+      if (refKey && row[Object.keys(row).find(k => k.toLowerCase() === refKey)!]) {
+        keyParts.push(String(row[Object.keys(row).find(k => k.toLowerCase() === refKey)!]));
+      }
+      
+      // Find and normalize amounts
+      amountFields.forEach(af => {
+        const amountKey = rowKeys.find(k => k.includes(af));
+        if (amountKey && row[Object.keys(row).find(k => k.toLowerCase() === amountKey)!]) {
+          keyParts.push(String(row[Object.keys(row).find(k => k.toLowerCase() === amountKey)!]));
+        }
+      });
+      
+      // Find and normalize description
+      const descKey = rowKeys.find(k => descFields.some(df => k.includes(df)));
+      if (descKey && row[Object.keys(row).find(k => k.toLowerCase() === descKey)!]) {
+        keyParts.push(String(row[Object.keys(row).find(k => k.toLowerCase() === descKey)!]));
+      }
+      
+      return keyParts.join('|').toLowerCase().trim();
+    };
+    
+    // Create a set of existing row keys
+    const existingRowKeys = new Set(existingRows.map(generateRowKey));
+    
+    // Filter out duplicate rows from new upload
+    const newRows = (insertBankStatement.rows as any[]).filter(row => {
+      const rowKey = generateRowKey(row);
+      return rowKey && !existingRowKeys.has(rowKey);
+    });
+    
+    // Merge headers
+    const newHeaders = insertBankStatement.headers as string[];
+    newHeaders.forEach(h => existingHeadersSet.add(h));
+    const mergedHeaders = Array.from(existingHeadersSet);
+    
+    // Combine all rows (existing + new non-duplicates)
+    const mergedRows = [...existingRows, ...newRows];
+    
     // Use transaction to ensure atomic delete+insert
-    // If insert fails, delete is rolled back automatically
     return await db.transaction(async (tx) => {
       // Delete all existing bank statements
       await tx.delete(bankStatements);
       
-      // Insert new bank statement
+      // Insert merged bank statement
       const [bankStatement] = await tx
         .insert(bankStatements)
         .values({
-          fileName: insertBankStatement.fileName,
-          headers: insertBankStatement.headers as any,
-          rows: insertBankStatement.rows as any,
-          rowCount: insertBankStatement.rowCount,
+          fileName: `Merged: ${insertBankStatement.fileName}`,
+          headers: mergedHeaders as any,
+          rows: mergedRows as any,
+          rowCount: String(mergedRows.length),
         })
         .returning();
       
