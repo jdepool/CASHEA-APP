@@ -13,6 +13,7 @@ import { useQuery } from "@tanstack/react-query";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { normalizeNumber } from "@shared/numberUtils";
+import { calculatePaymentSplits } from "@/lib/paymentUtils";
 
 interface ConciliacionPagosTableProps {
   tableData: any[];
@@ -238,6 +239,10 @@ export function ConciliacionPagosTable({
       // These will have a special flag to identify them
       const paymentBasedEntries: any[] = [];
       
+      // Calculate payment splits for multi-cuota payments
+      const paymentHeaders = apiData.data.headers || [];
+      const paymentSplitsMap = calculatePaymentSplits(paymentRows, paymentHeaders, tableData);
+      
       paymentRows.forEach((payment: any) => {
         const paymentOrder = String(payment['# Orden'] || payment['#Orden'] || payment['Orden'] || '').trim();
         const paymentInstallment = String(payment['# Cuota Pagada'] || payment['#CuotaPagada'] || payment['Cuota'] || '').trim();
@@ -302,15 +307,24 @@ export function ConciliacionPagosTable({
             // Read VERIFICACION from stored data (calculated server-side during upload)
             const verificacion = payment['VERIFICACION'] || '-';
             
+            // Get split amount if this is a multi-cuota payment
+            const referencia = payment['# Referencia'] || payment['#Referencia'] || payment['Referencia'];
+            const splitKey = `${referencia}-${paymentOrder}-${cuotaNumber}`;
+            const splitInfo = paymentSplitsMap.get(splitKey);
+            
+            // Use split amount if available, otherwise use full payment amount
+            const displayAmount = splitInfo?.splitAmount || (typeof montoPagado === 'number' ? montoPagado : parseFloat(String(montoPagado || 0).replace(/[^0-9.-]/g, '')) || 0);
+            
             paymentBasedEntries.push({
               orden: paymentOrder,
               fechaCuota: fechaCuotaValue,
               numeroCuota: cuotaNumber,
-              monto: typeof montoPagado === 'number' ? montoPagado : parseFloat(String(montoPagado || 0).replace(/[^0-9.-]/g, '')) || 0,
+              monto: displayAmount,
               estadoCuota: 'Done',
               fechaPago: null,
               fechaPagoReal: parsedDate,
               isPaymentBased: true, // Flag to identify payment-based entries
+              splitInfo: splitInfo || null, // Store split info for badge display
               paymentDetails: {
                 referencia: payment['# Referencia'] || payment['#Referencia'] || payment['Referencia'],
                 metodoPago: payment['Método de Pago'] || payment['Metodo de Pago'] || payment['MÉTODO DE PAGO'],

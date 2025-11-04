@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
 import { StatusBadge } from "./StatusBadge";
 import { formatDate } from "@/lib/dateUtils";
-import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import type { Installment } from "@/lib/installmentUtils";
 
 interface WeeklyPaymentsTableProps {
@@ -293,7 +294,19 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
                 )}
               </td>
               <td className="py-3 px-4 text-sm text-right font-mono" data-testid={`cell-monto-${idx}`}>
-                ${inst.monto.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                <div className="flex items-center justify-end gap-2">
+                  <span>${inst.monto.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  {(inst as any).splitInfo && (inst as any).splitInfo.numberOfCuotas > 1 && (
+                    <Badge 
+                      variant={(inst as any).splitInfo.hasWarning ? "destructive" : "secondary"}
+                      className="text-xs shrink-0"
+                      title={(inst as any).splitInfo.warningMessage || `Pago dividido entre ${(inst as any).splitInfo.numberOfCuotas} cuotas`}
+                    >
+                      {(inst as any).splitInfo.hasWarning && <AlertTriangle className="h-3 w-3 mr-1" />}
+                      {(inst as any).splitInfo.numberOfCuotas} cuotas
+                    </Badge>
+                  )}
+                </div>
               </td>
               <td className="py-3 px-4" data-testid={`cell-estado-${idx}`}>
                 <StatusBadge status={inst.estadoCuota} />
