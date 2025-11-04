@@ -826,8 +826,7 @@ export function MonthlyReport({
     const depositosOtrosAliados = depositosOtrosAliadosBanco;
     // Make (-) Depósitos en banco de otros aliados equal to "Depósitos Otros Bancos" dashboard card
     const depositosBancoOtrosAliados = calculatedDepositosBancoOtrosAliados;
-    // Subtotal Errores Bancarios = (+) Depósitos de otros aliados - (-) Depósitos en banco de otros aliados
-    const subtotalErroresBancarios = depositosOtrosAliados - depositosBancoOtrosAliados;
+    const subtotalErroresBancarios = 0;
     const compensacionFacturasPendientes = 0;
     const avanceCajaVencido = 0;
     const servTecnologicoOrdenesCanceladas = 0;
