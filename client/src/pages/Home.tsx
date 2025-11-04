@@ -371,7 +371,8 @@ export default function Home() {
   const filteredTableData = useMemo(() => {
     if (!tableData || tableData.length === 0) return [];
 
-    return tableData.filter((row) => {
+    // Step 1: Filter rows based on criteria
+    const filtered = tableData.filter((row) => {
       // MASTER FILTERS - Applied FIRST
       // Master date range filter
       if (masterDateFrom || masterDateTo) {
@@ -460,6 +461,23 @@ export default function Home() {
       }
 
       return true;
+    });
+
+    // Step 2: Deduplicate by order number (keep first occurrence)
+    const ordenHeader = headers.find(h => h.toLowerCase() === 'orden');
+    if (!ordenHeader) return filtered;
+
+    const seenOrders = new Set<string>();
+    return filtered.filter((row) => {
+      const ordenValue = String(row[ordenHeader] || '').trim();
+      if (!ordenValue) return true; // Keep rows without order number
+      
+      if (seenOrders.has(ordenValue)) {
+        return false; // Skip duplicate
+      }
+      
+      seenOrders.add(ordenValue);
+      return true; // Keep first occurrence
     });
   }, [tableData, headers, dateFrom, dateTo, ordenFilter, referenciaFilter, estadoCuotaFilter, masterDateFrom, masterDateTo, masterOrden]);
 
