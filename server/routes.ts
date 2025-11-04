@@ -1026,8 +1026,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Registros cargados: ${rows.length}`);
       console.log('=============================================\n');
 
-      // Automatically re-verify all payment records with new bank statement
-      await reverifyAllPaymentRecords(rows, allHeaders);
+      // Retrieve the merged bank statement from database for verification
+      const mergedBankStatement = await storage.getLatestBankStatement();
+      
+      if (mergedBankStatement) {
+        const mergedRows = mergedBankStatement.rows as any[];
+        const mergedHeaders = mergedBankStatement.headers as string[];
+        
+        console.log(`📊 Using merged bank statement data for verification (${mergedRows.length} total rows)\n`);
+        
+        // Automatically re-verify all payment records with merged bank statement
+        await reverifyAllPaymentRecords(mergedRows, mergedHeaders);
+      } else {
+        // Fallback to newly uploaded data if merged data not found
+        await reverifyAllPaymentRecords(rows, allHeaders);
+      }
 
       res.json({
         success: true,
