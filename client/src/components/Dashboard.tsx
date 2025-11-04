@@ -167,126 +167,131 @@ export function Dashboard({ data, allData, headers, dateFrom, dateTo }: Dashboar
   };
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7 mb-6">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">
-            Órdenes Activas
-          </CardTitle>
-          <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold" data-testid="metric-ordenes-activas">
-            {metrics.totalOrdenesActivas}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Con pagos pendientes
-          </p>
-        </CardContent>
-      </Card>
+    <div className="space-y-4 mb-6">
+      {/* First row - Active orders metrics */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Órdenes Activas
+            </CardTitle>
+            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="metric-ordenes-activas">
+              {metrics.totalOrdenesActivas}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Con pagos pendientes
+            </p>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">
-            Monto de Ventas
-          </CardTitle>
-          <DollarSign className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold" data-testid="metric-monto-ventas">
-            {formatCurrency(metrics.montoVentas)}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Total vendido
-          </p>
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Monto de Ventas
+            </CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="metric-monto-ventas">
+              {formatCurrency(metrics.montoVentas)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Total vendido
+            </p>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">
-            Pago Inicial
-          </CardTitle>
-          <Wallet className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold" data-testid="metric-pago-inicial">
-            {formatCurrency(metrics.pagoInicial)}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Suma de pagos iniciales
-          </p>
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Pago Inicial
+            </CardTitle>
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="metric-pago-inicial">
+              {formatCurrency(metrics.pagoInicial)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Suma de pagos iniciales
+            </p>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">
-            # Cuotas del Periodo
-          </CardTitle>
-          <Calendar className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold" data-testid="metric-cuotas-periodo">
-            {metrics.cuotasDelPeriodo}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {dateFrom || dateTo ? 'Cuotas en rango' : 'Selecciona fechas'}
-          </p>
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Cuentas por Cobrar
+            </CardTitle>
+            <Receipt className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="metric-cuentas-por-cobrar">
+              {formatCurrency(metrics.cuentasPorCobrar)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {dateFrom || dateTo ? 'Suma del periodo' : 'Selecciona fechas'}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">
-            Cuentas por Cobrar
-          </CardTitle>
-          <Receipt className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold" data-testid="metric-cuentas-por-cobrar">
-            {formatCurrency(metrics.cuentasPorCobrar)}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {dateFrom || dateTo ? 'Suma del periodo' : 'Selecciona fechas'}
-          </p>
-        </CardContent>
-      </Card>
+      {/* Second row - Period and cancelled metrics */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              # Cuotas del Periodo
+            </CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="metric-cuotas-periodo">
+              {metrics.cuotasDelPeriodo}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {dateFrom || dateTo ? 'Cuotas en rango' : 'Selecciona fechas'}
+            </p>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">
-            Órdenes Canceladas
-          </CardTitle>
-          <XCircle className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold" data-testid="metric-ordenes-canceladas">
-            {formatCurrency(metrics.ventaTotalCanceladas)}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {metrics.ordenesCanceladas} {metrics.ordenesCanceladas === 1 ? 'orden cancelada' : 'órdenes canceladas'}
-          </p>
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Órdenes Canceladas
+            </CardTitle>
+            <XCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="metric-ordenes-canceladas">
+              {formatCurrency(metrics.ventaTotalCanceladas)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {metrics.ordenesCanceladas} {metrics.ordenesCanceladas === 1 ? 'orden cancelada' : 'órdenes canceladas'}
+            </p>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">
-            Monto Inicial Canceladas
-          </CardTitle>
-          <Wallet className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold" data-testid="metric-monto-inicial-canceladas">
-            {formatCurrency(metrics.montoInicialCanceladas)}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Pago inicial de canceladas
-          </p>
-        </CardContent>
-      </Card>
-
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Monto Inicial Canceladas
+            </CardTitle>
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="metric-monto-inicial-canceladas">
+              {formatCurrency(metrics.montoInicialCanceladas)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Pago inicial de canceladas
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
