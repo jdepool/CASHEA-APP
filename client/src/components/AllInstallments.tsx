@@ -438,8 +438,8 @@ export function AllInstallments({
         if (installment.isPaymentBased && !isOtroAliado) return false;
       }
       
-      // Date range filter
-      if (dateFrom || dateTo) {
+      // Date range filter - only apply if master date filters are NOT active
+      if ((dateFrom || dateTo) && !masterDateFrom && !masterDateTo) {
         // Determine the effective date to use for filtering based on user selection
         let effectiveDate;
         
@@ -477,8 +477,8 @@ export function AllInstallments({
         }
       }
 
-      // Orden filter
-      if (ordenFilter) {
+      // Orden filter - only apply if master orden filter is NOT active
+      if (ordenFilter && !masterOrden) {
         const ordenValue = String(installment.orden || '').toLowerCase();
         if (!ordenValue.includes(ordenFilter.toLowerCase())) return false;
       }

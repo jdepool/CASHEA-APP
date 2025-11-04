@@ -141,8 +141,8 @@ export function PaymentRecords({
       }
 
       // TAB-SPECIFIC FILTERS - Applied AFTER master filters
-      // Date filter
-      if (dateFrom || dateTo) {
+      // Date filter - only apply if master date filters are NOT active
+      if ((dateFrom || dateTo) && !masterDateFrom && !masterDateTo) {
         const transactionDateHeader = headers.find((h: string) => 
           h.toLowerCase().includes('fecha') && h.toLowerCase().includes('transac')
         );
@@ -168,8 +168,8 @@ export function PaymentRecords({
         }
       }
 
-      // Orden filter
-      if (ordenFilter) {
+      // Orden filter - only apply if master orden filter is NOT active
+      if (ordenFilter && !masterOrden) {
         const ordenHeader = headers.find((h: string) => 
           h.toLowerCase().includes('orden') && !h.toLowerCase().includes('cuota')
         );

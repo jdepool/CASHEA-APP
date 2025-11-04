@@ -149,8 +149,8 @@ export function MarketplaceOrdersTable({
       }
 
       // TAB-SPECIFIC FILTERS - Applied AFTER master filters
-      // Date filter (if date column exists)
-      if (dateColumn && (dateFrom || dateTo)) {
+      // Date filter (if date column exists) - only apply if master date filters are NOT active
+      if (dateColumn && (dateFrom || dateTo) && !masterDateFrom && !masterDateTo) {
         const rowDate = row[dateColumn];
         if (rowDate) {
           // Try to parse the row date
@@ -204,8 +204,8 @@ export function MarketplaceOrdersTable({
         if (rowEstado !== estadoFilter) return false;
       }
 
-      // Orden filter
-      if (ordenFilter) {
+      // Orden filter - only apply if master orden filter is NOT active
+      if (ordenFilter && !masterOrden) {
         const rowOrden = String(row[ordenColumn] || "").toLowerCase();
         if (!rowOrden.includes(ordenFilter.toLowerCase())) return false;
       }

@@ -96,8 +96,8 @@ export function CuotasTable({
     }
 
     // TAB-SPECIFIC FILTERS - Applied AFTER master filters
-    // Filter by date range
-    if (dateFrom || dateTo) {
+    // Filter by date range - only apply if master date filters are NOT active
+    if ((dateFrom || dateTo) && !masterDateFrom && !masterDateTo) {
       const fromDate = dateFrom ? parseDDMMYYYY(dateFrom) : null;
       const toDate = dateTo ? parseDDMMYYYY(dateTo) : null;
       
@@ -116,8 +116,8 @@ export function CuotasTable({
       });
     }
 
-    // Filter by orden
-    if (ordenFilter) {
+    // Filter by orden - only apply if master orden filter is NOT active
+    if (ordenFilter && !masterOrden) {
       filtered = filtered.filter((cuota) => 
         String(cuota.orden).toLowerCase().includes(ordenFilter.toLowerCase())
       );
