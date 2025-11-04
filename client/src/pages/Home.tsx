@@ -5,6 +5,7 @@ import { Dashboard } from "@/components/Dashboard";
 import { EmptyState } from "@/components/EmptyState";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AllInstallments } from "@/components/AllInstallments";
+import { AllPagosInstallments } from "@/components/AllPagosInstallments";
 import { ConciliacionPagosTable } from "@/components/ConciliacionPagosTable";
 import { PaymentRecords } from "@/components/PaymentRecords";
 import { MarketplaceOrdersTable } from "@/components/MarketplaceOrdersTable";
@@ -56,6 +57,7 @@ export default function Home() {
   const [installmentsEstadoCuotaFilter, setInstallmentsEstadoCuotaFilter] = useState<string>("all");
   const [installmentsDateFieldFilter, setInstallmentsDateFieldFilter] = useState<string>("fechaCuota");
   const [filteredInstallmentsData, setFilteredInstallmentsData] = useState<any[]>([]);
+  const [filteredPagosInstallmentsData, setFilteredPagosInstallmentsData] = useState<any[]>([]);
   
   // CONCILIACION DE PAGOS tab filters
   const [pagosShowFilters, setPagosShowFilters] = useState<boolean>(false);
@@ -532,29 +534,44 @@ export default function Home() {
 
           {!isProcessing && (
             <>
-              {/* Hidden AllInstallments to always calculate filtered data */}
+              {/* Hidden components to always calculate filtered data */}
               {tableData.length > 0 && (
-                <div style={{ display: 'none' }}>
-                  <AllInstallments 
-                    tableData={tableData}
-                    showFilters={installmentsShowFilters}
-                    setShowFilters={setInstallmentsShowFilters}
-                    dateFrom={installmentsDateFrom}
-                    setDateFrom={setInstallmentsDateFrom}
-                    dateTo={installmentsDateTo}
-                    setDateTo={setInstallmentsDateTo}
-                    ordenFilter={installmentsOrdenFilter}
-                    setOrdenFilter={setInstallmentsOrdenFilter}
-                    estadoCuotaFilter={installmentsEstadoCuotaFilter}
-                    setEstadoCuotaFilter={setInstallmentsEstadoCuotaFilter}
-                    dateFieldFilter={installmentsDateFieldFilter}
-                    setDateFieldFilter={setInstallmentsDateFieldFilter}
-                    masterDateFrom={masterDateFrom}
-                    masterDateTo={masterDateTo}
-                    onFilteredInstallmentsChange={setFilteredInstallmentsData}
-                    masterOrden={masterOrden}
-                  />
-                </div>
+                <>
+                  <div style={{ display: 'none' }}>
+                    <AllInstallments 
+                      tableData={tableData}
+                      showFilters={installmentsShowFilters}
+                      setShowFilters={setInstallmentsShowFilters}
+                      dateFrom={installmentsDateFrom}
+                      setDateFrom={setInstallmentsDateFrom}
+                      dateTo={installmentsDateTo}
+                      setDateTo={setInstallmentsDateTo}
+                      ordenFilter={installmentsOrdenFilter}
+                      setOrdenFilter={setInstallmentsOrdenFilter}
+                      estadoCuotaFilter={installmentsEstadoCuotaFilter}
+                      setEstadoCuotaFilter={setInstallmentsEstadoCuotaFilter}
+                      dateFieldFilter={installmentsDateFieldFilter}
+                      setDateFieldFilter={setInstallmentsDateFieldFilter}
+                      masterDateFrom={masterDateFrom}
+                      masterDateTo={masterDateTo}
+                      onFilteredInstallmentsChange={setFilteredInstallmentsData}
+                      masterOrden={masterOrden}
+                    />
+                  </div>
+                  <div style={{ display: 'none' }}>
+                    <AllPagosInstallments 
+                      tableData={tableData}
+                      dateFrom={pagosDateFrom}
+                      dateTo={pagosDateTo}
+                      ordenFilter={pagosOrdenFilter}
+                      estadoCuotaFilter={pagosEstadoCuotaFilter}
+                      masterDateFrom={masterDateFrom}
+                      masterDateTo={masterDateTo}
+                      masterOrden={masterOrden}
+                      onFilteredInstallmentsChange={setFilteredPagosInstallmentsData}
+                    />
+                  </div>
+                </>
               )}
               
               <Tabs defaultValue="upload" className="space-y-4">
@@ -1029,6 +1046,7 @@ export default function Home() {
                   bankStatementRows={(bankStatementsData as any)?.data?.rows || []}
                   bankStatementHeaders={(bankStatementsData as any)?.data?.headers || []}
                   filteredInstallmentsData={filteredInstallmentsData}
+                  filteredPagosInstallmentsData={filteredPagosInstallmentsData}
                   cuotasAdelantadasPeriodosAnteriores={cuotasAdelantadasPeriodosAnteriores}
                 />
               </TabsContent>

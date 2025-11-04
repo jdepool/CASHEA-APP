@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileSpreadsheet } from "lucide-react";
 import { normalizeNumber } from "@shared/numberUtils";
 import { parseDDMMYYYY, parseExcelDate } from "@/lib/dateUtils";
-import { calculateInstallmentStatus, calculateDepositosOtrosBancos } from "@/lib/installmentUtils";
+import { calculateInstallmentStatus, calculateDepositosOtrosBancos, calculateCuotasAdelantadas } from "@/lib/installmentUtils";
 
 interface MonthlyReportProps {
   marketplaceData: any;
@@ -23,6 +23,7 @@ interface MonthlyReportProps {
   bankStatementHeaders?: string[];
   cuotasAdelantadasPeriodosAnteriores?: number;
   filteredInstallmentsData?: any[];
+  filteredPagosInstallmentsData?: any[];
 }
 
 export function MonthlyReport({ 
@@ -43,6 +44,7 @@ export function MonthlyReport({
   bankStatementHeaders = [],
   cuotasAdelantadasPeriodosAnteriores = 0,
   filteredInstallmentsData = [],
+  filteredPagosInstallmentsData = [],
 }: MonthlyReportProps) {
   const data = marketplaceData?.data?.rows || [];
   const headers = marketplaceData?.data?.headers || [];
@@ -391,85 +393,8 @@ export function MonthlyReport({
     }
     
     // 2. Cuotas adelantadas de clientes = sum of installments with ADELANTADO status
-    // We need to calculate this from ordersData by extracting installments and checking status
-    let cuotasAdelantadasClientes = 0;
-    if (filteredOrders.length > 0 && filteredPaymentRecords.length > 0) {
-      // Extract installments from orders (similar to WeeklyPaymentsTable logic)
-      const installments: any[] = [];
-      
-      filteredOrders.forEach((order: any) => {
-        const ordenNum = order['Orden'];
-        if (!ordenNum) return;
-        
-        // Find all cuota columns
-        const cuotaKeys = Object.keys(order).filter(key => 
-          key.toLowerCase().includes('cuota') && 
-          key !== 'Cuota 0' && 
-          key !== 'Estado de cuota'
-        );
-        
-        cuotaKeys.forEach(cuotaKey => {
-          const match = cuotaKey.match(/Cuota\s+(\d+)/i);
-          if (match) {
-            const cuotaNum = parseInt(match[1]);
-            const cuotaAmount = order[cuotaKey];
-            const cuotaDate = order[`Fecha Cuota ${cuotaNum}`];
-            
-            if (cuotaAmount && cuotaDate) {
-              installments.push({
-                orden: ordenNum,
-                cuotaNum,
-                cuotaAmount: normalizeNumber(cuotaAmount),
-                cuotaDate,
-              });
-            }
-          }
-        });
-      });
-      
-      // For each installment, find payment and check if ADELANTADO
-      installments.forEach(inst => {
-        // Find payment record for this installment
-        const ordenHeader = paymentRecordsHeaders.find((h: string) => 
-          h.toLowerCase().includes('orden') && !h.toLowerCase().includes('cuota')
-        );
-        const cuotaHeader = paymentRecordsHeaders.find((h: string) => 
-          h.toLowerCase().includes('cuota') && h.toLowerCase().includes('pagada')
-        );
-        const fechaPagoHeader = paymentRecordsHeaders.find((h: string) => 
-          h.toLowerCase().includes('fecha') && h.toLowerCase().includes('pago')
-        );
-        
-        if (!ordenHeader || !cuotaHeader || !fechaPagoHeader) return;
-        
-        const payment = filteredPaymentRecords.find((p: any) => {
-          const pOrden = String(p[ordenHeader] || '');
-          const pCuota = String(p[cuotaHeader] || '');
-          
-          return pOrden === String(inst.orden) && pCuota === String(inst.cuotaNum);
-        });
-        
-        if (payment) {
-          const fechaPago = parseExcelDate(payment[fechaPagoHeader]);
-          const fechaCuota = parseExcelDate(inst.cuotaDate);
-          
-          if (fechaPago && fechaCuota) {
-            const daysDiff = Math.floor((fechaCuota.getTime() - fechaPago.getTime()) / (1000 * 60 * 60 * 24));
-            const pagoMonth = fechaPago.getMonth();
-            const pagoYear = fechaPago.getFullYear();
-            const cuotaMonth = fechaCuota.getMonth();
-            const cuotaYear = fechaCuota.getFullYear();
-            
-            // ADELANTADO: Payment made at least 15 days before due date AND cuota month is after payment month
-            if (daysDiff <= -15) {
-              if (cuotaYear > pagoYear || (cuotaYear === pagoYear && cuotaMonth > pagoMonth)) {
-                cuotasAdelantadasClientes += inst.cuotaAmount;
-              }
-            }
-          }
-        }
-      });
-    }
+    // Calculated from payment-date-filtered installments (CONCILIACION DE PAGOS view)
+    const cuotasAdelantadasClientes = calculateCuotasAdelantadas(filteredPagosInstallmentsData);
     
     // 3. Pago inicial de clientes en App = Pago Inicial Depositado (cuota 0 with verificacion = SI)
     let pagoInicialClientesApp = 0;

@@ -193,3 +193,20 @@ export function calculateDepositosOtrosBancos(installments: any[]): number {
   });
   return total;
 }
+
+/**
+ * Calculate "Cuotas Adelantadas" metric from filtered installments
+ * Sum of amounts where STATUS = 'ADELANTADO'
+ */
+export function calculateCuotasAdelantadas(installments: any[]): number {
+  let total = 0;
+  installments.forEach((inst) => {
+    const status = (inst.status || '').trim().toUpperCase();
+    
+    // Sum where STATUS = 'ADELANTADO'
+    if (status === 'ADELANTADO') {
+      total += inst.monto || 0;
+    }
+  });
+  return total;
+}

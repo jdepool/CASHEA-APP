@@ -1,5 +1,6 @@
 import { useMemo, useState, useCallback, useEffect } from "react";
 import { WeeklyPaymentsTable } from "./WeeklyPaymentsTable";
+import { ConciliacionPagosDashboard } from "./ConciliacionPagosDashboard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -622,6 +623,8 @@ export function ConciliacionPagosTable({
           </div>
         )}
       </div>
+
+      <ConciliacionPagosDashboard installments={filteredInstallments} />
 
       <WeeklyPaymentsTable installments={filteredInstallments} />
     </div>
