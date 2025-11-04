@@ -830,8 +830,8 @@ export function MonthlyReport({
     const compensacionFacturasPendientes = 0;
     const avanceCajaVencido = 0;
     const servTecnologicoOrdenesCanceladas = 0;
-    const totalAvancesCaja = 0;
-    const totalReconocer = 0;
+    const totalAvancesCaja = compensacionFacturasPendientes + avanceCajaVencido - servTecnologicoOrdenesCanceladas;
+    const totalReconocer = subtotalConciliacionBancoNeto + subtotalIncidencias + subtotalErroresBancarios + totalAvancesCaja;
 
     // TODO: Calculate factoring and final compensation based on user's explanation
     const cuotasVencidas = 0;
