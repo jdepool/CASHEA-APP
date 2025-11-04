@@ -819,7 +819,16 @@ export default function Home() {
               <TabsContent value="all" className="space-y-4">
                 {tableData.length > 0 ? (
                   <>
-                    <Dashboard data={filteredTableData} allData={tableData} headers={headers} dateFrom={dateFrom} dateTo={dateTo} />
+                    <Dashboard 
+                      data={filteredTableData} 
+                      allData={tableData} 
+                      headers={headers} 
+                      dateFrom={dateFrom} 
+                      dateTo={dateTo}
+                      masterDateFrom={masterDateFrom}
+                      masterDateTo={masterDateTo}
+                      masterOrden={masterOrden}
+                    />
                     
                     <div className="flex items-center justify-between mb-4">
                       <div>

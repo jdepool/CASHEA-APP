@@ -9,9 +9,12 @@ interface DashboardProps {
   headers: string[];
   dateFrom?: string;
   dateTo?: string;
+  masterDateFrom?: string;
+  masterDateTo?: string;
+  masterOrden?: string;
 }
 
-export function Dashboard({ data, allData, headers, dateFrom, dateTo }: DashboardProps) {
+export function Dashboard({ data, allData, headers, dateFrom, dateTo, masterDateFrom, masterDateTo, masterOrden }: DashboardProps) {
   // Helper function to check if an order is cancelled
   const isCancelledOrder = (row: any): boolean => {
     const statusOrden = String(row["STATUS ORDEN"] || "").toLowerCase().trim();
@@ -33,8 +36,11 @@ export function Dashboard({ data, allData, headers, dateFrom, dateTo }: Dashboar
     let montoInicialCanceladas = 0;
     
     // Parse date range for filtering installments using DD/MM/YYYY format
-    const fromDate = dateFrom ? parseDDMMYYYY(dateFrom) : null;
-    const toDate = dateTo ? parseDDMMYYYY(dateTo) : null;
+    // Prioritize master filters, fall back to tab-specific filters
+    const effectiveDateFrom = masterDateFrom || dateFrom;
+    const effectiveDateTo = masterDateTo || dateTo;
+    const fromDate = effectiveDateFrom ? parseDDMMYYYY(effectiveDateFrom) : null;
+    const toDate = effectiveDateTo ? parseDDMMYYYY(effectiveDateTo) : null;
     
     // Set toDate to end of day to include installments on that date
     if (toDate) {
@@ -118,6 +124,17 @@ export function Dashboard({ data, allData, headers, dateFrom, dateTo }: Dashboar
           return;
         }
         
+        // Skip orders that don't match master orden filter
+        if (masterOrden) {
+          const ordenHeader = headers.find((h: string) => h.toLowerCase() === 'orden');
+          if (ordenHeader) {
+            const ordenValue = String(row[ordenHeader] || '').toLowerCase();
+            if (!ordenValue.includes(masterOrden.toLowerCase())) {
+              return;
+            }
+          }
+        }
+        
         // Process cuotas 1-14 (regular installments only, excluding Cuota 0/PAGO INICIAL)
         for (let i = 1; i <= 14; i++) {
           const fechaCuotaStr = row[`Fecha cuota ${i}`];
@@ -156,7 +173,7 @@ export function Dashboard({ data, allData, headers, dateFrom, dateTo }: Dashboar
       ventaTotalCanceladas,
       montoInicialCanceladas,
     };
-  }, [data, allData, dateFrom, dateTo]);
+  }, [data, allData, dateFrom, dateTo, masterDateFrom, masterDateTo, masterOrden]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {
@@ -233,7 +250,7 @@ export function Dashboard({ data, allData, headers, dateFrom, dateTo }: Dashboar
               {formatCurrency(metrics.cuentasPorCobrar)}
             </div>
             <p className="text-xs text-muted-foreground">
-              {dateFrom || dateTo ? 'Suma del periodo' : 'Selecciona fechas'}
+              {(masterDateFrom || masterDateTo || dateFrom || dateTo) ? 'Suma del periodo' : 'Selecciona fechas'}
             </p>
           </CardContent>
         </Card>
@@ -253,7 +270,7 @@ export function Dashboard({ data, allData, headers, dateFrom, dateTo }: Dashboar
               {metrics.cuotasDelPeriodo}
             </div>
             <p className="text-xs text-muted-foreground">
-              {dateFrom || dateTo ? 'Cuotas en rango' : 'Selecciona fechas'}
+              {(masterDateFrom || masterDateTo || dateFrom || dateTo) ? 'Cuotas en rango' : 'Selecciona fechas'}
             </p>
           </CardContent>
         </Card>
