@@ -891,7 +891,7 @@ export function MonthlyReport({
       totalReconocerFinal,
       totalPagarCashea,
     };
-  }, [filteredData, headers, paymentRecordsData, paymentRecordsHeaders, ordersData, bankStatementRows, bankStatementHeaders, masterDateFrom, masterDateTo, masterOrden, verifyPaymentInBankStatement]);
+  }, [filteredData, headers, paymentRecordsData, paymentRecordsHeaders, ordersData, bankStatementRows, bankStatementHeaders, masterDateFrom, masterDateTo, masterOrden, verifyPaymentInBankStatement, filteredInstallmentsData]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {
