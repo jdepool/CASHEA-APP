@@ -163,3 +163,21 @@ export function calculateInstallmentStatus(installment: any): string {
   // A TIEMPO: Payment made within 2 days of due date or earlier (but not ADELANTADO)
   return 'A TIEMPO';
 }
+
+/**
+ * Calculate "Depósitos Otros Bancos" metric from filtered installments
+ * Sum of amounts where Estado Cuota = 'done' AND STATUS = 'NO DEPOSITADO'
+ */
+export function calculateDepositosOtrosBancos(installments: any[]): number {
+  let total = 0;
+  installments.forEach((inst) => {
+    const estadoNormalized = (inst.estadoCuota || '').trim().toLowerCase();
+    const status = (inst.status || '').trim().toUpperCase();
+    
+    // Sum where Estado Cuota = 'done' AND STATUS = 'NO DEPOSITADO'
+    if (estadoNormalized === 'done' && status === 'NO DEPOSITADO') {
+      total += inst.monto || 0;
+    }
+  });
+  return total;
+}

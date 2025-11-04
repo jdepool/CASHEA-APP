@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileSpreadsheet } from "lucide-react";
 import { normalizeNumber } from "@shared/numberUtils";
 import { parseDDMMYYYY, parseExcelDate } from "@/lib/dateUtils";
-import { calculateInstallmentStatus } from "@/lib/installmentUtils";
+import { calculateInstallmentStatus, calculateDepositosOtrosBancos } from "@/lib/installmentUtils";
 
 interface MonthlyReportProps {
   marketplaceData: any;
@@ -809,53 +809,9 @@ export function MonthlyReport({
       }
     }
     
-    // 7. Calculate depositosBancoOtrosAliados
-    // If filteredInstallmentsData is available (from CONCILIACION DE CUOTAS), use it
-    // Otherwise, calculate from the installments we built for cuotasAdelantadas
-    let calculatedDepositosBancoOtrosAliados = 0;
-    if (filteredInstallmentsData && filteredInstallmentsData.length > 0) {
-      // Use the filtered installments from CONCILIACION DE CUOTAS
-      filteredInstallmentsData.forEach((inst: any) => {
-        const estadoNormalized = (inst.estadoCuota || '').trim().toLowerCase();
-        const status = (inst.status || '').trim().toUpperCase();
-        
-        // Sum where Estado Cuota = 'done' AND STATUS = 'NO DEPOSITADO'
-        if (estadoNormalized === 'done' && status === 'NO DEPOSITADO') {
-          calculatedDepositosBancoOtrosAliados += inst.monto || 0;
-        }
-      });
-    } else {
-      // Fallback: calculate from the installments array we built above
-      // This ensures the calculation works even if CONCILIACION DE CUOTAS hasn't been visited
-      installmentsForAdelantadas.forEach(inst => {
-        if (!inst.status) {
-          // Calculate status if not already set
-          const payment = filteredPaymentRecords.find((p: any) => {
-            const pOrden = String(p[ordenHeaderPmt] || '');
-            const pCuota = String(p[cuotaHeaderPmt] || '');
-            const cuotaNumbers = pCuota.split(',').map(c => c.trim()).filter(c => c);
-            return pOrden === String(inst.orden) && cuotaNumbers.includes(String(inst.cuotaNum));
-          });
-          
-          if (payment) {
-            const fechaPagoValue = parseExcelDate(payment[fechaPagoHeader]);
-            inst.status = calculateInstallmentStatus({
-              fechaCuota: inst.fechaCuota,
-              fechaPagoReal: fechaPagoValue,
-              estadoCuota: inst.estadoCuota,
-            });
-          }
-        }
-        
-        const estadoNormalized = (inst.estadoCuota || '').trim().toLowerCase();
-        const status = (inst.status || '').trim().toUpperCase();
-        
-        // Sum where Estado Cuota = 'done' AND STATUS = 'NO DEPOSITADO'
-        if (estadoNormalized === 'done' && status === 'NO DEPOSITADO') {
-          calculatedDepositosBancoOtrosAliados += inst.monto || 0;
-        }
-      });
-    }
+    // 7. Calculate depositosBancoOtrosAliados from the filtered installments
+    // This mirrors the "Depósitos Otros Bancos" dashboard card in CONCILIACION DE CUOTAS
+    const calculatedDepositosBancoOtrosAliados = calculateDepositosOtrosBancos(filteredInstallmentsData || []);
     
     // Use calculated value (ignoring the prop for now since it's always 0)
     const finalCuotasAdelantadas = calculatedCuotasAdelantadas;

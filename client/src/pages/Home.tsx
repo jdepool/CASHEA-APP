@@ -523,16 +523,42 @@ export default function Home() {
           )}
 
           {!isProcessing && (
-            <Tabs defaultValue="upload" className="space-y-4">
-              <MasterFilter
-                dateFrom={masterDateFrom}
-                dateTo={masterDateTo}
-                orden={masterOrden}
-                onDateFromChange={setMasterDateFrom}
-                onDateToChange={setMasterDateTo}
-                onOrdenChange={setMasterOrden}
-                onClearFilters={clearMasterFilters}
-              />
+            <>
+              {/* Hidden AllInstallments to always calculate filtered data */}
+              {tableData.length > 0 && (
+                <div style={{ display: 'none' }}>
+                  <AllInstallments 
+                    tableData={tableData}
+                    showFilters={installmentsShowFilters}
+                    setShowFilters={setInstallmentsShowFilters}
+                    dateFrom={installmentsDateFrom}
+                    setDateFrom={setInstallmentsDateFrom}
+                    dateTo={installmentsDateTo}
+                    setDateTo={setInstallmentsDateTo}
+                    ordenFilter={installmentsOrdenFilter}
+                    setOrdenFilter={setInstallmentsOrdenFilter}
+                    estadoCuotaFilter={installmentsEstadoCuotaFilter}
+                    setEstadoCuotaFilter={setInstallmentsEstadoCuotaFilter}
+                    dateFieldFilter={installmentsDateFieldFilter}
+                    setDateFieldFilter={setInstallmentsDateFieldFilter}
+                    masterDateFrom={masterDateFrom}
+                    masterDateTo={masterDateTo}
+                    onFilteredInstallmentsChange={setFilteredInstallmentsData}
+                    masterOrden={masterOrden}
+                  />
+                </div>
+              )}
+              
+              <Tabs defaultValue="upload" className="space-y-4">
+                <MasterFilter
+                  dateFrom={masterDateFrom}
+                  dateTo={masterDateTo}
+                  orden={masterOrden}
+                  onDateFromChange={setMasterDateFrom}
+                  onDateToChange={setMasterDateTo}
+                  onOrdenChange={setMasterOrden}
+                  onClearFilters={clearMasterFilters}
+                />
               
               <div className="sticky top-[64px] z-20 bg-background pb-4">
                 <TabsList data-testid="tabs-list">
@@ -967,6 +993,7 @@ export default function Home() {
                 />
               </TabsContent>
             </Tabs>
+            </>
           )}
         </div>
       </main>
