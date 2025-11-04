@@ -57,6 +57,7 @@ The application employs a client-server architecture with a React frontend and a
 - **Locale-aware Number Parsing**: Handles various numeric formats and separators.
 - **Empty Row Filtering**: Filters empty rows during uploads.
 - **Scientific Notation Prevention**: Converts reference numbers from scientific notation to full numbers, both server-side and client-side, within safe numeric limits.
+- **Shared Dashboard Data**: REPORTE MENSUAL and CONCILIACION DE CUOTAS share identical filtered installments data via a hidden AllInstallments component that renders on page load. This ensures "Depósitos Otros Bancos" dashboard metric and "(-) Depósitos en banco de otros aliados" REPORTE MENSUAL value are always identical, regardless of navigation order. The utility function `calculateDepositosOtrosBancos` in `installmentUtils.ts` provides consistent calculations across both views.
 
 ## External Dependencies
 - **Database**: PostgreSQL (Neon).
