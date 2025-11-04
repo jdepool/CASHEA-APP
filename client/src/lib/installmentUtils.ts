@@ -111,24 +111,31 @@ export function calculateTotalAmount(installments: Installment[]): number {
  * Returns one of: ADELANTADO, A TIEMPO, ATRASADO, OTRO ALIADO, NO DEPOSITADO, or empty string
  */
 export function calculateInstallmentStatus(installment: any): string {
-  const fechaPago = installment.fechaPagoReal;
+  const fechaPagoReal = installment.fechaPagoReal;
+  const fechaPagoFromOrder = installment.fechaPago;
   const fechaCuota = installment.fechaCuota;
   const estadoCuota = (installment.estadoCuota || '').toLowerCase();
   
+  // Determine if there's ANY payment date (from payment records OR from order file)
+  const hasPayment = fechaPagoReal || fechaPagoFromOrder;
+  
   // NO DEPOSITADO: Order is DONE but no payment received
-  if (!fechaPago && estadoCuota === 'done') {
+  if (!hasPayment && estadoCuota === 'done') {
     return 'NO DEPOSITADO';
   }
   
   // ATRASADO: Installment is delayed but not paid yet
-  if (!fechaPago && estadoCuota === 'delayed') {
+  if (!hasPayment && estadoCuota === 'delayed') {
     return 'ATRASADO';
   }
   
   // No status if no payment and order not done/delayed
-  if (!fechaPago) {
+  if (!hasPayment) {
     return '';
   }
+  
+  // Use fechaPagoReal if available, otherwise use fechaPago from order
+  const fechaPago = fechaPagoReal || fechaPagoFromOrder;
   
   // OTRO ALIADO: Payment exists but no due date
   if (fechaCuota == null) {
