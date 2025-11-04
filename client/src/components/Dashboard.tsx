@@ -262,10 +262,10 @@ export function Dashboard({ data, allData, headers, dateFrom, dateTo }: Dashboar
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold" data-testid="metric-ordenes-canceladas">
-            {metrics.ordenesCanceladas}
+            {formatCurrency(metrics.ventaTotalCanceladas)}
           </div>
           <p className="text-xs text-muted-foreground">
-            Venta Total: {formatCurrency(metrics.ventaTotalCanceladas)}
+            {metrics.ordenesCanceladas} {metrics.ordenesCanceladas === 1 ? 'orden cancelada' : 'órdenes canceladas'}
           </p>
         </CardContent>
       </Card>
