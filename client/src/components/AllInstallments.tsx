@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { WeeklyPaymentsTable } from "./WeeklyPaymentsTable";
 import { InstallmentsDashboard } from "./InstallmentsDashboard";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ interface AllInstallmentsProps {
   masterDateFrom?: string;
   masterDateTo?: string;
   masterOrden?: string;
+  onFilteredInstallmentsChange?: (installments: any[]) => void;
 }
 
 export function AllInstallments({ 
@@ -49,7 +50,8 @@ export function AllInstallments({
   setDateFieldFilter,
   masterDateFrom,
   masterDateTo,
-  masterOrden
+  masterOrden,
+  onFilteredInstallmentsChange
 }: AllInstallmentsProps) {
   const { toast } = useToast();
 
@@ -490,6 +492,13 @@ export function AllInstallments({
       return true;
     });
   }, [allInstallments, dateFrom, dateTo, ordenFilter, estadoCuotaFilter, dateFieldFilter, masterDateFrom, masterDateTo, masterOrden]);
+
+  // Notify parent component when filtered installments change
+  useEffect(() => {
+    if (onFilteredInstallmentsChange) {
+      onFilteredInstallmentsChange(filteredInstallments);
+    }
+  }, [filteredInstallments, onFilteredInstallmentsChange]);
 
   const clearFilters = () => {
     setDateFrom("");

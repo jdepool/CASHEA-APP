@@ -54,6 +54,7 @@ export default function Home() {
   const [installmentsOrdenFilter, setInstallmentsOrdenFilter] = useState<string>("");
   const [installmentsEstadoCuotaFilter, setInstallmentsEstadoCuotaFilter] = useState<string>("all");
   const [installmentsDateFieldFilter, setInstallmentsDateFieldFilter] = useState<string>("fechaCuota");
+  const [filteredInstallmentsData, setFilteredInstallmentsData] = useState<any[]>([]);
   
   // PAGO DE CUOTAS tab filters
   const [paymentsShowFilters, setPaymentsShowFilters] = useState<boolean>(false);
@@ -895,6 +896,7 @@ export default function Home() {
                     setDateFieldFilter={setInstallmentsDateFieldFilter}
                     masterDateFrom={masterDateFrom}
                     masterDateTo={masterDateTo}
+                    onFilteredInstallmentsChange={setFilteredInstallmentsData}
                     masterOrden={masterOrden}
                   />
                 ) : (
@@ -960,6 +962,7 @@ export default function Home() {
                   paymentRecordsHeaders={(paymentRecordsData as any)?.data?.headers || []}
                   bankStatementRows={(bankStatementsData as any)?.data?.rows || []}
                   bankStatementHeaders={(bankStatementsData as any)?.data?.headers || []}
+                  filteredInstallmentsData={filteredInstallmentsData}
                   cuotasAdelantadasPeriodosAnteriores={cuotasAdelantadasPeriodosAnteriores}
                 />
               </TabsContent>
