@@ -1,6 +1,5 @@
 import { useMemo, useState, useCallback, useEffect } from "react";
 import { WeeklyPaymentsTable } from "./WeeklyPaymentsTable";
-import { InstallmentsDashboard } from "./InstallmentsDashboard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +13,7 @@ import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { normalizeNumber } from "@shared/numberUtils";
 
-interface AllInstallmentsProps {
+interface ConciliacionPagosTableProps {
   tableData: any[];
   showFilters: boolean;
   setShowFilters: (show: boolean) => void;
@@ -26,15 +25,12 @@ interface AllInstallmentsProps {
   setOrdenFilter: (orden: string) => void;
   estadoCuotaFilter: string;
   setEstadoCuotaFilter: (estado: string) => void;
-  dateFieldFilter: string;
-  setDateFieldFilter: (field: string) => void;
   masterDateFrom?: string;
   masterDateTo?: string;
   masterOrden?: string;
-  onFilteredInstallmentsChange?: (installments: any[]) => void;
 }
 
-export function AllInstallments({ 
+export function ConciliacionPagosTable({ 
   tableData,
   showFilters,
   setShowFilters,
@@ -46,13 +42,10 @@ export function AllInstallments({
   setOrdenFilter,
   estadoCuotaFilter,
   setEstadoCuotaFilter,
-  dateFieldFilter,
-  setDateFieldFilter,
   masterDateFrom,
   masterDateTo,
   masterOrden,
-  onFilteredInstallmentsChange
-}: AllInstallmentsProps) {
+}: ConciliacionPagosTableProps) {
   const { toast } = useToast();
 
   // Fetch payment records to cross-reference
@@ -384,14 +377,14 @@ export function AllInstallments({
     return installments;
   }, [tableData, paymentRecordsData]);
 
-  // Apply filters to installments
+  // Apply filters to installments - HARDCODED to filter by Fecha de Pago
   const filteredInstallments = useMemo(() => {
     return allInstallments.filter((installment: any) => {
       // MASTER FILTERS - Applied FIRST
       // Master date range filter
       if (masterDateFrom || masterDateTo) {
-        // Use fechaCuota as the primary date field for master filter
-        const effectiveDate = installment.fechaCuota;
+        // Use fechaPagoReal (payment date) for master filter in this tab
+        const effectiveDate = installment.fechaPagoReal || installment.fechaPago;
         
         if (effectiveDate) {
           const installmentDate = typeof effectiveDate === 'string' ? parseExcelDate(effectiveDate) : effectiveDate;
@@ -425,16 +418,13 @@ export function AllInstallments({
       }
 
       // TAB-SPECIFIC FILTERS - Applied AFTER master filters
-      // HARDCODED: Show scheduled installments (Fecha Cuota view)
-      // BUT also show OTRO ALIADO entries (payment-based with no scheduled cuota date)
-      // OTRO ALIADO entries have isPaymentBased=true and fechaCuota=null
-      const isOtroAliado = installment.isPaymentBased && !installment.fechaCuota;
-      if (installment.isPaymentBased && !isOtroAliado) return false;
+      // HARDCODED: Only show payment-based entries (Fecha de Pago view)
+      if (!installment.isPaymentBased) return false;
       
       // Date range filter - only apply if master date filters are NOT active
-      // HARDCODED: Use scheduled installment date (fechaCuota)
       if ((dateFrom || dateTo) && !masterDateFrom && !masterDateTo) {
-        const effectiveDate = installment.fechaCuota;
+        // Use payment date (priority: fechaPagoReal from payment records > fechaPago from order file)
+        const effectiveDate = installment.fechaPagoReal || installment.fechaPago;
         
         if (effectiveDate) {
           const installmentDate = typeof effectiveDate === 'string' ? parseExcelDate(effectiveDate) : effectiveDate;
@@ -477,13 +467,6 @@ export function AllInstallments({
       return true;
     });
   }, [allInstallments, dateFrom, dateTo, ordenFilter, estadoCuotaFilter, masterDateFrom, masterDateTo, masterOrden]);
-
-  // Notify parent component when filtered installments change
-  useEffect(() => {
-    if (onFilteredInstallmentsChange) {
-      onFilteredInstallmentsChange(filteredInstallments);
-    }
-  }, [filteredInstallments, onFilteredInstallmentsChange]);
 
   const clearFilters = () => {
     setDateFrom("");
@@ -531,8 +514,8 @@ export function AllInstallments({
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Cuotas");
-    XLSX.writeFile(wb, `cuotas_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, "Cuotas Pagos");
+    XLSX.writeFile(wb, `conciliacion_pagos_${new Date().toISOString().split('T')[0]}.xlsx`);
     
     toast({
       title: "Archivo exportado",
@@ -545,9 +528,9 @@ export function AllInstallments({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold">Conciliación de Cuotas</h3>
+            <h3 className="text-lg font-semibold">Conciliación de Pagos</h3>
             <p className="text-sm text-muted-foreground">
-              Vista de cuotas filtrada por Fecha Cuota (fecha programada)
+              Vista de cuotas filtrada por Fecha de Pago (fecha real de pago)
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -555,7 +538,7 @@ export function AllInstallments({
               variant="outline"
               size="icon"
               onClick={() => setShowFilters(!showFilters)}
-              data-testid="button-toggle-installment-filters"
+              data-testid="button-toggle-payment-filters"
             >
               <Filter className="h-4 w-4" />
             </Button>
@@ -563,7 +546,7 @@ export function AllInstallments({
               variant="outline"
               size="sm"
               onClick={handleExport}
-              data-testid="button-export-installments"
+              data-testid="button-export-payments"
             >
               <Download className="h-4 w-4 mr-2" />
               Exportar
@@ -575,38 +558,38 @@ export function AllInstallments({
           <div className="bg-muted/50 border rounded-lg p-4 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="installment-date-from">Fecha Desde</Label>
+                <Label htmlFor="payment-date-from">Fecha Desde</Label>
                 <DatePicker
-                  id="installment-date-from"
+                  id="payment-date-from"
                   value={dateFrom}
                   onChange={setDateFrom}
-                  data-testid="input-installment-date-from"
+                  data-testid="input-payment-date-from"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="installment-date-to">Fecha Hasta</Label>
+                <Label htmlFor="payment-date-to">Fecha Hasta</Label>
                 <DatePicker
-                  id="installment-date-to"
+                  id="payment-date-to"
                   value={dateTo}
                   onChange={setDateTo}
-                  data-testid="input-installment-date-to"
+                  data-testid="input-payment-date-to"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="installment-orden-filter">Orden</Label>
+                <Label htmlFor="payment-orden-filter">Orden</Label>
                 <Input
-                  id="installment-orden-filter"
+                  id="payment-orden-filter"
                   type="text"
                   value={ordenFilter}
                   onChange={(e) => setOrdenFilter(e.target.value)}
                   placeholder="Buscar orden..."
-                  data-testid="input-installment-orden-filter"
+                  data-testid="input-payment-orden-filter"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="installment-estado-filter">Estado Cuota</Label>
+                <Label htmlFor="payment-estado-filter">Estado Cuota</Label>
                 <Select value={estadoCuotaFilter} onValueChange={setEstadoCuotaFilter}>
-                  <SelectTrigger id="installment-estado-filter" data-testid="select-installment-estado-filter">
+                  <SelectTrigger id="payment-estado-filter" data-testid="select-payment-estado-filter">
                     <SelectValue placeholder="Todos los estados" />
                   </SelectTrigger>
                   <SelectContent>
@@ -629,7 +612,7 @@ export function AllInstallments({
                   variant="ghost"
                   size="sm"
                   onClick={clearFilters}
-                  data-testid="button-clear-installment-filters"
+                  data-testid="button-clear-payment-filters"
                 >
                   <X className="h-4 w-4 mr-2" />
                   Limpiar filtros
@@ -638,8 +621,6 @@ export function AllInstallments({
             )}
           </div>
         )}
-
-        <InstallmentsDashboard installments={filteredInstallments} />
       </div>
 
       <WeeklyPaymentsTable installments={filteredInstallments} />

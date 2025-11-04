@@ -5,6 +5,7 @@ import { Dashboard } from "@/components/Dashboard";
 import { EmptyState } from "@/components/EmptyState";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AllInstallments } from "@/components/AllInstallments";
+import { ConciliacionPagosTable } from "@/components/ConciliacionPagosTable";
 import { PaymentRecords } from "@/components/PaymentRecords";
 import { MarketplaceOrdersTable } from "@/components/MarketplaceOrdersTable";
 import { CuotasTable } from "@/components/CuotasTable";
@@ -55,6 +56,13 @@ export default function Home() {
   const [installmentsEstadoCuotaFilter, setInstallmentsEstadoCuotaFilter] = useState<string>("all");
   const [installmentsDateFieldFilter, setInstallmentsDateFieldFilter] = useState<string>("fechaCuota");
   const [filteredInstallmentsData, setFilteredInstallmentsData] = useState<any[]>([]);
+  
+  // CONCILIACION DE PAGOS tab filters
+  const [pagosShowFilters, setPagosShowFilters] = useState<boolean>(false);
+  const [pagosDateFrom, setPagosDateFrom] = useState<string>("");
+  const [pagosDateTo, setPagosDateTo] = useState<string>("");
+  const [pagosOrdenFilter, setPagosOrdenFilter] = useState<string>("");
+  const [pagosEstadoCuotaFilter, setPagosEstadoCuotaFilter] = useState<string>("all");
   
   // PAGO DE CUOTAS tab filters
   const [paymentsShowFilters, setPaymentsShowFilters] = useState<boolean>(false);
@@ -583,6 +591,9 @@ export default function Home() {
                   <TabsTrigger value="weekly" data-testid="tab-weekly">
                     CONCILIACION DE CUOTAS
                   </TabsTrigger>
+                  <TabsTrigger value="pagos" data-testid="tab-pagos">
+                    CONCILIACION DE PAGOS
+                  </TabsTrigger>
                   <TabsTrigger value="monthly-report" data-testid="tab-monthly-report">
                     REPORTE MENSUAL
                   </TabsTrigger>
@@ -923,6 +934,35 @@ export default function Home() {
                     masterDateFrom={masterDateFrom}
                     masterDateTo={masterDateTo}
                     onFilteredInstallmentsChange={setFilteredInstallmentsData}
+                    masterOrden={masterOrden}
+                  />
+                ) : (
+                  <div className="text-center py-12">
+                    <FileSpreadsheet className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No hay datos de órdenes</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Carga un archivo desde la pestaña "CARGAR DATOS"
+                    </p>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="pagos">
+                {tableData.length > 0 ? (
+                  <ConciliacionPagosTable 
+                    tableData={tableData}
+                    showFilters={pagosShowFilters}
+                    setShowFilters={setPagosShowFilters}
+                    dateFrom={pagosDateFrom}
+                    setDateFrom={setPagosDateFrom}
+                    dateTo={pagosDateTo}
+                    setDateTo={setPagosDateTo}
+                    ordenFilter={pagosOrdenFilter}
+                    setOrdenFilter={setPagosOrdenFilter}
+                    estadoCuotaFilter={pagosEstadoCuotaFilter}
+                    setEstadoCuotaFilter={setPagosEstadoCuotaFilter}
+                    masterDateFrom={masterDateFrom}
+                    masterDateTo={masterDateTo}
                     masterOrden={masterOrden}
                   />
                 ) : (
