@@ -809,11 +809,44 @@ export function MonthlyReport({
       }
     }
     
-    // 7. Calculate depositosBancoOtrosAliados using the exact same filtered installments from CONCILIACION DE CUOTAS
-    // This ensures both dashboards show identical values
+    // 7. Calculate depositosBancoOtrosAliados
+    // If filteredInstallmentsData is available (from CONCILIACION DE CUOTAS), use it
+    // Otherwise, calculate from the installments we built for cuotasAdelantadas
     let calculatedDepositosBancoOtrosAliados = 0;
     if (filteredInstallmentsData && filteredInstallmentsData.length > 0) {
+      // Use the filtered installments from CONCILIACION DE CUOTAS
       filteredInstallmentsData.forEach((inst: any) => {
+        const estadoNormalized = (inst.estadoCuota || '').trim().toLowerCase();
+        const status = (inst.status || '').trim().toUpperCase();
+        
+        // Sum where Estado Cuota = 'done' AND STATUS = 'NO DEPOSITADO'
+        if (estadoNormalized === 'done' && status === 'NO DEPOSITADO') {
+          calculatedDepositosBancoOtrosAliados += inst.monto || 0;
+        }
+      });
+    } else {
+      // Fallback: calculate from the installments array we built above
+      // This ensures the calculation works even if CONCILIACION DE CUOTAS hasn't been visited
+      installmentsForAdelantadas.forEach(inst => {
+        if (!inst.status) {
+          // Calculate status if not already set
+          const payment = filteredPaymentRecords.find((p: any) => {
+            const pOrden = String(p[ordenHeaderPmt] || '');
+            const pCuota = String(p[cuotaHeaderPmt] || '');
+            const cuotaNumbers = pCuota.split(',').map(c => c.trim()).filter(c => c);
+            return pOrden === String(inst.orden) && cuotaNumbers.includes(String(inst.cuotaNum));
+          });
+          
+          if (payment) {
+            const fechaPagoValue = parseExcelDate(payment[fechaPagoHeader]);
+            inst.status = calculateInstallmentStatus({
+              fechaCuota: inst.fechaCuota,
+              fechaPagoReal: fechaPagoValue,
+              estadoCuota: inst.estadoCuota,
+            });
+          }
+        }
+        
         const estadoNormalized = (inst.estadoCuota || '').trim().toLowerCase();
         const status = (inst.status || '').trim().toUpperCase();
         
