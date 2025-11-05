@@ -174,7 +174,8 @@ export function AllPagosInstallments({
             const splitInfo = paymentSplitsMap.get(splitKey);
             
             // Use split amount if available, otherwise use full payment amount
-            const displayAmount = splitInfo?.splitAmount || (typeof montoPagado === 'number' ? montoPagado : parseFloat(String(montoPagado || 0).replace(/[^0-9.-]/g, '')) || 0);
+            const fullAmount = typeof montoPagado === 'number' ? montoPagado : parseFloat(String(montoPagado || 0).replace(/[^0-9.-]/g, '')) || 0;
+            const displayAmount = splitInfo?.splitAmount || fullAmount;
             
             paymentBasedEntries.push({
               orden: paymentOrder,
