@@ -517,9 +517,8 @@ export function MonthlyReport({
       }
     }
     
-    // 5. Banco neto = Recibido - Cuotas adelantadas - Pago inicial - Devoluciones - Depositos otros aliados
+    // 5. Devolvuciones value (will calculate banco neto after finalCuotasAdelantadas is computed)
     const devolucionesPagoClientesBanco = 0; // Assume 0 as specified by user
-    const bancoNetoCuotasReconocidas = recibidoEnBanco - cuotasAdelantadasClientes - pagoInicialClientesApp - devolucionesPagoClientesBanco - depositosOtrosAliadosBanco;
     
     // 6. Cuentas por Cobrar = sum of installment amounts within the date period
     // This calculation matches the Dashboard component in "TODAS LAS ORDENES" tab
@@ -740,7 +739,12 @@ export function MonthlyReport({
     
     // Use calculated value (ignoring the prop for now since it's always 0)
     const finalCuotasAdelantadas = calculatedCuotasAdelantadas;
-    const cuentasPorCobrarNeto = cuentasPorCobrar - finalCuotasAdelantadas;
+    
+    // Calculate banco neto here after finalCuotasAdelantadas is available
+    // Banco neto = Recibido - Cuotas adelantadas - Pago inicial - Devoluciones - Depositos otros aliados
+    const bancoNetoCuotasReconocidas = recibidoEnBanco - finalCuotasAdelantadas - pagoInicialClientesApp - devolucionesPagoClientesBanco - depositosOtrosAliadosBanco;
+    
+    const cuentasPorCobrarNeto = cuentasPorCobrar - cuotasAdelantadasClientes;
     const subtotalConciliacionBancoNeto = bancoNetoCuotasReconocidas - cuentasPorCobrarNeto;
 
     // TODO: Calculate reconciliation adjustments based on user's explanation
@@ -778,13 +782,13 @@ export function MonthlyReport({
       islrRetenido,
       totalServiciosTecnologicos,
       recibidoEnBanco,
-      cuotasAdelantadasClientes,
+      cuotasAdelantadasClientes: finalCuotasAdelantadas,
       pagoInicialClientesApp,
       devolucionesPagoClientesBanco,
       depositosOtrosAliadosBanco,
       bancoNetoCuotasReconocidas,
       cuentasPorCobrar,
-      cuotasAdelantadasPeriodosAnteriores: finalCuotasAdelantadas,
+      cuotasAdelantadasPeriodosAnteriores: cuotasAdelantadasClientes,
       cuentasPorCobrarNeto,
       subtotalConciliacionBancoNeto,
       devolucionesPagoClientes,
