@@ -278,7 +278,7 @@ export function MonthlyReport({
   }, [data, dateFrom, dateTo, estadoFilter, ordenFilter, estadoEntregaFilter, referenciaFilter, dateColumn, estadoColumn, ordenColumn, estadoEntregaColumn, referenciaColumn, masterDateFrom, masterDateTo, masterOrden]);
 
   const metrics = useMemo(() => {
-    // Apply master filters to payment records data (for reconciliation sections)
+    // Apply master filters to payment records data
     const filteredPaymentRecords = paymentRecordsData.filter((record: any) => {
       // Master date filter
       const fechaTransaccionHeader = paymentRecordsHeaders.find((h: string) => 
@@ -317,7 +317,7 @@ export function MonthlyReport({
       return true;
     });
     
-    // Apply master filters to orders data (for reconciliation sections)
+    // Apply master filters to orders data
     const filteredOrders = ordersData.filter((order: any) => {
       // Master orden filter
       if (masterOrden) {
@@ -328,9 +328,7 @@ export function MonthlyReport({
       return true;
     });
     
-    // SUMMARY METRICS: Use ALL marketplace data without date filters
-    // This ensures summary section shows totals regardless of selected date range
-    if (!data || data.length === 0) {
+    if (!filteredData || filteredData.length === 0) {
       return {
         totalVentas: 0,
         totalPagoInicial: 0,
@@ -351,8 +349,7 @@ export function MonthlyReport({
     let totalVentas = 0;
     let totalPagoInicial = 0;
 
-    // Calculate from ALL marketplace orders (data, not filteredData)
-    data.forEach((row: any) => {
+    filteredData.forEach((row: any) => {
       const totalUsdValue = normalizeNumber(row[totalUsdColumn]);
       const totalUsd = isNaN(totalUsdValue) ? 0 : totalUsdValue;
       const pagoInicialValue = normalizeNumber(row[pagoInicialColumn]);
