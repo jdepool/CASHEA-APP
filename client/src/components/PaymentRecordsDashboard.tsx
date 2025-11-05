@@ -154,6 +154,10 @@ export function PaymentRecordsDashboard({
   }, [bankStatementRows, bankStatementHeaders]);
 
   const metrics = useMemo(() => {
+    console.log('=== PaymentRecordsDashboard Recalculating ===');
+    console.log('Data length:', data?.length);
+    console.log('Filters:', { masterDateFrom, masterDateTo, masterOrden, dateFrom, dateTo, ordenFilter, referenciaFilter });
+    
     if (!data || data.length === 0) {
       return {
         totalCuotasPagadas: 0,
