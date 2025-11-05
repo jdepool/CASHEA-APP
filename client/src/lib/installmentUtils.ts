@@ -159,7 +159,14 @@ export function calculateInstallmentStatus(installment: any): string {
   const cuotaMonth = cuotaNormalized.getMonth();
   const cuotaYear = cuotaNormalized.getFullYear();
   
-  // ADELANTADO: Payment made at least 15 days before due date AND cuota month is after payment month
+  // ADELANTADO: Payment made BEFORE due date AND in a different month, OR payment made at least 15 days before due date AND cuota month is after payment month
+  const differentMonth = pagoYear !== cuotaYear || pagoMonth !== cuotaMonth;
+  const paidEarly = daysDiff < 0; // Payment before due date
+  
+  if (differentMonth && paidEarly) {
+    return 'ADELANTADO';
+  }
+  
   if (daysDiff <= -15) {
     // Check if cuota month is after payment month
     if (cuotaYear > pagoYear || (cuotaYear === pagoYear && cuotaMonth > pagoMonth)) {
