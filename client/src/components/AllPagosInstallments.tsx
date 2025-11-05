@@ -2,6 +2,7 @@ import { useMemo, useEffect } from "react";
 import { extractInstallments, calculateInstallmentStatus } from "@/lib/installmentUtils";
 import { parseExcelDate, parseDDMMYYYY } from "@/lib/dateUtils";
 import { useQuery } from "@tanstack/react-query";
+import { calculatePaymentSplits } from "@/lib/paymentUtils";
 
 interface AllPagosInstallmentsProps {
   tableData: any[];
@@ -109,6 +110,10 @@ export function AllPagosInstallments({
       // Step 2: Create payment-based entries for EVERY payment record
       const paymentBasedEntries: any[] = [];
       
+      // Calculate payment splits for multi-cuota payments
+      const paymentHeaders = apiData.data.headers || [];
+      const paymentSplitsMap = calculatePaymentSplits(paymentRows, paymentHeaders, nonCancelledOrders);
+      
       paymentRows.forEach((payment: any) => {
         const paymentOrder = String(payment['# Orden'] || payment['#Orden'] || payment['Orden'] || '').trim();
         const paymentInstallment = String(payment['# Cuota Pagada'] || payment['#CuotaPagada'] || payment['Cuota'] || '').trim();
@@ -163,15 +168,24 @@ export function AllPagosInstallments({
             
             const verificacion = payment['VERIFICACION'] || '-';
             
+            // Get split amount if this is a multi-cuota payment
+            const referencia = payment['# Referencia'] || payment['#Referencia'] || payment['Referencia'];
+            const splitKey = `${referencia}-${paymentOrder}-${cuotaNumber}`;
+            const splitInfo = paymentSplitsMap.get(splitKey);
+            
+            // Use split amount if available, otherwise use full payment amount
+            const displayAmount = splitInfo?.splitAmount || (typeof montoPagado === 'number' ? montoPagado : parseFloat(String(montoPagado || 0).replace(/[^0-9.-]/g, '')) || 0);
+            
             paymentBasedEntries.push({
               orden: paymentOrder,
               fechaCuota: fechaCuotaValue,
               numeroCuota: cuotaNumber,
-              monto: typeof montoPagado === 'number' ? montoPagado : parseFloat(String(montoPagado || 0).replace(/[^0-9.-]/g, '')) || 0,
+              monto: displayAmount,
               estadoCuota: 'Done',
               fechaPago: null,
               fechaPagoReal: parsedDate,
               isPaymentBased: true,
+              splitInfo: splitInfo || null,
               paymentDetails: {
                 referencia: payment['# Referencia'] || payment['#Referencia'] || payment['Referencia'],
                 metodoPago: payment['Método de Pago'] || payment['Metodo de Pago'] || payment['MÉTODO DE PAGO'],
