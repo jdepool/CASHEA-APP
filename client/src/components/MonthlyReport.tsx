@@ -949,7 +949,7 @@ export function MonthlyReport({
               </div>
 
               <div className="flex justify-between items-center py-2">
-                <span>(-) Cuotas adelantadas de clientes (corresponde a otro periodo)</span>
+                <span>(-) Pagos adelantados</span>
                 <span className="font-mono text-right" data-testid="cuotas-adelantadas-clientes">
                   {formatCurrency(metrics.cuotasAdelantadasClientes ?? 0)}
                 </span>
