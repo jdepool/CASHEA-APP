@@ -39,11 +39,15 @@ The application employs a client-server architecture with a React frontend and a
   * **Summary Metrics**: `Ventas Totales`, `Monto Pagado en Caja`, `Monto Financiado`, `Porcentaje Financiado` (calculated from marketplace order data)
   * **Bank Reconciliation (Conciliación Bancaria)**: Five deduction metrics and net calculation:
     - `Recibido en Banco`: Sum of payment amounts where VERIFICACION = SI (bank verified)
-    - `Cuotas adelantadas de clientes (corresponde a otro periodo)`: Sum of payment-based installments with ADELANTADO status, calculated using master filters only to maintain consistency across tabs
+    - `Cuotas adelantadas de clientes (corresponde a otro periodo)`: Sum of schedule-based installments with ADELANTADO status (uses scheduled cuota dates), calculated using master filters only
     - `Pago inicial de clientes en App`: Sum of verified cuota 0 payments (Pago Inicial Depositado)
     - `Devoluciones por errores de pago`: Currently 0 (user-specified placeholder)
     - `Depositos de otros aliados`: Sum of payments for installments with STATUS=OTRO ALIADO (payment exists but no scheduled cuota date) AND VERIFICACION=SI (bank verified)
     - `Banco neto`: Formula = Recibido - Cuotas adelantadas - Pago inicial - Devoluciones - Depositos otros aliados
+  * **Accounts Receivable (Cuentas por Cobrar)**: Shows installments due in period minus advanced payments:
+    - `Cuentas por Cobrar`: Sum of installment amounts within date period
+    - `Cuotas adelantadas en periodos anteriores`: Sum of payment-based installments with ADELANTADO status (uses payment transaction dates), calculated using master filters only
+    - `Cuentas por Cobrar Neto`: Formula = Cuentas por Cobrar - Cuotas adelantadas en periodos anteriores
   * All metrics respect master filters and update dynamically
 - **Data Export**: Exports current table views to Excel.
 - **Table Sorting**: All major tables support column sorting.
