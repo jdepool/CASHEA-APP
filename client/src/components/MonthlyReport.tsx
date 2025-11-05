@@ -809,7 +809,7 @@ export function MonthlyReport({
       totalReconocerFinal,
       totalPagarCashea,
     };
-  }, [filteredData, headers, paymentRecordsData, paymentRecordsHeaders, ordersData, bankStatementRows, bankStatementHeaders, masterDateFrom, masterDateTo, masterOrden, verifyPaymentInBankStatement, filteredInstallmentsData]);
+  }, [filteredData, headers, paymentRecordsData, paymentRecordsHeaders, ordersData, bankStatementRows, bankStatementHeaders, masterDateFrom, masterDateTo, masterOrden, verifyPaymentInBankStatement, filteredInstallmentsData, filteredPagosMasterOnlyData]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {
