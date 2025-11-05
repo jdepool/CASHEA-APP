@@ -393,8 +393,18 @@ export function MonthlyReport({
     }
     
     // 2. Cuotas adelantadas de clientes = sum of installments with ADELANTADO status
-    // Calculated from payment-date-filtered installments with master filters only
-    const cuotasAdelantadasClientes = calculateCuotasAdelantadas(filteredPagosMasterOnlyData);
+    // Calculated from schedule-based installments (CONCILIACION DE CUOTAS) with master filters only
+    let cuotasAdelantadasClientes = 0;
+    if (filteredInstallmentsData && filteredInstallmentsData.length > 0) {
+      filteredInstallmentsData.forEach((installment: any) => {
+        if (installment.status === 'ADELANTADO') {
+          const monto = typeof installment.monto === 'number' ? installment.monto : parseFloat(String(installment.monto || 0).replace(/[^0-9.-]/g, '')) || 0;
+          if (!isNaN(monto)) {
+            cuotasAdelantadasClientes += monto;
+          }
+        }
+      });
+    }
     
     // 3. Pago inicial de clientes en App = Pago Inicial Depositado (cuota 0 with verificacion = SI)
     let pagoInicialClientesApp = 0;
