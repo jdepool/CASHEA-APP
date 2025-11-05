@@ -154,6 +154,10 @@ export function PaymentRecordsDashboard({
   }, [bankStatementRows, bankStatementHeaders]);
 
   const metrics = useMemo(() => {
+    console.log('=== PaymentRecordsDashboard Input ===');
+    console.log('Data rows received:', data?.length);
+    console.log('Filter props:', { masterDateFrom, masterDateTo, masterOrden, dateFrom, dateTo, ordenFilter, referenciaFilter });
+    
     if (!data || data.length === 0) {
       return {
         totalCuotasPagadas: 0,
@@ -207,6 +211,15 @@ export function PaymentRecordsDashboard({
       // Count all records with VERIFICACION = NO, regardless of amount validity
       if (verificacion === 'NO') {
         noDepositadasCount += 1;
+        // Debug: log unverified payments
+        if (noDepositadasCount <= 10) {
+          console.log(`Unverified #${noDepositadasCount}:`, {
+            orden: ordenNum,
+            cuota: cuotaValue,
+            montoUSD: montoUsdValue,
+            montoParsed: montoPagado
+          });
+        }
       }
       
       if (!isNaN(montoPagado)) {
@@ -255,6 +268,12 @@ export function PaymentRecordsDashboard({
       }
     });
 
+    console.log('=== Dashboard Metrics ===');
+    console.log('No Verificadas Amount:', noDepositadas);
+    console.log('No Verificadas Count:', noDepositadasCount);
+    console.log('Total Pagado:', totalPagado);
+    console.log('Deposito Banco:', depositoBanco);
+    
     return {
       totalCuotasPagadas,
       totalPagado,
