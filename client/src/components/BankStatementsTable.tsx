@@ -178,7 +178,7 @@ export function BankStatementsTable({
 
       return true;
     });
-  }, [rows, headers, masterDateFrom, masterDateTo, masterOrden, referenciaFilter]);
+  }, [rowsWithConciliado, headers, masterDateFrom, masterDateTo, masterOrden, referenciaFilter]);
 
   // Apply sorting
   const sortedData = useMemo(() => {

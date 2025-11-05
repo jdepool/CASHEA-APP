@@ -48,7 +48,7 @@ export function referencesMatch(ref1: string, ref2: string): boolean {
  * Checks if two amounts match within a tolerance of ±$0.01
  */
 export function amountsMatch(amount1: number, amount2: number, tolerance: number = 0.01): boolean {
-  return Math.abs(amount1 - amount2) < tolerance;
+  return Math.abs(amount1 - amount2) <= tolerance;
 }
 
 /**
@@ -129,7 +129,7 @@ export function verifyInBankStatements(
 
     if (debeHeader) {
       const debeAmount = bankRow[debeHeader];
-      if (debeAmount) {
+      if (debeAmount !== null && debeAmount !== undefined) {
         const normalizedDebe = normalizeNumber(debeAmount);
         if (!isNaN(normalizedDebe)) {
           // Check against both VES and USD amounts (bank could have either)
@@ -145,7 +145,7 @@ export function verifyInBankStatements(
 
     if (haberHeader && !amountFound) {
       const haberAmount = bankRow[haberHeader];
-      if (haberAmount) {
+      if (haberAmount !== null && haberAmount !== undefined) {
         const normalizedHaber = normalizeNumber(haberAmount);
         if (!isNaN(normalizedHaber)) {
           // Check against both VES and USD amounts
@@ -232,7 +232,7 @@ export function verifyInPaymentRecords(
 
     if (montoVESHeader) {
       const vesAmount = paymentRow[montoVESHeader];
-      if (vesAmount) {
+      if (vesAmount !== null && vesAmount !== undefined) {
         const normalizedVES = normalizeNumber(vesAmount);
         if (!isNaN(normalizedVES) && amountsMatch(bankAmount, normalizedVES)) {
           amountFound = true;
@@ -242,7 +242,7 @@ export function verifyInPaymentRecords(
 
     if (montoUSDHeader && !amountFound) {
       const usdAmount = paymentRow[montoUSDHeader];
-      if (usdAmount) {
+      if (usdAmount !== null && usdAmount !== undefined) {
         const normalizedUSD = normalizeNumber(usdAmount);
         if (!isNaN(normalizedUSD) && amountsMatch(bankAmount, normalizedUSD)) {
           amountFound = true;
