@@ -74,7 +74,8 @@ The application employs a client-server architecture with a React frontend and a
     - In TODAS LAS ORDENES tab filtering logic (defensive final layer)
   * All tabs receive deduplicated data: TODAS LAS ORDENES, CUOTAS, CONCILIACION DE CUOTAS, CONCILIACION DE PAGOS, and REPORTE MENSUAL
   * REPORTE MENSUAL uses deduplicated `tableData` for all financial calculations ensuring accurate metrics without inflated values from duplicate orders
-  * Deduplication keeps first occurrence of each unique order number, discarding subsequent duplicates
+  * BANCO tab deduplicates bank statements by reference number on both backend upload and frontend display (keeps last occurrence)
+  * Deduplication keeps first occurrence of each unique order number for orders, last occurrence for bank statements
 
 ## External Dependencies
 - **Database**: PostgreSQL (Neon).

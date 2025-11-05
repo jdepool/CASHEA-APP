@@ -50,8 +50,29 @@ export function BankStatementsTable({
   }, [bankData]);
 
   const rows = useMemo(() => {
-    return (bankData as any)?.data?.rows || [];
-  }, [bankData]);
+    const rawRows = (bankData as any)?.data?.rows || [];
+    
+    // Deduplicate by reference number (defensive measure)
+    if (rawRows.length === 0) return [];
+    
+    const referenciaHeader = headers.find((h: string) => h.toLowerCase().includes('referencia'));
+    if (!referenciaHeader) return rawRows;
+    
+    const seenReferences = new Map<string, any>();
+    rawRows.forEach((row: any) => {
+      const ref = row[referenciaHeader];
+      if (ref != null && String(ref).trim() !== '') {
+        const normalizedRef = String(ref)
+          .replace(/^["']|["']$/g, '')
+          .replace(/\s+/g, '')
+          .trim()
+          .toLowerCase();
+        seenReferences.set(normalizedRef, row);
+      }
+    });
+    
+    return Array.from(seenReferences.values());
+  }, [bankData, headers]);
 
   // Extract payment records data for reverse lookup
   const paymentRecordsHeaders = useMemo(() => {
