@@ -9,10 +9,16 @@ interface ConciliacionPagosDashboardProps {
 
 export function ConciliacionPagosDashboard({ installments }: ConciliacionPagosDashboardProps) {
   const metrics = useMemo(() => {
-    const cuotasAdelantadasMonto = calculateCuotasAdelantadas(installments);
-    const cuotasAdelantadasCount = installments.filter(
+    console.log('=== CONCILIACION DE PAGOS Dashboard Debug ===');
+    console.log('installments count:', installments?.length || 0);
+    const adelantados = installments.filter(
       inst => (inst.status || '').trim().toUpperCase() === 'ADELANTADO'
-    ).length;
+    );
+    console.log('ADELANTADO entries:', adelantados.length);
+    console.log('ADELANTADO sample:', adelantados.slice(0, 3));
+    const cuotasAdelantadasMonto = calculateCuotasAdelantadas(installments);
+    console.log('Total Cuotas Adelantadas:', cuotasAdelantadasMonto);
+    const cuotasAdelantadasCount = adelantados.length;
 
     return {
       cuotasAdelantadasMonto,
