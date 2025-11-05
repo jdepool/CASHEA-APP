@@ -742,9 +742,9 @@ export function MonthlyReport({
     
     // Calculate banco neto here after finalCuotasAdelantadas is available
     // Banco neto = Recibido - Cuotas adelantadas - Pago inicial - Devoluciones - Depositos otros aliados
-    const bancoNetoCuotasReconocidas = recibidoEnBanco - cuotasAdelantadasClientes - pagoInicialClientesApp - devolucionesPagoClientesBanco - depositosOtrosAliadosBanco;
+    const bancoNetoCuotasReconocidas = recibidoEnBanco - finalCuotasAdelantadas - pagoInicialClientesApp - devolucionesPagoClientesBanco - depositosOtrosAliadosBanco;
     
-    const cuentasPorCobrarNeto = cuentasPorCobrar - finalCuotasAdelantadas;
+    const cuentasPorCobrarNeto = cuentasPorCobrar - cuotasAdelantadasClientes;
     const subtotalConciliacionBancoNeto = bancoNetoCuotasReconocidas - cuentasPorCobrarNeto;
 
     // TODO: Calculate reconciliation adjustments based on user's explanation
@@ -782,13 +782,13 @@ export function MonthlyReport({
       islrRetenido,
       totalServiciosTecnologicos,
       recibidoEnBanco,
-      cuotasAdelantadasClientes: cuotasAdelantadasClientes,
+      cuotasAdelantadasClientes: finalCuotasAdelantadas,
       pagoInicialClientesApp,
       devolucionesPagoClientesBanco,
       depositosOtrosAliadosBanco,
       bancoNetoCuotasReconocidas,
       cuentasPorCobrar,
-      cuotasAdelantadasPeriodosAnteriores: finalCuotasAdelantadas,
+      cuotasAdelantadasPeriodosAnteriores: cuotasAdelantadasClientes,
       cuentasPorCobrarNeto,
       subtotalConciliacionBancoNeto,
       devolucionesPagoClientes,
