@@ -100,11 +100,6 @@ export function PaymentRecords({
 
   // Apply filters
   const paymentData = useMemo(() => {
-    console.log('=== PaymentRecords Filtering ===');
-    console.log('Total sorted records:', sortedPaymentData.length);
-    console.log('Master filters:', { masterDateFrom, masterDateTo, masterOrden });
-    console.log('Local filters:', { dateFrom, dateTo, ordenFilter, referenciaFilter });
-    
     const filtered = sortedPaymentData.filter((row: any) => {
       // MASTER FILTERS - Applied FIRST
       // Master date filter
@@ -198,7 +193,6 @@ export function PaymentRecords({
       return true;
     });
     
-    console.log('Filtered records:', filtered.length);
     return filtered;
   }, [sortedPaymentData, headers, dateFrom, dateTo, ordenFilter, referenciaFilter, masterDateFrom, masterDateTo, masterOrden]);
 
