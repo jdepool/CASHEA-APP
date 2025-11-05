@@ -8,6 +8,8 @@ import { useQuery } from "@tanstack/react-query";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { parseExcelDate, parseDDMMYYYY } from "@/lib/dateUtils";
+import { verifyInPaymentRecords } from "@/lib/verificationUtils";
+import { Badge } from "@/components/ui/badge";
 
 interface BankStatementsTableProps {
   masterDateFrom?: string;
@@ -37,6 +39,12 @@ export function BankStatementsTable({
     refetchOnWindowFocus: false,
   });
 
+  // Fetch ALL payment records for reverse lookup (not filtered)
+  const { data: paymentRecordsData } = useQuery({
+    queryKey: ['/api/payment-records'],
+    refetchOnWindowFocus: false,
+  });
+
   const headers = useMemo(() => {
     return (bankData as any)?.data?.headers || [];
   }, [bankData]);
@@ -45,11 +53,84 @@ export function BankStatementsTable({
     return (bankData as any)?.data?.rows || [];
   }, [bankData]);
 
+  // Extract payment records data for reverse lookup
+  const paymentRecordsHeaders = useMemo(() => {
+    return (paymentRecordsData as any)?.data?.headers || [];
+  }, [paymentRecordsData]);
+
+  const paymentRecordsRows = useMemo(() => {
+    return (paymentRecordsData as any)?.data?.rows || [];
+  }, [paymentRecordsData]);
+
+  // Add CONCILIADO column after Saldo
+  const extendedHeaders = useMemo(() => {
+    if (headers.length === 0) return headers;
+    
+    const saldoIndex = headers.findIndex((h: string) => h.toLowerCase().includes('saldo'));
+    if (saldoIndex === -1) {
+      // If no Saldo column, add CONCILIADO at the end
+      return [...headers, 'CONCILIADO'];
+    }
+    
+    // Insert CONCILIADO after Saldo
+    const newHeaders = [...headers];
+    newHeaders.splice(saldoIndex + 1, 0, 'CONCILIADO');
+    return newHeaders;
+  }, [headers]);
+
+  // Add CONCILIADO values to rows by checking against ALL payment records
+  const rowsWithConciliado = useMemo(() => {
+    if (!rows || rows.length === 0) return [];
+    
+    // Find bank statement column headers
+    const referenciaHeader = headers.find((h: string) => h.toLowerCase().includes('referencia'));
+    const debeHeader = headers.find((h: string) => h.toLowerCase().includes('debe'));
+    const haberHeader = headers.find((h: string) => h.toLowerCase().includes('haber'));
+    
+    return rows.map((row: any) => {
+      // Get bank statement data
+      const bankRef = referenciaHeader ? row[referenciaHeader] : null;
+      const debeAmount = debeHeader ? row[debeHeader] : null;
+      const haberAmount = haberHeader ? row[haberHeader] : null;
+      
+      // Perform reverse lookup: check if this bank transaction matches any payment record
+      const conciliadoValue = verifyInPaymentRecords(
+        bankRef,
+        debeAmount,
+        haberAmount,
+        paymentRecordsRows,
+        paymentRecordsHeaders
+      );
+      
+      // Create new row with CONCILIADO value inserted after Saldo
+      const saldoIndex = headers.findIndex((h: string) => h.toLowerCase().includes('saldo'));
+      if (saldoIndex === -1) {
+        // No Saldo column, add CONCILIADO at the end
+        return { ...row, CONCILIADO: conciliadoValue };
+      }
+      
+      // Insert CONCILIADO after Saldo (same position as in extendedHeaders)
+      const newRow: any = {};
+      const headersCopy = [...headers];
+      headersCopy.splice(saldoIndex + 1, 0, 'CONCILIADO');
+      
+      headersCopy.forEach((header: string) => {
+        if (header === 'CONCILIADO') {
+          newRow[header] = conciliadoValue;
+        } else {
+          newRow[header] = row[header];
+        }
+      });
+      
+      return newRow;
+    });
+  }, [rows, headers, paymentRecordsRows, paymentRecordsHeaders]);
+
   // Apply master filters and local filters
   const filteredData = useMemo(() => {
-    if (!rows || rows.length === 0) return [];
+    if (!rowsWithConciliado || rowsWithConciliado.length === 0) return [];
 
-    return rows.filter((row: any) => {
+    return rowsWithConciliado.filter((row: any) => {
       // MASTER FILTERS - Applied FIRST
       // Master date range filter
       if (masterDateFrom || masterDateTo) {
@@ -173,7 +254,7 @@ export function BankStatementsTable({
               <CardTitle>Estado de Cuenta Bancario</CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 {sortedData.length} {sortedData.length === 1 ? 'registro' : 'registros'}
-                {sortedData.length !== rows.length && ` (filtrado de ${rows.length})`}
+                {sortedData.length !== rowsWithConciliado.length && ` (filtrado de ${rowsWithConciliado.length})`}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -235,7 +316,7 @@ export function BankStatementsTable({
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  {headers.map((header: string, idx: number) => (
+                  {extendedHeaders.map((header: string, idx: number) => (
                     <th
                       key={idx}
                       className="px-4 py-3 text-left text-sm font-semibold cursor-pointer hover-elevate"
@@ -256,8 +337,11 @@ export function BankStatementsTable({
                       className="border-b hover-elevate"
                       data-testid={`row-bank-${rowIdx}`}
                     >
-                      {headers.map((header: string, cellIdx: number) => {
+                      {extendedHeaders.map((header: string, cellIdx: number) => {
                         const value = row[header];
+                        
+                        // Check if this is the CONCILIADO column
+                        const isConciliadoColumn = header === 'CONCILIADO';
                         
                         // Check if this is a Referencia column
                         const isReferenciaColumn = header.toLowerCase().includes('referencia');
@@ -306,10 +390,20 @@ export function BankStatementsTable({
                         return (
                           <td 
                             key={cellIdx} 
-                            className={`px-4 py-3 text-sm ${isNumericColumn ? 'text-right font-mono' : ''}`}
+                            className={`px-4 py-3 text-sm ${isNumericColumn ? 'text-right font-mono' : ''} ${isConciliadoColumn ? 'text-center' : ''}`}
                             data-testid={`cell-${rowIdx}-${header.toLowerCase().replace(/\s+/g, '-')}`}
                           >
-                            {displayValue || ''}
+                            {isConciliadoColumn ? (
+                              <Badge 
+                                variant={value === 'SI' ? 'default' : 'secondary'}
+                                className={value === 'SI' ? 'bg-green-600 hover:bg-green-700' : ''}
+                                data-testid={`badge-conciliado-${value?.toLowerCase()}`}
+                              >
+                                {value}
+                              </Badge>
+                            ) : (
+                              displayValue || ''
+                            )}
                           </td>
                         );
                       })}
@@ -317,7 +411,7 @@ export function BankStatementsTable({
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={headers.length} className="px-4 py-8 text-center text-muted-foreground">
+                    <td colSpan={extendedHeaders.length} className="px-4 py-8 text-center text-muted-foreground">
                       No hay registros que coincidan con los filtros
                     </td>
                   </tr>
