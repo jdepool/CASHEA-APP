@@ -9,9 +9,29 @@ interface PaymentRecordsDashboardProps {
   ordersData: any[];
   bankStatementRows: any[];
   bankStatementHeaders: string[];
+  masterDateFrom?: string;
+  masterDateTo?: string;
+  masterOrden?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  ordenFilter?: string;
+  referenciaFilter?: string;
 }
 
-export function PaymentRecordsDashboard({ data, headers, ordersData, bankStatementRows, bankStatementHeaders }: PaymentRecordsDashboardProps) {
+export function PaymentRecordsDashboard({ 
+  data, 
+  headers, 
+  ordersData, 
+  bankStatementRows, 
+  bankStatementHeaders,
+  masterDateFrom,
+  masterDateTo,
+  masterOrden,
+  dateFrom,
+  dateTo,
+  ordenFilter,
+  referenciaFilter
+}: PaymentRecordsDashboardProps) {
   // Create order status lookup map
   const orderStatusMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -235,7 +255,7 @@ export function PaymentRecordsDashboard({ data, headers, ordersData, bankStateme
       pagoInicialesDepositado,
       pagoInicialesNoDepositado,
     };
-  }, [data, headers, orderStatusMap, verifyPaymentInBankStatement]);
+  }, [data, headers, orderStatusMap, verifyPaymentInBankStatement, masterDateFrom, masterDateTo, masterOrden, dateFrom, dateTo, ordenFilter, referenciaFilter]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {

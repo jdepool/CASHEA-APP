@@ -252,6 +252,13 @@ export function PaymentRecords({
             ordersData={ordersTableData}
             bankStatementRows={bankStatementRows}
             bankStatementHeaders={bankStatementHeaders}
+            masterDateFrom={masterDateFrom}
+            masterDateTo={masterDateTo}
+            masterOrden={masterOrden}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            ordenFilter={ordenFilter}
+            referenciaFilter={referenciaFilter}
           />
           
           <div className="flex items-center justify-between mb-4">
