@@ -100,7 +100,7 @@ export function PaymentRecords({
 
   // Apply filters
   const paymentData = useMemo(() => {
-    return sortedPaymentData.filter((row: any) => {
+    const filtered = sortedPaymentData.filter((row: any) => {
       // MASTER FILTERS - Applied FIRST
       // Master date filter
       if (masterDateFrom || masterDateTo) {
@@ -192,6 +192,8 @@ export function PaymentRecords({
 
       return true;
     });
+    
+    return filtered;
   }, [sortedPaymentData, headers, dateFrom, dateTo, ordenFilter, referenciaFilter, masterDateFrom, masterDateTo, masterOrden]);
 
   const handleExport = () => {
