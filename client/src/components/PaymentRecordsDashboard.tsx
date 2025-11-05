@@ -80,6 +80,7 @@ export function PaymentRecordsDashboard({
       // Handle case-insensitive column name matching
       const paymentAmountVES = record['Monto Pagado en VES'] || record['Monto pagado en VES'];
       const paymentAmountUSD = record['Monto Pagado en USD'] || record['Monto pagado en USD'];
+      const ordenNum = record['# Orden'];
 
       // If no reference or amounts, can't verify
       if (!paymentRef || (!paymentAmountVES && !paymentAmountUSD)) {
@@ -88,6 +89,14 @@ export function PaymentRecordsDashboard({
 
       // Normalize payment reference (remove spaces, leading zeros)
       const normalizedPaymentRef = String(paymentRef).replace(/\s+/g, '').replace(/^0+/, '').toLowerCase();
+      
+      // Debug Order 42463634 specifically
+      const isDebugOrder = ordenNum === 42463634 || ordenNum === '42463634';
+      if (isDebugOrder) {
+        console.log('=== Debugging Order 42463634 ===');
+        console.log('Payment Ref:', paymentRef, '→ Normalized:', normalizedPaymentRef);
+        console.log('Payment Amount VES:', paymentAmountVES, 'USD:', paymentAmountUSD);
+      }
 
       // Normalize payment amounts
       const normalizedVES = paymentAmountVES ? normalizeNumber(paymentAmountVES) : null;
@@ -100,6 +109,14 @@ export function PaymentRecordsDashboard({
           const bankRef = bankRow[referenciaHeader];
           if (bankRef) {
             const normalizedBankRef = String(bankRef).replace(/\s+/g, '').replace(/^0+/, '').toLowerCase();
+            
+            // Debug for Order 42463634
+            if (isDebugOrder && normalizedBankRef.includes(normalizedPaymentRef.substring(0, 8))) {
+              console.log('Potential match found in bank:');
+              console.log('  Bank Ref:', bankRef, '→ Normalized:', normalizedBankRef);
+              console.log('  Reference match:', normalizedBankRef === normalizedPaymentRef);
+            }
+            
             if (normalizedBankRef !== normalizedPaymentRef) {
               return false; // Reference doesn't match
             }
@@ -213,9 +230,14 @@ export function PaymentRecordsDashboard({
         noDepositadasCount += 1;
         // Debug: log unverified payments
         if (noDepositadasCount <= 10) {
+          // Get reference for debugging
+          const referenciaHeader = headers.find(h => h.toLowerCase().includes('referencia'));
+          const referenciaValue = row[referenciaHeader || ''];
+          
           console.log(`Unverified #${noDepositadasCount}:`, {
             orden: ordenNum,
             cuota: cuotaValue,
+            referencia: referenciaValue,
             montoUSD: montoUsdValue,
             montoParsed: montoPagado
           });
