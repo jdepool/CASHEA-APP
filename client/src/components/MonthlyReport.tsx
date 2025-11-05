@@ -406,33 +406,17 @@ export function MonthlyReport({
       });
     }
     
-    // 3. Pago inicial de clientes en App = Pago Inicial Depositado (cuota 0 with verificacion = SI)
+    // 3. Pago inicial de clientes en App = from CONCILIACION DE PAGOS, sum MONTO where cuota = 0, status != OTRO ALIADO, verificacion = SI
     let pagoInicialClientesApp = 0;
-    const ordenHeaderPayment = paymentRecordsHeaders.find((h: string) => 
-      h.toLowerCase().includes('orden') && !h.toLowerCase().includes('cuota')
-    );
-    const cuotaHeaderPayment = paymentRecordsHeaders.find((h: string) => 
-      h.toLowerCase().includes('cuota') && h.toLowerCase().includes('pagada')
-    );
-    
-    if (ordenHeaderPayment && cuotaHeaderPayment && montoUsdHeader) {
-      filteredPaymentRecords.forEach((record: any) => {
-        const cuotaValue = String(record[cuotaHeaderPayment] || '');
-        const cuotaNumbers = cuotaValue.split(',').map(c => c.trim()).filter(c => c);
-        
-        // Check if this is exactly cuota 0 (not multi-installment like "0,1,2")
-        if (cuotaNumbers.length === 1 && parseInt(cuotaNumbers[0]) === 0) {
-          const ordenNum = record[ordenHeaderPayment];
-          
-          // Only include if order exists in filteredOrders
-          if (ordenNum && filteredOrders.some((o: any) => String(o['Orden']) === String(ordenNum))) {
-            const verificacion = verifyPaymentInBankStatement(record);
-            if (verificacion === 'SI') {
-              const montoValue = normalizeNumber(record[montoUsdHeader]);
-              if (!isNaN(montoValue)) {
-                pagoInicialClientesApp += montoValue;
-              }
-            }
+    if (filteredPagosMasterOnlyData && filteredPagosMasterOnlyData.length > 0) {
+      filteredPagosMasterOnlyData.forEach((installment: any) => {
+        // Check for cuota 0, status not OTRO ALIADO, and verificacion = SI
+        if (installment.numeroCuota === 0 && 
+            installment.status !== 'OTRO ALIADO' && 
+            installment.verificacion === 'SI') {
+          const monto = typeof installment.monto === 'number' ? installment.monto : parseFloat(String(installment.monto || 0).replace(/[^0-9.-]/g, '')) || 0;
+          if (!isNaN(monto)) {
+            pagoInicialClientesApp += monto;
           }
         }
       });
