@@ -994,7 +994,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Process rows after the header row
-      const rows = jsonData.slice(headerRowIndex + 1).map(row => {
+      const allRows = jsonData.slice(headerRowIndex + 1).map(row => {
         const rowObj: any = {};
         allHeaders.forEach((header, idx) => {
           rowObj[header] = (row[idx] !== undefined) ? row[idx] : "";
@@ -1005,7 +1005,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return Object.values(row).some(value => value != null && String(value).trim() !== '');
       });
 
-      console.log(`Filtered ${jsonData.length - headerRowIndex - 1 - rows.length} empty rows from bank statement`);
+      console.log(`Filtered ${jsonData.length - headerRowIndex - 1 - allRows.length} empty rows from bank statement`);
+
+      // Deduplicate by reference number (keep last occurrence)
+      const referenciaHeader = allHeaders.find(h => 
+        String(h).toLowerCase().includes('referencia')
+      );
+
+      let rows = allRows;
+      if (referenciaHeader) {
+        const seenReferences = new Map<string, any>();
+        
+        allRows.forEach(row => {
+          const ref = row[referenciaHeader];
+          if (ref != null && String(ref).trim() !== '') {
+            // Normalize reference for deduplication
+            const normalizedRef = String(ref)
+              .replace(/^["']|["']$/g, '') // Remove leading/trailing quotes
+              .replace(/\s+/g, '')         // Remove spaces
+              .trim()
+              .toLowerCase();
+            
+            // Keep last occurrence by overwriting
+            seenReferences.set(normalizedRef, row);
+          }
+        });
+
+        rows = Array.from(seenReferences.values());
+        
+        const duplicatesRemoved = allRows.length - rows.length;
+        if (duplicatesRemoved > 0) {
+          console.log(`🔄 Removed ${duplicatesRemoved} duplicate bank statement records (by reference number)`);
+        }
+      } else {
+        console.log('⚠️  No reference column found - skipping deduplication');
+      }
       console.log('Bank statement processed:', {
         fileName: req.file.originalname,
         headers: allHeaders,
