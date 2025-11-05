@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Receipt, DollarSign, Wallet, CheckCircle, BadgeCheck, AlertCircle, XCircle } from "lucide-react";
 import { normalizeNumber } from "@shared/numberUtils";
+import { verifyInBankStatements } from "@/lib/verificationUtils";
 
 interface PaymentRecordsDashboardProps {
   data: any[];
@@ -59,152 +60,21 @@ export function PaymentRecordsDashboard({
 
   // Function to verify if a payment exists in bank statements
   const verifyPaymentInBankStatement = useMemo(() => {
-    // Find relevant headers in bank statement (case-insensitive)
-    const referenciaHeader = bankStatementHeaders?.find(h => 
-      h.toLowerCase().includes('referencia')
-    );
-    const debeHeader = bankStatementHeaders?.find(h => 
-      h.toLowerCase().includes('debe')
-    );
-    const haberHeader = bankStatementHeaders?.find(h => 
-      h.toLowerCase().includes('haber')
-    );
-
     return (record: any): string => {
-      // If no bank statements available, return "NO"
-      if (!bankStatementRows || bankStatementRows.length === 0) {
-        return 'NO';
-      }
-
       const paymentRef = record['# Referencia'];
       // Handle case-insensitive column name matching
       const paymentAmountVES = record['Monto Pagado en VES'] || record['Monto pagado en VES'];
       const paymentAmountUSD = record['Monto Pagado en USD'] || record['Monto pagado en USD'];
-      const ordenNum = record['# Orden'];
 
-      // If no reference or amounts, can't verify
-      if (!paymentRef || (!paymentAmountVES && !paymentAmountUSD)) {
-        return 'NO';
-      }
-
-      // Normalize payment reference (remove spaces, leading zeros)
-      const normalizedPaymentRef = String(paymentRef).replace(/\s+/g, '').replace(/^0+/, '').toLowerCase();
-      
-      // Debug Order 42463634 specifically
-      const isDebugOrder = ordenNum === 42463634 || ordenNum === '42463634';
-      if (isDebugOrder) {
-        console.log('=== Debugging Order 42463634 ===');
-        console.log('Payment Ref:', paymentRef, '→ Normalized:', normalizedPaymentRef);
-        console.log('Payment Amount VES:', paymentAmountVES, 'USD:', paymentAmountUSD);
-      }
-
-      // Normalize payment amounts
-      const normalizedVES = paymentAmountVES ? normalizeNumber(paymentAmountVES) : null;
-      const normalizedUSD = paymentAmountUSD ? normalizeNumber(paymentAmountUSD) : null;
-
-      // Search bank statements for matching reference and amount
-      const found = bankStatementRows.some(bankRow => {
-        // Check reference match
-        if (referenciaHeader) {
-          const bankRef = bankRow[referenciaHeader];
-          if (bankRef) {
-            const normalizedBankRef = String(bankRef).replace(/\s+/g, '').replace(/^0+/, '').toLowerCase();
-            
-            // Support 8-digit partial matching: check if at least 8 consecutive digits match
-            let referenceMatches = false;
-            
-            // Exact match
-            if (normalizedBankRef === normalizedPaymentRef) {
-              referenceMatches = true;
-            } else if (normalizedPaymentRef.length >= 8 && normalizedBankRef.length >= 8) {
-              // Check if payment reference appears anywhere in bank reference (or vice versa)
-              if (normalizedBankRef.includes(normalizedPaymentRef) || normalizedPaymentRef.includes(normalizedBankRef)) {
-                referenceMatches = true;
-              } else {
-                // Check for 8-digit substring match
-                for (let i = 0; i <= normalizedPaymentRef.length - 8; i++) {
-                  const paymentSubstring = normalizedPaymentRef.substring(i, i + 8);
-                  if (normalizedBankRef.includes(paymentSubstring)) {
-                    referenceMatches = true;
-                    break;
-                  }
-                }
-              }
-            }
-            
-            if (!referenceMatches) {
-              return false; // Reference doesn't match
-            }
-            
-            // Debug for Order 42463634 - AFTER match check
-            if (isDebugOrder) {
-              console.log('✓ Reference MATCHED:');
-              console.log('  Payment:', normalizedPaymentRef);
-              console.log('  Bank:', normalizedBankRef);
-            }
-          } else {
-            return false; // No reference in bank statement
-          }
-        } else {
-          return false; // No reference header in bank statement
-        }
-
-        // Reference matches, now check amount
-        // Check both Debe and Haber columns
-        let amountFound = false;
-
-        if (debeHeader) {
-          const debeAmount = bankRow[debeHeader];
-          if (debeAmount) {
-            const normalizedDebe = normalizeNumber(debeAmount);
-            if (!isNaN(normalizedDebe)) {
-              // Check against both VES and USD amounts (bank could have either)
-              if (normalizedVES !== null && Math.abs(normalizedDebe - normalizedVES) < 0.01) {
-                amountFound = true;
-                if (isDebugOrder) {
-                  console.log('✓ Amount matched (Debe/VES):', normalizedDebe, '≈', normalizedVES);
-                }
-              }
-              if (normalizedUSD !== null && Math.abs(normalizedDebe - normalizedUSD) < 0.01) {
-                amountFound = true;
-                if (isDebugOrder) {
-                  console.log('✓ Amount matched (Debe/USD):', normalizedDebe, '≈', normalizedUSD);
-                }
-              }
-            }
-          }
-        }
-
-        if (haberHeader && !amountFound) {
-          const haberAmount = bankRow[haberHeader];
-          if (haberAmount) {
-            const normalizedHaber = normalizeNumber(haberAmount);
-            if (!isNaN(normalizedHaber)) {
-              // Check against both VES and USD amounts
-              if (normalizedVES !== null && Math.abs(normalizedHaber - normalizedVES) < 0.01) {
-                amountFound = true;
-                if (isDebugOrder) {
-                  console.log('✓ Amount matched (Haber/VES):', normalizedHaber, '≈', normalizedVES);
-                }
-              }
-              if (normalizedUSD !== null && Math.abs(normalizedHaber - normalizedUSD) < 0.01) {
-                amountFound = true;
-                if (isDebugOrder) {
-                  console.log('✓ Amount matched (Haber/USD):', normalizedHaber, '≈', normalizedUSD);
-                }
-              }
-            }
-          }
-        }
-        
-        if (isDebugOrder && !amountFound) {
-          console.log('✗ Amount NOT matched');
-        }
-
-        return amountFound;
-      });
-
-      return found ? 'SI' : 'NO';
+      return verifyInBankStatements(
+        {
+          reference: paymentRef,
+          amountVES: paymentAmountVES,
+          amountUSD: paymentAmountUSD,
+        },
+        bankStatementRows,
+        bankStatementHeaders
+      );
     };
   }, [bankStatementRows, bankStatementHeaders]);
 
