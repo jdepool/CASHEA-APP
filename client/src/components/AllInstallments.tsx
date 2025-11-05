@@ -182,34 +182,31 @@ export function AllInstallments({
       const paymentRows = apiData.data.rows;
       
       // Step 1: Enrich existing scheduled installments with payment info (for "Fecha Cuota" view)
-      // Track which payment records have been used to prevent reusing the same payment for multiple installments
-      const matchedPaymentIndices = new Set<number>();
-      
+      // When a payment covers multiple cuotas (e.g., "3,4,5"), ALL those cuotas get the same payment details
       installments = installments.map((installment) => {
-        // Find first unused matching payment record
-        const matchingPaymentIndex = paymentRows.findIndex((payment: any, index: number) => {
-          // Skip if this payment has already been used for another installment
-          if (matchedPaymentIndices.has(index)) return false;
-          
+        // Find matching payment record - now supports comma-separated cuotas
+        const matchingPayment = paymentRows.find((payment: any) => {
           const paymentOrder = String(payment['# Orden'] || payment['#Orden'] || payment['Orden'] || '').trim();
           const paymentInstallmentStr = String(payment['# Cuota Pagada'] || payment['#CuotaPagada'] || payment['Cuota'] || '').trim();
           
           const orderMatches = paymentOrder === String(installment.orden).trim();
           
-          // Match by both order and cuota number if available
-          if (paymentInstallmentStr) {
-            const paymentCuotaNum = parseInt(paymentInstallmentStr, 10);
-            return orderMatches && !isNaN(paymentCuotaNum) && paymentCuotaNum === installment.numeroCuota;
+          // Match by both order and cuota number
+          if (paymentInstallmentStr && orderMatches) {
+            // Parse comma-separated cuota numbers (e.g., "3,4,5")
+            const cuotaParts = paymentInstallmentStr.split(',').map(s => s.trim());
+            for (const part of cuotaParts) {
+              const parsed = parseInt(part, 10);
+              if (!isNaN(parsed) && parsed === installment.numeroCuota) {
+                return true; // This cuota is included in the payment
+              }
+            }
           }
           
-          // If no cuota number in payment, don't match (prevent incorrect associations)
           return false;
         });
 
-        if (matchingPaymentIndex !== -1) {
-          matchedPaymentIndices.add(matchingPaymentIndex);
-          const matchingPayment = paymentRows[matchingPaymentIndex];
-          
+        if (matchingPayment) {
           // Use transaction date to match PAGO DE CUOTAS filtering
           const fechaTasaCambio = matchingPayment['Fecha de Transaccion'] ||
                                   matchingPayment['FECHA DE TRANSACCION'] ||
