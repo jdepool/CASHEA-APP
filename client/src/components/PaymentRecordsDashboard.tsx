@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Receipt, DollarSign, Wallet, CheckCircle, BadgeCheck, AlertCircle } from "lucide-react";
+import { Receipt, DollarSign, Wallet, CheckCircle, BadgeCheck, AlertCircle, XCircle } from "lucide-react";
 import { normalizeNumber } from "@shared/numberUtils";
 
 interface PaymentRecordsDashboardProps {
@@ -160,6 +160,7 @@ export function PaymentRecordsDashboard({
         totalPagado: 0,
         totalPagoIniciales: 0,
         noDepositadas: 0,
+        noDepositadasCount: 0,
         depositoBanco: 0,
         pagoInicialesDepositado: 0,
         pagoInicialesNoDepositado: 0,
@@ -184,6 +185,7 @@ export function PaymentRecordsDashboard({
     let totalPagado = 0;
     let totalPagoIniciales = 0;
     let noDepositadas = 0;
+    let noDepositadasCount = 0;
     let depositoBanco = 0;
     let pagoInicialesDepositado = 0;
     let pagoInicialesNoDepositado = 0;
@@ -199,11 +201,18 @@ export function PaymentRecordsDashboard({
       const montoUsdValue = row[montoUsdHeader || ''];
       const montoPagado = normalizeNumber(montoUsdValue);
       
+      // Check verification status for ALL rows (not just those with valid amounts)
+      const verificacion = verifyPaymentInBankStatement(row);
+      
+      // Count all records with VERIFICACION = NO, regardless of amount validity
+      if (verificacion === 'NO') {
+        noDepositadasCount += 1;
+      }
+      
       if (!isNaN(montoPagado)) {
         totalPagado += montoPagado;
         
-        // Check verification status
-        const verificacion = verifyPaymentInBankStatement(row);
+        // Sum amounts based on verification status
         if (verificacion === 'SI') {
           depositoBanco += montoPagado;
         } else {
@@ -251,6 +260,7 @@ export function PaymentRecordsDashboard({
       totalPagado,
       totalPagoIniciales,
       noDepositadas,
+      noDepositadasCount,
       depositoBanco,
       pagoInicialesDepositado,
       pagoInicialesNoDepositado,
@@ -337,7 +347,7 @@ export function PaymentRecordsDashboard({
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -368,6 +378,23 @@ export function PaymentRecordsDashboard({
             </div>
             <p className="text-xs text-muted-foreground">
               Cuota 0 con VERIFICACION = NO
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Pagos No Verificados
+            </CardTitle>
+            <XCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold" data-testid="metric-no-verificadas">
+              {formatCurrency(metrics.noDepositadas)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              VERIFICACION = NO ({metrics.noDepositadasCount} {metrics.noDepositadasCount === 1 ? 'caso' : 'casos'})
             </p>
           </CardContent>
         </Card>
