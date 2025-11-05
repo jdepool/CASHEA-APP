@@ -725,11 +725,11 @@ export function MonthlyReport({
     // Use calculated value (ignoring the prop for now since it's always 0)
     const finalCuotasAdelantadas = calculatedCuotasAdelantadas;
     
-    // Calculate banco neto here after finalCuotasAdelantadas is available
-    // Banco neto = Recibido - Cuotas adelantadas - Pago inicial - Devoluciones - Depositos otros aliados
-    const bancoNetoCuotasReconocidas = recibidoEnBanco - finalCuotasAdelantadas - pagoInicialClientesApp - devolucionesPagoClientesBanco - depositosOtrosAliadosBanco;
+    // Calculate banco neto using payment-based cuotasAdelantadasClientes (CONCILIACION DE PAGOS)
+    // Banco neto = Recibido - Pagos adelantados - Pago inicial - Devoluciones - Depositos otros aliados
+    const bancoNetoCuotasReconocidas = recibidoEnBanco - cuotasAdelantadasClientes - pagoInicialClientesApp - devolucionesPagoClientesBanco - depositosOtrosAliadosBanco;
     
-    const cuentasPorCobrarNeto = cuentasPorCobrar - cuotasAdelantadasClientes;
+    const cuentasPorCobrarNeto = cuentasPorCobrar - finalCuotasAdelantadas;
     const subtotalConciliacionBancoNeto = bancoNetoCuotasReconocidas - cuentasPorCobrarNeto;
 
     // TODO: Calculate reconciliation adjustments based on user's explanation
@@ -767,13 +767,13 @@ export function MonthlyReport({
       islrRetenido,
       totalServiciosTecnologicos,
       recibidoEnBanco,
-      cuotasAdelantadasClientes: finalCuotasAdelantadas,
+      cuotasAdelantadasClientes: cuotasAdelantadasClientes,
       pagoInicialClientesApp,
       devolucionesPagoClientesBanco,
       depositosOtrosAliadosBanco,
       bancoNetoCuotasReconocidas,
       cuentasPorCobrar,
-      cuotasAdelantadasPeriodosAnteriores: cuotasAdelantadasClientes,
+      cuotasAdelantadasPeriodosAnteriores: finalCuotasAdelantadas,
       cuentasPorCobrarNeto,
       subtotalConciliacionBancoNeto,
       devolucionesPagoClientes,
