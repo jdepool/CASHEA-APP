@@ -110,15 +110,37 @@ export function PaymentRecordsDashboard({
           if (bankRef) {
             const normalizedBankRef = String(bankRef).replace(/\s+/g, '').replace(/^0+/, '').toLowerCase();
             
-            // Debug for Order 42463634
-            if (isDebugOrder && normalizedBankRef.includes(normalizedPaymentRef.substring(0, 8))) {
-              console.log('Potential match found in bank:');
-              console.log('  Bank Ref:', bankRef, '→ Normalized:', normalizedBankRef);
-              console.log('  Reference match:', normalizedBankRef === normalizedPaymentRef);
+            // Support 8-digit partial matching: check if at least 8 consecutive digits match
+            let referenceMatches = false;
+            
+            // Exact match
+            if (normalizedBankRef === normalizedPaymentRef) {
+              referenceMatches = true;
+            } else if (normalizedPaymentRef.length >= 8 && normalizedBankRef.length >= 8) {
+              // Check if payment reference appears anywhere in bank reference (or vice versa)
+              if (normalizedBankRef.includes(normalizedPaymentRef) || normalizedPaymentRef.includes(normalizedBankRef)) {
+                referenceMatches = true;
+              } else {
+                // Check for 8-digit substring match
+                for (let i = 0; i <= normalizedPaymentRef.length - 8; i++) {
+                  const paymentSubstring = normalizedPaymentRef.substring(i, i + 8);
+                  if (normalizedBankRef.includes(paymentSubstring)) {
+                    referenceMatches = true;
+                    break;
+                  }
+                }
+              }
             }
             
-            if (normalizedBankRef !== normalizedPaymentRef) {
+            if (!referenceMatches) {
               return false; // Reference doesn't match
+            }
+            
+            // Debug for Order 42463634 - AFTER match check
+            if (isDebugOrder) {
+              console.log('✓ Reference MATCHED:');
+              console.log('  Payment:', normalizedPaymentRef);
+              console.log('  Bank:', normalizedBankRef);
             }
           } else {
             return false; // No reference in bank statement
@@ -139,9 +161,15 @@ export function PaymentRecordsDashboard({
               // Check against both VES and USD amounts (bank could have either)
               if (normalizedVES !== null && Math.abs(normalizedDebe - normalizedVES) < 0.01) {
                 amountFound = true;
+                if (isDebugOrder) {
+                  console.log('✓ Amount matched (Debe/VES):', normalizedDebe, '≈', normalizedVES);
+                }
               }
               if (normalizedUSD !== null && Math.abs(normalizedDebe - normalizedUSD) < 0.01) {
                 amountFound = true;
+                if (isDebugOrder) {
+                  console.log('✓ Amount matched (Debe/USD):', normalizedDebe, '≈', normalizedUSD);
+                }
               }
             }
           }
@@ -155,12 +183,22 @@ export function PaymentRecordsDashboard({
               // Check against both VES and USD amounts
               if (normalizedVES !== null && Math.abs(normalizedHaber - normalizedVES) < 0.01) {
                 amountFound = true;
+                if (isDebugOrder) {
+                  console.log('✓ Amount matched (Haber/VES):', normalizedHaber, '≈', normalizedVES);
+                }
               }
               if (normalizedUSD !== null && Math.abs(normalizedHaber - normalizedUSD) < 0.01) {
                 amountFound = true;
+                if (isDebugOrder) {
+                  console.log('✓ Amount matched (Haber/USD):', normalizedHaber, '≈', normalizedUSD);
+                }
               }
             }
           }
+        }
+        
+        if (isDebugOrder && !amountFound) {
+          console.log('✗ Amount NOT matched');
         }
 
         return amountFound;
