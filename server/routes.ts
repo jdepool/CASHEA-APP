@@ -1125,6 +1125,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST endpoint to deduplicate existing bank statements
+  app.post('/api/deduplicate-bank-statements', async (req, res) => {
+    try {
+      console.log('\n=== DEDUPLICATING BANK STATEMENTS ===');
+      
+      const latestBankStatement = await storage.getLatestBankStatement();
+      
+      if (!latestBankStatement) {
+        return res.json({
+          success: false,
+          message: 'No hay datos de estado de cuenta para deduplicar'
+        });
+      }
+
+      const headers = latestBankStatement.headers as string[];
+      const allRows = latestBankStatement.rows as any[];
+      const originalCount = allRows.length;
+
+      console.log(`Total records before deduplication: ${originalCount}`);
+
+      // Find reference column
+      const referenciaHeader = headers.find(h => 
+        String(h).toLowerCase().includes('referencia')
+      );
+
+      if (!referenciaHeader) {
+        return res.json({
+          success: false,
+          message: 'No se encontró la columna de referencia para deduplicar'
+        });
+      }
+
+      // Deduplicate by reference number (keep last occurrence)
+      const seenReferences = new Map<string, any>();
+      
+      allRows.forEach(row => {
+        const ref = row[referenciaHeader];
+        if (ref != null && String(ref).trim() !== '') {
+          // Normalize reference for deduplication
+          const normalizedRef = String(ref)
+            .replace(/^["']|["']$/g, '') // Remove leading/trailing quotes
+            .replace(/\s+/g, '')         // Remove spaces
+            .trim()
+            .toLowerCase();
+          
+          // Keep last occurrence by overwriting
+          seenReferences.set(normalizedRef, row);
+        }
+      });
+
+      const deduplicatedRows = Array.from(seenReferences.values());
+      const duplicatesRemoved = originalCount - deduplicatedRows.length;
+
+      console.log(`Total records after deduplication: ${deduplicatedRows.length}`);
+      console.log(`Duplicates removed: ${duplicatesRemoved}`);
+
+      // Save deduplicated data back to database
+      await storage.createBankStatement({
+        fileName: latestBankStatement.fileName,
+        headers: headers,
+        rows: deduplicatedRows,
+        rowCount: String(deduplicatedRows.length),
+      });
+
+      console.log('✓ Deduplicated data saved to database');
+      console.log('=====================================\n');
+
+      // Re-verify all payment records with deduplicated bank statements
+      await reverifyAllPaymentRecords(deduplicatedRows, headers);
+
+      res.json({
+        success: true,
+        message: `Se eliminaron ${duplicatesRemoved} registros duplicados del estado de cuenta`,
+        details: {
+          originalCount,
+          deduplicatedCount: deduplicatedRows.length,
+          duplicatesRemoved
+        }
+      });
+    } catch (error) {
+      console.error('Error deduplicating bank statements:', error);
+      res.status(500).json({
+        error: 'Error al deduplicar el estado de cuenta',
+        details: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
