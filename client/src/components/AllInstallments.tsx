@@ -431,11 +431,11 @@ export function AllInstallments({
       }
 
       // TAB-SPECIFIC FILTERS - Applied AFTER master filters
-      // HARDCODED: Show scheduled installments (Fecha Cuota view)
-      // BUT also show OTRO ALIADO entries (payment-based with no scheduled cuota date)
-      // OTRO ALIADO entries have isPaymentBased=true and fechaCuota=null
-      const isOtroAliado = installment.isPaymentBased && !installment.fechaCuota;
-      if (installment.isPaymentBased && !isOtroAliado) return false;
+      // HARDCODED: Show ONLY scheduled installments (Fecha Cuota view)
+      // Exclude ALL payment-based entries (they belong in CONCILIACION DE PAGOS)
+      // Exclude ALL installments without fechaCuota
+      if (installment.isPaymentBased) return false;
+      if (!installment.fechaCuota) return false;
       
       // Date range filter - only apply if master date filters are NOT active
       // HARDCODED: Use scheduled installment date (fechaCuota)
