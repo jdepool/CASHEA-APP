@@ -412,17 +412,20 @@ export default function Home() {
           const fechaValue = row[fechaCompraHeader];
           const rowDate = parseExcelDate(fechaValue);
 
-          if (rowDate && !isNaN(rowDate.getTime())) {
-            if (masterDateFrom) {
-              const fromDate = parseDDMMYYYY(masterDateFrom);
-              if (fromDate && rowDate < fromDate) return false;
-            }
-            if (masterDateTo) {
-              const toDate = parseDDMMYYYY(masterDateTo);
-              if (toDate) {
-                toDate.setHours(23, 59, 59, 999);
-                if (rowDate > toDate) return false;
-              }
+          // When date filter is active, exclude rows without valid FECHA DE COMPRA
+          if (!rowDate || isNaN(rowDate.getTime())) {
+            return false;
+          }
+
+          if (masterDateFrom) {
+            const fromDate = parseDDMMYYYY(masterDateFrom);
+            if (fromDate && rowDate < fromDate) return false;
+          }
+          if (masterDateTo) {
+            const toDate = parseDDMMYYYY(masterDateTo);
+            if (toDate) {
+              toDate.setHours(23, 59, 59, 999);
+              if (rowDate > toDate) return false;
             }
           }
         }
@@ -445,17 +448,20 @@ export default function Home() {
           const fechaValue = row[fechaCompraHeader];
           const rowDate = parseExcelDate(fechaValue);
 
-          if (rowDate && !isNaN(rowDate.getTime())) {
-            if (dateFrom) {
-              const fromDate = parseDDMMYYYY(dateFrom);
-              if (fromDate && rowDate < fromDate) return false;
-            }
-            if (dateTo) {
-              const toDate = parseDDMMYYYY(dateTo);
-              if (toDate) {
-                toDate.setHours(23, 59, 59, 999);
-                if (rowDate > toDate) return false;
-              }
+          // When date filter is active, exclude rows without valid FECHA DE COMPRA
+          if (!rowDate || isNaN(rowDate.getTime())) {
+            return false;
+          }
+
+          if (dateFrom) {
+            const fromDate = parseDDMMYYYY(dateFrom);
+            if (fromDate && rowDate < fromDate) return false;
+          }
+          if (dateTo) {
+            const toDate = parseDDMMYYYY(dateTo);
+            if (toDate) {
+              toDate.setHours(23, 59, 59, 999);
+              if (rowDate > toDate) return false;
             }
           }
         }

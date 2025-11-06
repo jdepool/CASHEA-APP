@@ -159,8 +159,9 @@ export function MonthlyReport({
       // Master date filter (if date column exists)
       if (dateColumn && (masterDateFrom || masterDateTo)) {
         const rowDate = row[dateColumn];
+        let rowDateObj: Date | null = null;
+        
         if (rowDate) {
-          let rowDateObj: Date | null = null;
           if (typeof rowDate === 'string') {
             const parsedDate = parseDDMMYYYY(rowDate);
             if (parsedDate) {
@@ -181,20 +182,23 @@ export function MonthlyReport({
               rowDateObj = new Date(rowDate);
             }
           }
+        }
 
-          if (rowDateObj && !isNaN(rowDateObj.getTime())) {
-            if (masterDateFrom) {
-              const fromDate = parseDDMMYYYY(masterDateFrom);
-              if (fromDate && rowDateObj < fromDate) return false;
-            }
-            if (masterDateTo) {
-              const toDate = parseDDMMYYYY(masterDateTo);
-              if (toDate) {
-                const endOfDay = new Date(toDate);
-                endOfDay.setHours(23, 59, 59, 999);
-                if (rowDateObj > endOfDay) return false;
-              }
-            }
+        // When date filter is active, exclude rows without valid date
+        if (!rowDateObj || isNaN(rowDateObj.getTime())) {
+          return false;
+        }
+
+        if (masterDateFrom) {
+          const fromDate = parseDDMMYYYY(masterDateFrom);
+          if (fromDate && rowDateObj < fromDate) return false;
+        }
+        if (masterDateTo) {
+          const toDate = parseDDMMYYYY(masterDateTo);
+          if (toDate) {
+            const endOfDay = new Date(toDate);
+            endOfDay.setHours(23, 59, 59, 999);
+            if (rowDateObj > endOfDay) return false;
           }
         }
       }
@@ -209,8 +213,9 @@ export function MonthlyReport({
       // Date filter (if date column exists)
       if (dateColumn && (dateFrom || dateTo)) {
         const rowDate = row[dateColumn];
+        let rowDateObj: Date | null = null;
+        
         if (rowDate) {
-          let rowDateObj: Date | null = null;
           if (typeof rowDate === 'string') {
             const parsedDate = parseDDMMYYYY(rowDate);
             if (parsedDate) {
@@ -231,20 +236,23 @@ export function MonthlyReport({
               rowDateObj = new Date(rowDate);
             }
           }
+        }
 
-          if (rowDateObj && !isNaN(rowDateObj.getTime())) {
-            if (dateFrom) {
-              const fromDate = parseDDMMYYYY(dateFrom);
-              if (fromDate && rowDateObj < fromDate) return false;
-            }
-            if (dateTo) {
-              const toDate = parseDDMMYYYY(dateTo);
-              if (toDate) {
-                const endOfDay = new Date(toDate);
-                endOfDay.setHours(23, 59, 59, 999);
-                if (rowDateObj > endOfDay) return false;
-              }
-            }
+        // When date filter is active, exclude rows without valid date
+        if (!rowDateObj || isNaN(rowDateObj.getTime())) {
+          return false;
+        }
+
+        if (dateFrom) {
+          const fromDate = parseDDMMYYYY(dateFrom);
+          if (fromDate && rowDateObj < fromDate) return false;
+        }
+        if (dateTo) {
+          const toDate = parseDDMMYYYY(dateTo);
+          if (toDate) {
+            const endOfDay = new Date(toDate);
+            endOfDay.setHours(23, 59, 59, 999);
+            if (rowDateObj > endOfDay) return false;
           }
         }
       }
