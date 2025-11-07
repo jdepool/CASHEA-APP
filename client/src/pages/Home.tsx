@@ -150,7 +150,7 @@ export default function Home() {
         setTableData(deduplicatedRows);
       }
     }
-  }, [ordersData, deduplicateOrders]);
+  }, [ordersData]);
 
   // Calculate cuotasAdelantadasPeriodosAnteriores from CONCILIACION DE CUOTAS data
   // This will be passed to REPORTE MENSUAL so it shows the same value
@@ -220,7 +220,7 @@ export default function Home() {
     } finally {
       setIsProcessing(false);
     }
-  }, [toast, deduplicateOrders]);
+  }, [toast]);
 
   const handleFileSelect = useCallback((file: File) => {
     setSelectedFile(file);
