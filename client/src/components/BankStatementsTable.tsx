@@ -213,6 +213,22 @@ export function BankStatementsTable({
       if (aVal === null || aVal === undefined || aVal === '') return 1;
       if (bVal === null || bVal === undefined || bVal === '') return -1;
 
+      // Check if this is a date column
+      const isDateColumn = sortConfig.column!.toLowerCase().includes('fecha');
+      
+      if (isDateColumn) {
+        // Parse dates and compare by timestamp
+        const aDate = parseExcelDate(aVal);
+        const bDate = parseExcelDate(bVal);
+        
+        // Handle invalid dates
+        if (!aDate || isNaN(aDate.getTime())) return 1;
+        if (!bDate || isNaN(bDate.getTime())) return -1;
+        
+        const comparison = aDate.getTime() - bDate.getTime();
+        return sortConfig.direction === 'asc' ? comparison : -comparison;
+      }
+
       const comparison = String(aVal).localeCompare(String(bVal), 'es', { numeric: true });
       return sortConfig.direction === 'asc' ? comparison : -comparison;
     });
