@@ -164,43 +164,8 @@ export class DatabaseStorage implements IStorage {
 
   async mergeOrders(newOrders: any[], fileName: string, headers: string[]): Promise<MergeResult> {
     return await db.transaction(async (tx) => {
-      // Get existing orders
-      const [existingOrder] = await tx
-        .select()
-        .from(orders)
-        .orderBy(desc(orders.uploadedAt))
-        .limit(1);
-      
-      const existingRows = existingOrder?.rows || [];
-      
-      // Create a map of existing orders by Orden number
-      const existingOrdersMap = new Map<string, any>();
-      existingRows.forEach((row: any) => {
-        if (row.Orden) {
-          existingOrdersMap.set(row.Orden, row);
-        }
-      });
-      
-      let added = 0;
-      let updated = 0;
-      
-      // Merge new orders: replace if Orden exists, add if new
-      newOrders.forEach((newRow: any) => {
-        if (newRow.Orden) {
-          if (existingOrdersMap.has(newRow.Orden)) {
-            updated++;
-            existingOrdersMap.set(newRow.Orden, newRow); // Replace existing
-          } else {
-            added++;
-            existingOrdersMap.set(newRow.Orden, newRow); // Add new
-          }
-        }
-      });
-      
-      // Convert map back to array
-      const mergedRows = Array.from(existingOrdersMap.values());
-      
-      // Delete all and insert merged data
+      // COMPLETE REPLACEMENT: Delete all existing orders and insert new ones
+      // This ensures the table always reflects the latest uploaded data
       await tx.delete(orders);
       
       const [order] = await tx
@@ -208,16 +173,16 @@ export class DatabaseStorage implements IStorage {
         .values({
           fileName,
           headers: headers as any,
-          rows: mergedRows as any,
-          rowCount: String(mergedRows.length),
+          rows: newOrders as any,
+          rowCount: String(newOrders.length),
         })
         .returning();
       
       return {
-        added,
-        updated,
+        added: newOrders.length,
+        updated: 0,
         skipped: 0,
-        total: mergedRows.length
+        total: newOrders.length
       };
     });
   }
