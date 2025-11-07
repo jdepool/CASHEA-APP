@@ -26,7 +26,7 @@ The application employs a client-server architecture with a React frontend and a
 
 **Feature Specifications**:
 - **File Upload**: Drag & drop or selection with client-side and backend validation for orders, payments, and marketplace orders.
-- **Data Persistence & Duplication Handling**: All data is saved to PostgreSQL; new uploads replace existing orders by `Orden` number, and payment records update based on `(# Orden, # Cuota Pagada, # Referencia)`.
+- **Data Persistence & Duplication Handling**: All data is saved to PostgreSQL; new uploads for TODAS LAS ÓRDENES perform complete replacement (all existing orders are deleted and replaced with new data), ensuring uploaded data always reflects the latest state. Payment records update based on `(# Orden, # Cuota Pagada, # Referencia)`.
 - **Master Filter System**: Global filtering (date range, order number) applies across all main tabs (`MARKETPLACE ORDERS`, `TODAS LAS ÓRDENES`, `CUOTAS`, `PAGO DE CUOTAS`, `CONCILIACION DE CUOTAS`, `CONCILIACION DE PAGOS`, `REPORTE MENSUAL`) before tab-specific filters. Filters persist across tabs and have clear/active indicators. ALL dashboards across ALL tabs respect master filters for consistent data filtering.
 - **TODAS LAS ÓRDENES Dashboard**: Shows comprehensive order metrics including active orders, sales amounts, payments, pending balances, cancelled orders, and period-based installment counts. Dashboard prioritizes master filters (masterDateFrom, masterDateTo, masterOrden) over tab-specific filters for all calculations, ensuring consistent filtering across the application. Period-based metrics (# Cuotas del Periodo, Cuentas por Cobrar) respect master order filter in addition to date filters.
 - **Installments View (`CONCILIACION DE CUOTAS`)**: Displays installments with collapsible filters and an `InstallmentsDashboard`. Includes a `STATUS` column with five categories (ADELANTADO, A TIEMPO, ATRASADO, OTRO ALIADO, NO DEPOSITADO) and a sortable `VERIFICACION` column for bank statement matching. Dashboard shows "Depósitos Otros Aliados" metric (total MONTO for STATUS=OTRO ALIADO + VERIFICACION=SI installments) that updates based on active filters.
@@ -69,17 +69,13 @@ The application employs a client-server architecture with a React frontend and a
   * REPORTE MENSUAL and CONCILIACION DE PAGOS use shared calculation utilities but different datasets: CONCILIACION DE PAGOS uses master+local filtered data (via AllPagosInstallments with local filters), while REPORTE MENSUAL uses master-filter-only data (via separate AllPagosInstallments instance with empty local filters)
   * This ensures dashboard metrics in CONCILIACION DE PAGOS update based on tab-specific filters while REPORTE MENSUAL metrics remain consistent using only master filters
   * Shared utility functions (`calculateDepositosOtrosBancos`, `calculateCuotasAdelantadas`) in `installmentUtils.ts` provide consistent calculations across all views
-- **Deduplication Strategy**: 
-  * Backend deduplicates during upload (removes duplicate order numbers before storing)
-  * Database merge operation deduplicates when combining new uploads with existing data
-  * Frontend applies deduplication at three levels as a defensive measure:
-    - When loading data from database (in useEffect)
-    - After file upload when refetching data (in processFile)
-    - In TODAS LAS ORDENES tab filtering logic (defensive final layer)
-  * All tabs receive deduplicated data: TODAS LAS ORDENES, CUOTAS, CONCILIACION DE CUOTAS, CONCILIACION DE PAGOS, and REPORTE MENSUAL
-  * REPORTE MENSUAL uses deduplicated `tableData` for all financial calculations ensuring accurate metrics without inflated values from duplicate orders
-  * BANCO tab deduplicates bank statements by reference number on both backend upload and frontend display (keeps last occurrence)
-  * Deduplication keeps first occurrence of each unique order number for orders, last occurrence for bank statements
+- **Upload Strategy**: 
+  * TODAS LAS ÓRDENES: Complete replacement on each upload (backend deletes all existing orders, then inserts new data in a single transaction)
+  * BANCO: Complete replacement with automatic deduplication by reference number on backend (keeps last occurrence)
+  * MARKETPLACE ORDERS: Complete replacement on upload
+  * PAGO DE CUOTAS: Updates based on composite key `(# Orden, # Cuota Pagada, # Referencia)`
+  * Frontend displays data directly from backend without additional deduplication
+  * REPORTE MENSUAL uses `tableData` for all financial calculations ensuring accurate metrics
 
 ## External Dependencies
 - **Database**: PostgreSQL (Neon).
