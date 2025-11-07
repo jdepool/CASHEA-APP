@@ -114,18 +114,32 @@ export function calculateInstallmentStatus(installment: any): string {
   const fechaPagoReal = installment.fechaPagoReal;
   const fechaPagoFromOrder = installment.fechaPago;
   const fechaCuota = installment.fechaCuota;
-  const estadoCuota = (installment.estadoCuota || '').toLowerCase();
+  const estadoCuota = (installment.estadoCuota || '').toLowerCase().trim();
+  
+  // Normalize status to handle multiple variations (Spanish and English)
+  // Use exact matches or specific known patterns
+  const isDone = estadoCuota === 'done' || 
+                 estadoCuota === 'done (paid)' || 
+                 estadoCuota === 'paid' || 
+                 estadoCuota === 'pagado' || 
+                 estadoCuota === 'pago realizado' ||
+                 estadoCuota === 'completado' ||
+                 estadoCuota === 'completed';
+  
+  const isDelayed = estadoCuota === 'delayed' || 
+                    estadoCuota === 'atrasado' || 
+                    estadoCuota === 'retrasado';
   
   // Determine if there's ANY payment date (from payment records OR from order file)
   const hasPayment = fechaPagoReal || fechaPagoFromOrder;
   
   // NO DEPOSITADO: Order is DONE but no payment received
-  if (!hasPayment && estadoCuota === 'done') {
+  if (!hasPayment && isDone) {
     return 'NO DEPOSITADO';
   }
   
   // ATRASADO: Installment is delayed but not paid yet
-  if (!hasPayment && estadoCuota === 'delayed') {
+  if (!hasPayment && isDelayed) {
     return 'ATRASADO';
   }
   
@@ -190,11 +204,21 @@ export function calculateInstallmentStatus(installment: any): string {
 export function calculateDepositosOtrosBancos(installments: any[]): number {
   let total = 0;
   installments.forEach((inst) => {
-    const estadoNormalized = (inst.estadoCuota || '').trim().toLowerCase();
+    const estadoCuota = (inst.estadoCuota || '').toLowerCase().trim();
     const status = (inst.status || '').trim().toUpperCase();
     
+    // Normalize status to handle multiple variations (Spanish and English)
+    // Use exact matches or specific known patterns
+    const isDone = estadoCuota === 'done' || 
+                   estadoCuota === 'done (paid)' || 
+                   estadoCuota === 'paid' || 
+                   estadoCuota === 'pagado' || 
+                   estadoCuota === 'pago realizado' ||
+                   estadoCuota === 'completado' ||
+                   estadoCuota === 'completed';
+    
     // Sum where Estado Cuota = 'done' AND STATUS = 'NO DEPOSITADO'
-    if (estadoNormalized === 'done' && status === 'NO DEPOSITADO') {
+    if (isDone && status === 'NO DEPOSITADO') {
       total += inst.monto || 0;
     }
   });
