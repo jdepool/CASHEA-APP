@@ -70,10 +70,11 @@ The application employs a client-server architecture with a React frontend and a
   * This ensures dashboard metrics in CONCILIACION DE PAGOS update based on tab-specific filters while REPORTE MENSUAL metrics remain consistent using only master filters
   * Shared utility functions (`calculateDepositosOtrosBancos`, `calculateCuotasAdelantadas`) in `installmentUtils.ts` provide consistent calculations across all views
 - **Upload Strategy**: 
-  * TODAS LAS ÓRDENES: Complete replacement on each upload (backend deletes all existing orders, then inserts new data in a single transaction)
-  * BANCO: Complete replacement with automatic deduplication by reference number on backend (keeps last occurrence)
-  * MARKETPLACE ORDERS: Complete replacement on upload
-  * PAGO DE CUOTAS: Updates based on composite key `(# Orden, # Cuota Pagada, # Referencia)`
+  * TODAS LAS ÓRDENES: Merge/upsert by `Orden` field - updates existing orders with same order number, adds new orders, preserves orders not in upload
+  * MARKETPLACE ORDERS: Merge/upsert by `# Orden` field - updates existing orders with same order number, adds new orders, preserves orders not in upload
+  * PAGO DE CUOTAS: Merge/upsert by composite key `(# Orden, # Cuota Pagada, # Referencia)` - updates existing payment records, adds new ones, preserves records not in upload
+  * BANCO: Merge with automatic deduplication by reference number (keeps last occurrence of each reference across all uploads)
+  * All merge operations use Map-based deduplication for efficient O(1) lookups
   * Frontend displays data directly from backend without additional deduplication
   * REPORTE MENSUAL uses `tableData` for all financial calculations ensuring accurate metrics
 
