@@ -164,62 +164,41 @@ export class DatabaseStorage implements IStorage {
 
   async mergeOrders(newOrders: any[], fileName: string, headers: string[]): Promise<MergeResult> {
     return await db.transaction(async (tx) => {
-      // MERGE/UPSERT STRATEGY: Update existing orders by Orden number, add new ones
       // Get existing orders
-      const [existingRecord] = await tx
+      const [existingOrder] = await tx
         .select()
         .from(orders)
         .orderBy(desc(orders.uploadedAt))
         .limit(1);
       
-      const existingRows = existingRecord?.rows || [];
-      
-      // Find Orden column (case-insensitive, handles "Orden", "# Orden", etc.)
-      const findOrdenColumn = (headers: string[]) => {
-        return headers.find(h => {
-          const lower = h.toLowerCase().trim();
-          return lower === 'orden' || lower === '# orden' || lower.includes('orden');
-        }) || 'Orden';
-      };
-      
-      const ordenColumn = findOrdenColumn(headers);
-      
-      // Also find the orden column in existing rows (may have different header format)
-      const existingHeaders = existingRecord?.headers || headers;
-      const existingOrdenColumn = findOrdenColumn(existingHeaders as string[]);
+      const existingRows = existingOrder?.rows || [];
       
       // Create a map of existing orders by Orden number
       const existingOrdersMap = new Map<string, any>();
       existingRows.forEach((row: any) => {
-        // Try both column names to handle header format differences
-        const ordenValue = row[existingOrdenColumn] || row[ordenColumn];
-        if (ordenValue != null) {
-          const ordenKey = String(ordenValue).trim();
-          existingOrdersMap.set(ordenKey, row);
+        if (row.Orden) {
+          existingOrdersMap.set(row.Orden, row);
         }
       });
       
       let added = 0;
       let updated = 0;
       
-      // Process new orders: update existing, add new ones
+      // Merge new orders: replace if Orden exists, add if new
       newOrders.forEach((newRow: any) => {
-        const ordenValue = newRow[ordenColumn];
-        if (ordenValue != null) {
-          const ordenKey = String(ordenValue).trim();
-          if (existingOrdersMap.has(ordenKey)) {
-            // Update existing order
-            existingOrdersMap.set(ordenKey, newRow);
+        if (newRow.Orden) {
+          if (existingOrdersMap.has(newRow.Orden)) {
             updated++;
+            existingOrdersMap.set(newRow.Orden, newRow); // Replace existing
           } else {
-            // Add new order
-            existingOrdersMap.set(ordenKey, newRow);
             added++;
+            existingOrdersMap.set(newRow.Orden, newRow); // Add new
           }
         }
       });
       
-      const finalRows = Array.from(existingOrdersMap.values());
+      // Convert map back to array
+      const mergedRows = Array.from(existingOrdersMap.values());
       
       // Delete all and insert merged data
       await tx.delete(orders);
@@ -229,8 +208,8 @@ export class DatabaseStorage implements IStorage {
         .values({
           fileName,
           headers: headers as any,
-          rows: finalRows as any,
-          rowCount: String(finalRows.length),
+          rows: mergedRows as any,
+          rowCount: String(mergedRows.length),
         })
         .returning();
       
@@ -238,7 +217,7 @@ export class DatabaseStorage implements IStorage {
         added,
         updated,
         skipped: 0,
-        total: finalRows.length
+        total: mergedRows.length
       };
     });
   }
@@ -410,109 +389,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createMarketplaceOrder(insertMarketplaceOrder: InsertMarketplaceOrder): Promise<MarketplaceOrder> {
-    // MERGE/UPSERT STRATEGY: Update existing orders by # Orden, add new ones
+    // Use transaction to ensure atomic delete+insert
+    // If insert fails, delete is rolled back automatically
     return await db.transaction(async (tx) => {
-      // Get existing marketplace orders (most recent first)
-      const existingRecords = await tx
-        .select()
-        .from(marketplaceOrders)
-        .orderBy(desc(marketplaceOrders.uploadedAt));
-      
-      // Collect all existing rows, but build map directly to keep newest version of each order
-      const existingRowsForLogging: any[] = [];
-      const tempExistingMap = new Map<string, any>();
-      
-      existingRecords.forEach((record) => {
-        if (record.rows && Array.isArray(record.rows)) {
-          const rows = record.rows as any[];
-          existingRowsForLogging.push(...rows);
-          
-          // Extract orden column from this record's headers
-          const recordHeaders = (record.headers as string[]) || [];
-          const recordOrdenCol = recordHeaders.find(h => {
-            const lower = h.toLowerCase().trim();
-            return lower === 'orden' || lower === '# orden' || lower.includes('orden') || lower.includes('order');
-          });
-          
-          // Add rows to temp map (newest first due to orderBy, so don't overwrite)
-          rows.forEach((row: any) => {
-            let ordenValue = null;
-            if (recordOrdenCol) {
-              ordenValue = row[recordOrdenCol];
-            }
-            // Fallback: try common column names
-            if (ordenValue == null) {
-              ordenValue = row['# Orden'] || row['Orden'] || row['# orden'] || row['orden'];
-            }
-            
-            if (ordenValue != null) {
-              const ordenKey = String(ordenValue).trim();
-              // Only set if not already present (keeps newest version)
-              if (!tempExistingMap.has(ordenKey)) {
-                tempExistingMap.set(ordenKey, row);
-              }
-            }
-          });
-        }
-      });
-      
-      const newHeaders = insertMarketplaceOrder.headers as string[];
-      const newRows = insertMarketplaceOrder.rows as any[];
-      
-      // Find # Orden column (case-insensitive, handles various formats)
-      const findOrdenColumn = (headers: string[]) => {
-        return headers.find(h => {
-          const lower = h.toLowerCase().trim();
-          return lower === 'orden' || lower === '# orden' || lower.includes('orden') || lower.includes('order');
-        }) || '# Orden';
-      };
-      
-      const ordenColumn = findOrdenColumn(newHeaders);
-      
-      // Start with the temp map that already has newest versions
-      const existingOrdersMap = new Map<string, any>(tempExistingMap);
-      
-      let added = 0;
-      let updated = 0;
-      
-      // Process new orders: update existing, add new ones
-      newRows.forEach((newRow: any) => {
-        const ordenValue = newRow[ordenColumn];
-        if (ordenValue != null) {
-          const ordenKey = String(ordenValue).trim();
-          if (existingOrdersMap.has(ordenKey)) {
-            // Update existing order
-            existingOrdersMap.set(ordenKey, newRow);
-            updated++;
-          } else {
-            // Add new order
-            existingOrdersMap.set(ordenKey, newRow);
-            added++;
-          }
-        }
-      });
-      
-      const finalRows = Array.from(existingOrdersMap.values());
-      
-      console.log(`\n=== MARKETPLACE ORDERS MERGE ===`);
-      console.log(`Orders in database before: ${existingRowsForLogging.length}`);
-      console.log(`Unique orders in database: ${tempExistingMap.size}`);
-      console.log(`Orders in uploaded file: ${newRows.length}`);
-      console.log(`New orders added: ${added}`);
-      console.log(`Existing orders updated: ${updated}`);
-      console.log(`Total orders after merge: ${finalRows.length}`);
-      console.log(`================================\n`);
-      
-      // Delete all and insert merged data
+      // Delete all existing marketplace orders
       await tx.delete(marketplaceOrders);
       
+      // Insert new marketplace order
       const [marketplaceOrder] = await tx
         .insert(marketplaceOrders)
         .values({
           fileName: insertMarketplaceOrder.fileName,
-          headers: newHeaders as any,
-          rows: finalRows as any,
-          rowCount: String(finalRows.length),
+          headers: insertMarketplaceOrder.headers as any,
+          rows: insertMarketplaceOrder.rows as any,
+          rowCount: insertMarketplaceOrder.rowCount,
         })
         .returning();
       

@@ -116,6 +116,25 @@ export default function Home() {
     refetchOnWindowFocus: false,
   });
 
+  // Helper function to deduplicate orders by order number
+  const deduplicateOrders = useCallback((rows: any[], headers: string[]) => {
+    const ordenHeader = headers.find((h: string) => h.toLowerCase() === 'orden');
+    if (!ordenHeader) return rows;
+    
+    const seenOrders = new Set<string>();
+    return rows.filter((row: any) => {
+      const ordenValue = String(row[ordenHeader] || '').trim();
+      if (!ordenValue) return true; // Keep rows without order number
+      
+      if (seenOrders.has(ordenValue)) {
+        return false; // Skip duplicate
+      }
+      
+      seenOrders.add(ordenValue);
+      return true; // Keep first occurrence
+    });
+  }, []);
+
   // Load persisted data when query succeeds
   useEffect(() => {
     if (ordersData) {
@@ -124,12 +143,14 @@ export default function Home() {
         const headers = data.data.headers || [];
         const rows = data.data.rows || [];
         
-        // Backend does complete replacement, so data is already unique
+        // Deduplicate orders by order number before setting state
+        const deduplicatedRows = deduplicateOrders(rows, headers);
+        
         setHeaders(headers);
-        setTableData(rows);
+        setTableData(deduplicatedRows);
       }
     }
-  }, [ordersData]);
+  }, [ordersData, deduplicateOrders]);
 
   // Calculate cuotasAdelantadasPeriodosAnteriores from CONCILIACION DE CUOTAS data
   // This will be passed to REPORTE MENSUAL so it shows the same value
@@ -167,9 +188,11 @@ export default function Home() {
           const headers = ordersResult.data.headers;
           const rows = ordersResult.data.rows;
           
-          // Backend does complete replacement, so data is already unique
+          // Deduplicate orders before setting state
+          const deduplicatedRows = deduplicateOrders(rows, headers);
+          
           setHeaders(headers);
-          setTableData(rows);
+          setTableData(deduplicatedRows);
         }
         
         // Show merge statistics
@@ -197,7 +220,7 @@ export default function Home() {
     } finally {
       setIsProcessing(false);
     }
-  }, [toast]);
+  }, [toast, deduplicateOrders]);
 
   const handleFileSelect = useCallback((file: File) => {
     setSelectedFile(file);
@@ -477,8 +500,22 @@ export default function Home() {
       return true;
     });
 
-    // Backend now does complete replacement, so no deduplication needed on frontend
-    return filtered;
+    // Step 2: Deduplicate by order number (keep first occurrence)
+    const ordenHeader = headers.find(h => h.toLowerCase() === 'orden');
+    if (!ordenHeader) return filtered;
+
+    const seenOrders = new Set<string>();
+    return filtered.filter((row) => {
+      const ordenValue = String(row[ordenHeader] || '').trim();
+      if (!ordenValue) return true; // Keep rows without order number
+      
+      if (seenOrders.has(ordenValue)) {
+        return false; // Skip duplicate
+      }
+      
+      seenOrders.add(ordenValue);
+      return true; // Keep first occurrence
+    });
   }, [tableData, headers, dateFrom, dateTo, ordenFilter, referenciaFilter, estadoCuotaFilter, masterDateFrom, masterDateTo, masterOrden]);
 
   const handleExportOrders = () => {
