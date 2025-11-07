@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { normalizeNumber } from "@shared/numberUtils";
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { parseExcelDate } from "@/lib/dateUtils";
 
 interface PaymentRecord {
   [key: string]: any;
@@ -346,7 +347,14 @@ export function PaymentRecordsTable({ records, headers, ordersData, bankStatemen
 
   const handleSort = (header: string) => {
     if (sortColumn === header) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+      // Tri-state sorting: asc -> desc -> null
+      if (sortDirection === 'asc') {
+        setSortDirection('desc');
+      } else {
+        // Clear sorting
+        setSortColumn(null);
+        setSortDirection('asc');
+      }
     } else {
       setSortColumn(header);
       setSortDirection('asc');
@@ -364,6 +372,22 @@ export function PaymentRecordsTable({ records, headers, ordersData, bankStatemen
       if (aVal == null && bVal == null) return 0;
       if (aVal == null) return 1;
       if (bVal == null) return -1;
+
+      // Check if this is a date column
+      const isDateColumn = sortColumn.toLowerCase().includes('fecha');
+      
+      if (isDateColumn) {
+        // Parse dates and compare by timestamp
+        const aDate = parseExcelDate(aVal);
+        const bDate = parseExcelDate(bVal);
+        
+        // Handle invalid dates
+        if (!aDate || isNaN(aDate.getTime())) return 1;
+        if (!bDate || isNaN(bDate.getTime())) return -1;
+        
+        const comparison = aDate.getTime() - bDate.getTime();
+        return sortDirection === 'asc' ? comparison : -comparison;
+      }
 
       // Handle currency values
       if (isNumericColumn(sortColumn)) {
