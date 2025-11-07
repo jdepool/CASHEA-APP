@@ -533,6 +533,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "PAGO INICIAL": ["Pago en Caja", "Pago en caja", "PAGO EN CAJA"],
         "NUMERO DE CUOTAS": ["Tipo orden", "Tipo Orden", "TIPO ORDEN"],
         "STATUS ORDEN": ["Estado Orden", "Estado orden", "ESTADO ORDEN"],
+        "Fecha de compra": ["Fecha compra", "Fecha Compra", "FECHA COMPRA"],
       };
 
       const requiredHeaders = [
