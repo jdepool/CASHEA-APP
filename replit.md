@@ -1,7 +1,7 @@
 # Gestor de Cuotas - Sistema de Gestión de Pagos
 
 ## Overview
-This project is a professional web application for managing purchase orders with installment payments. It allows users to import Excel data for orders, payments, and marketplace orders, visualize detailed installment information, and track statuses, dates, and amounts. The system provides a weekly payments overview, ensures data persistence via PostgreSQL, and aims to offer a robust, user-friendly tool for efficient installment plan management, improving cash flow visibility and reducing manual data handling.
+This project is a professional web application for managing purchase orders with installment payments. It allows users to import Excel data for orders, payments, and marketplace orders, visualize detailed installment information, and track statuses, dates, and amounts. The system provides a weekly payments overview, ensures data persistence via PostgreSQL, and includes an AI-powered assistant with RAG capabilities for natural language queries in Spanish. The system aims to offer a robust, user-friendly tool for efficient installment plan management, improving cash flow visibility and reducing manual data handling.
 
 ## User Preferences
 - I prefer clear and detailed explanations.
@@ -21,8 +21,9 @@ The application employs a client-server architecture with a React frontend and a
 
 **Technical Implementations**:
 - **Frontend**: React with TypeScript, React Query for data fetching, Wouter for routing, and SheetJS for client-side Excel handling.
-- **Backend**: Express.js server, Drizzle ORM for PostgreSQL, Multer for file uploads, and SheetJS for server-side Excel processing.
-- **Database**: PostgreSQL (Neon-backed) with `orders`, `payment_records`, `marketplace_orders`, and `bank_statements` tables storing data as JSONB, managed by `drizzle-kit`.
+- **Backend**: Express.js server, Drizzle ORM for PostgreSQL, Multer for file uploads, SheetJS for server-side Excel processing, and OpenAI API for AI assistant.
+- **Database**: PostgreSQL (Neon-backed) with `orders`, `payment_records`, `marketplace_orders`, `bank_statements`, and `embeddings` tables. Data stored as JSONB, managed by `drizzle-kit`. Pgvector extension enabled for RAG capabilities.
+- **AI/ML**: OpenAI API with text-embedding-3-small for embeddings and GPT-4-turbo-preview for chat completions. Custom RAG implementation with semantic similarity search.
 
 **Feature Specifications**:
 - **File Upload**: Drag & drop or selection with client-side and backend validation for orders, payments, and marketplace orders.
@@ -35,6 +36,13 @@ The application employs a client-server architecture with a React frontend and a
 - **Bank Statements View (`BANCO`)**: Displays bank statement data with flexible schema, complete replacement on upload with automatic deduplication by reference number (keeps last occurrence), column sorting, Excel export, master filter support, and a collapsible filter panel for `Referencia`. Includes automatic `CONCILIADO` column (after Saldo) showing "SI" (green badge) when bank transaction matches any payment record, "NO" (secondary badge) otherwise. Uses reverse lookup against ALL payment records (not filtered) with 8-digit partial reference matching and ±$0.01 amount tolerance.
 - **Cuotas View (`CUOTAS`)**: Displays installments vertically with collapsible filters (date range, order, status), and a period-based dashboard showing `CUOTAS DEL PERIODO` (count of filtered cuotas) and `CUENTAS POR COBRAR` (sum of filtered cuotas' amounts). Dashboard respects ALL filters (both master and tab-specific) and updates dynamically. Supports tri-state column sorting and Excel export.
 - **Marketplace Orders View (`MARKETPLACE ORDERS`)**: Displays marketplace order data with flexible schema, complete replacement on upload, sorting, Excel export, and collapsible filters for `Estado`, `Orden`, `Estado de Entrega`, and `# Referencia`.
+- **AI Assistant View (`ASISTENTE AI`)**: Natural language query interface powered by OpenAI GPT-4 with RAG (Retrieval-Augmented Generation) capabilities:
+  * **RAG System**: Uses pgvector extension for PostgreSQL to store and search embeddings of system documentation and business rules
+  * **Knowledge Base**: 12 Spanish-language documents covering database schema, business rules, status meanings, verification logic, filters, calculations, views, SQL examples, deduplication, and date handling
+  * **Query Processing**: Retrieves relevant context via semantic similarity search, generates SQL queries safely (read-only SELECT statements only), executes against database, and provides Spanish-language responses
+  * **Chat Interface**: Conversational UI with message history, quick action buttons (monthly report, payment trends, bank reconciliation), loading states, and SQL query display
+  * **Safety Features**: Validates all SQL queries to prevent INSERT/UPDATE/DELETE operations, only allows SELECT statements, includes error handling and timeout protection
+  * **Technology**: OpenAI text-embedding-3-small for embeddings, GPT-4-turbo-preview for chat completions, cosine similarity for context retrieval
 - **Monthly Report View (`REPORTE MENSUAL`)**: Displays dynamic financial summary metrics and bank reconciliation calculations:
   * **Summary Metrics**: `Ventas Totales`, `Monto Pagado en Caja`, `Monto Financiado`, `Porcentaje Financiado` (calculated from marketplace order data)
   * **Bank Reconciliation (Conciliación Bancaria)**: Five deduction metrics and net calculation:
@@ -84,4 +92,5 @@ The application employs a client-server architecture with a React frontend and a
 ## External Dependencies
 - **Database**: PostgreSQL (Neon).
 - **Frontend Libraries**: React, Tailwind CSS, Shadcn UI, SheetJS (xlsx), Wouter, React Query.
-- **Backend Libraries**: Express.js, Drizzle ORM, Multer, SheetJS (xlsx).
+- **Backend Libraries**: Express.js, Drizzle ORM, Multer, SheetJS (xlsx), OpenAI API.
+- **AI/ML**: OpenAI API (OPENAI_API_KEY required as environment variable).
