@@ -95,3 +95,23 @@ export interface ParsedExcelData {
   fileName: string;
   rowCount: number;
 }
+
+export const embeddings = pgTable("embeddings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  content: text("content").notNull(),
+  embedding: text("embedding").notNull(),
+  metadata: jsonb("metadata").$type<{
+    section: string;
+    category: string;
+    [key: string]: any;
+  }>(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertEmbeddingSchema = createInsertSchema(embeddings).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertEmbedding = z.infer<typeof insertEmbeddingSchema>;
+export type Embedding = typeof embeddings.$inferSelect;

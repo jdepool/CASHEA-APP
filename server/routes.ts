@@ -1214,6 +1214,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/ai/chat", async (req, res) => {
+    try {
+      const { message, conversationHistory } = req.body;
+
+      if (!message || typeof message !== 'string') {
+        return res.status(400).json({ error: 'Mensaje inválido' });
+      }
+
+      const { processUserQuery } = await import('./ai-agent-service');
+      
+      const response = await processUserQuery(message, conversationHistory || []);
+
+      res.json(response);
+    } catch (error) {
+      console.error('Error en AI chat:', error);
+      res.status(500).json({ 
+        error: 'Error procesando tu consulta',
+        details: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+
+  app.post("/api/ai/initialize-kb", async (req, res) => {
+    try {
+      const { initializeKnowledgeBase } = await import('./init-knowledge-base');
+      await initializeKnowledgeBase();
+      res.json({ success: true, message: 'Base de conocimiento inicializada' });
+    } catch (error) {
+      console.error('Error inicializando KB:', error);
+      res.status(500).json({ 
+        error: 'Error al inicializar base de conocimiento',
+        details: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

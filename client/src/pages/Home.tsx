@@ -13,6 +13,7 @@ import { CuotasTable } from "@/components/CuotasTable";
 import { MonthlyReport } from "@/components/MonthlyReport";
 import { MasterFilter } from "@/components/MasterFilter";
 import { BankStatementsTable } from "@/components/BankStatementsTable";
+import { AIAssistant } from "@/components/AIAssistant";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -683,6 +684,9 @@ export default function Home() {
                   <TabsTrigger value="monthly-report" data-testid="tab-monthly-report">
                     REPORTE MENSUAL
                   </TabsTrigger>
+                  <TabsTrigger value="ai-assistant" data-testid="tab-ai-assistant">
+                    ASISTENTE AI
+                  </TabsTrigger>
                 </TabsList>
               </div>
 
@@ -1127,6 +1131,10 @@ export default function Home() {
                   filteredPagosMasterOnlyData={filteredPagosMasterOnlyData}
                   cuotasAdelantadasPeriodosAnteriores={cuotasAdelantadasPeriodosAnteriores}
                 />
+              </TabsContent>
+
+              <TabsContent value="ai-assistant" className="h-[calc(100vh-200px)]">
+                <AIAssistant />
               </TabsContent>
             </Tabs>
             </>
