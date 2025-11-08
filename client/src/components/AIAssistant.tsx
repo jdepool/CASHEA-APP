@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Send, Bot, User, TrendingUp, FileText, DollarSign, Sparkles } from "lucide-react";
+import { Loader2, Send, Bot, User, TrendingUp, FileText, DollarSign, Sparkles, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -102,6 +102,14 @@ export function AIAssistant() {
     setTimeout(() => handleSendMessage(), 100);
   };
 
+  const handleClearChat = () => {
+    setMessages([]);
+    toast({
+      title: "Chat limpiado",
+      description: "El historial de conversación ha sido borrado.",
+    });
+  };
+
   useEffect(() => {
     if (scrollAreaRef.current) {
       scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
@@ -110,16 +118,29 @@ export function AIAssistant() {
 
   return (
     <div className="h-full flex flex-col space-y-4">
-      <div className="flex items-center gap-3 pb-4">
-        <div className="p-2 bg-primary/10 rounded-lg">
-          <Sparkles className="h-6 w-6 text-primary" />
+      <div className="flex items-center justify-between pb-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <Sparkles className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-semibold">Asistente AI</h2>
+            <p className="text-muted-foreground">
+              Pregunta sobre tus datos de órdenes, pagos, cuotas y conciliación bancaria
+            </p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-2xl font-semibold">Asistente AI</h2>
-          <p className="text-muted-foreground">
-            Pregunta sobre tus datos de órdenes, pagos, cuotas y conciliación bancaria
-          </p>
-        </div>
+        {messages.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleClearChat}
+            data-testid="button-clear-chat"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Limpiar chat
+          </Button>
+        )}
       </div>
 
       {messages.length === 0 && (

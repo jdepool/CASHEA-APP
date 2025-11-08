@@ -16,45 +16,52 @@ Tienes acceso completo de lectura a toda la base de datos con información sobre
 - Estados de cuenta bancarios (bank_statements)
 - Órdenes del marketplace (marketplace_orders)
 
+CÓMO CONSULTAR DATOS:
+Para responder preguntas sobre los datos, usa la función "query_database" que te permite ejecutar consultas SQL.
+- Los datos están en formato JSONB en columnas llamadas "rows"
+- Usa: SELECT rows FROM tabla WHERE condiciones
+- Para filtrar JSONB usa operadores: @>, ->, ->>
+- SIEMPRE usa la función query_database cuando necesites información de la base de datos
+- NO inventes datos, SIEMPRE consulta primero
+
 REGLAS FUNDAMENTALES:
 1. **Responde SIEMPRE en español** de forma directa y concisa
-2. **NO muestres código SQL ni detalles técnicos al usuario** - NUNCA incluyas bloques de código SQL en tu respuesta, ejecuta las consultas internamente y presenta solo los resultados interpretados
-3. **Manejo de errores de escritura**: Si el usuario comete un typo, asume inteligentemente lo que quiso decir y responde directamente. Solo menciona tu interpretación si hay ambigüedad real (ejemplo: "Asumiendo que te refieres a 'órdenes activas', aquí está la información...")
-4. **Máxima concisión**: Responde en 1-2 oraciones como máximo, salvo que el usuario pida explícitamente un desglose detallado. Evita listas numeradas y formateo innecesario para consultas simples
-5. **Solo lectura**: Nunca modifiques, insertes o elimines datos
-
-FORMATO DE DATOS:
-- Los datos están en formato JSONB en columnas llamadas "rows"
-- Para consultar usa: SELECT rows FROM tabla WHERE condiciones
-- Para filtrar JSONB usa: @>, ->, ->> según necesites
+2. **NO muestres código SQL al usuario** - las consultas se ejecutan internamente
+3. **Manejo de typos**: Si el usuario comete un error de escritura, asume lo que quiso decir y responde. Solo menciona tu interpretación si hay ambigüedad real
+4. **Máxima concisión**: Responde en 1-2 oraciones, salvo que el usuario pida un desglose detallado
+5. **Solo lectura**: Solo consultas SELECT, nunca INSERT/UPDATE/DELETE
+6. **Datos reales**: NUNCA inventes números o información. Si necesitas datos, usa query_database
 
 FORMATO DE RESPUESTA:
-- Responde directamente con la información solicitada
-- Usa números, listas o tablas según sea más claro
-- Formatea montos con símbolos de moneda apropiados
-- Si generas SQL para consultar, NO lo muestres al usuario - solo muestra los resultados interpretados
+- Responde directamente con la información consultada
+- Formatea montos con símbolos de moneda (USD, $, etc.)
 - Sé conversacional pero profesional
 
-EJEMPLOS DE BUENAS RESPUESTAS (CONCISAS):
+EJEMPLOS:
 Usuario: "¿Cuántas órdenes activas tengo?"
-Tú: "Tienes 150 órdenes activas."
-
-Usuario: "¿Cuánto dinero tengo pendiente de cobrar?"
-Tú: "Tienes $45,230.50 USD pendientes de cobrar."
+Tú: [Llamas query_database con SQL] → "Tienes 120 órdenes activas."
 
 Usuario: "dame un resumne del mes" (con typo)
-Tú: "Este mes: 45 órdenes nuevas ($120,500 en ventas), $89,340 recibidos en pagos, 234 cuotas pendientes ($78,450)."
+Tú: [Llamas query_database] → "Este mes: 35 órdenes nuevas ($98,450 en ventas), $67,200 recibidos, 189 cuotas pendientes ($45,680)."`;
 
-Usuario: "dame un resumen detallado del mes" (pide detalles explícitamente)
-Tú: "Resumen mensual detallado: 1) Órdenes nuevas: 45 con ventas totales de $120,500. 2) Pagos recibidos: $89,340. 3) Cuotas pendientes: 234 por un total de $78,450. 4) Tasa de cobro: 53.4%."
-
-EJEMPLOS DE MALAS RESPUESTAS (NO hagas esto):
-- "Voy a consultar la base de datos para..."
-- "Ejecutaré esta consulta SQL: SELECT..."
-- "Detecté que escribiste 'resumne' en lugar de 'resumen'..."
-- Mostrar código SQL en bloques de código
-
-RECUERDA: El usuario solo quiere la información, no los detalles de cómo la obtienes.`;
+const QUERY_DATABASE_FUNCTION = {
+  name: 'query_database',
+  description: 'Ejecuta una consulta SQL de solo lectura (SELECT) contra la base de datos de cuotas de pago. Devuelve los resultados para que puedas interpretarlos y responder al usuario.',
+  parameters: {
+    type: 'object',
+    properties: {
+      sql_query: {
+        type: 'string',
+        description: 'La consulta SQL SELECT a ejecutar. Los datos están en columnas JSONB llamadas "rows". Usa operadores JSONB como @>, ->, ->> para filtrar.',
+      },
+      reasoning: {
+        type: 'string',
+        description: 'Breve explicación de qué información buscas con esta consulta (para logging interno, no se muestra al usuario).',
+      },
+    },
+    required: ['sql_query', 'reasoning'],
+  },
+};
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -78,48 +85,97 @@ export async function processUserQuery(
     const contextualizedPrompt = `${SYSTEM_PROMPT}
 
 CONTEXTO RELEVANTE DE LA BASE DE CONOCIMIENTO:
-${relevantContext}
+${relevantContext}`;
 
----
-
-Ahora responde a la consulta del usuario teniendo en cuenta este contexto.`;
-
-    const messages: ChatMessage[] = [
+    const messages: any[] = [
       { role: 'system', content: contextualizedPrompt },
       ...conversationHistory,
       { role: 'user', content: userQuery },
     ];
 
-    const completion = await openai.chat.completions.create({
+    let sqlQuery: string | undefined;
+    let data: any;
+    let assistantMessage: string;
+
+    const initialCompletion = await openai.chat.completions.create({
       model: 'gpt-4-turbo-preview',
-      messages: messages as any,
-      temperature: 0.7,
+      messages,
+      tools: [{ type: 'function', function: QUERY_DATABASE_FUNCTION }],
+      tool_choice: 'auto',
+      temperature: 0.3,
       max_tokens: 2000,
     });
 
-    const assistantMessage = completion.choices[0]?.message?.content || 
-      'Lo siento, no pude procesar tu consulta.';
-
-    const sqlMatch = assistantMessage.match(/```sql\n([\s\S]*?)\n```/);
-    let sqlQuery: string | undefined;
-    let data: any;
-
-    if (sqlMatch && sqlMatch[1]) {
-      sqlQuery = sqlMatch[1].trim();
+    const choice = initialCompletion.choices[0];
+    
+    if (choice.message.tool_calls && choice.message.tool_calls.length > 0) {
+      const toolCall = choice.message.tool_calls[0];
       
-      if (isReadOnlyQuery(sqlQuery)) {
-        try {
-          const result = await db.execute(sql.raw(sqlQuery));
-          data = result.rows;
-        } catch (error) {
-          console.error('Error ejecutando SQL:', error);
-          data = { error: 'Error al ejecutar la consulta SQL' };
+      if (toolCall.type === 'function' && toolCall.function.name === 'query_database') {
+        const args = JSON.parse(toolCall.function.arguments);
+        sqlQuery = args.sql_query;
+        const reasoning = args.reasoning;
+        
+        console.log('[AI Agent] Query reasoning:', reasoning);
+        console.log('[AI Agent] Generated SQL:', sqlQuery || '');
+
+        if (sqlQuery && isReadOnlyQuery(sqlQuery)) {
+          try {
+            const result = await db.execute(sql.raw(sqlQuery));
+            data = result.rows;
+            
+            messages.push(choice.message);
+            messages.push({
+              role: 'tool',
+              tool_call_id: toolCall.id,
+              content: JSON.stringify({
+                success: true,
+                rows: data,
+                rowCount: data.length,
+              }),
+            });
+
+            const finalCompletion = await openai.chat.completions.create({
+              model: 'gpt-4-turbo-preview',
+              messages,
+              temperature: 0.3,
+              max_tokens: 1000,
+            });
+
+            assistantMessage = finalCompletion.choices[0]?.message?.content || 
+              'Obtuve los datos pero no pude generar una respuesta.';
+              
+          } catch (error: any) {
+            console.error('[AI Agent] SQL execution error:', error);
+            
+            messages.push(choice.message);
+            messages.push({
+              role: 'tool',
+              tool_call_id: toolCall.id,
+              content: JSON.stringify({
+                success: false,
+                error: error.message || 'Error al ejecutar la consulta',
+              }),
+            });
+
+            const errorCompletion = await openai.chat.completions.create({
+              model: 'gpt-4-turbo-preview',
+              messages,
+              temperature: 0.3,
+              max_tokens: 500,
+            });
+
+            assistantMessage = errorCompletion.choices[0]?.message?.content || 
+              'Lo siento, hubo un error al consultar los datos.';
+          }
+        } else {
+          assistantMessage = 'Lo siento, esa consulta no está permitida. Solo puedo ejecutar consultas de lectura (SELECT).';
         }
       } else {
-        data = { 
-          error: 'Consulta rechazada: Solo se permiten consultas de lectura (SELECT)' 
-        };
+        assistantMessage = choice.message.content || 'Lo siento, no pude procesar tu consulta.';
       }
+    } else {
+      assistantMessage = choice.message.content || 'Lo siento, no pude procesar tu consulta.';
     }
 
     return {
