@@ -184,12 +184,26 @@ export class DatabaseStorage implements IStorage {
       let added = 0;
       let updated = 0;
       
-      // Merge new orders: replace if Orden exists, add if new
+      // Merge new orders: smart merge for existing, add if new
       newOrders.forEach((newRow: any) => {
         if (newRow.Orden) {
           if (existingOrdersMap.has(newRow.Orden)) {
             updated++;
-            existingOrdersMap.set(newRow.Orden, newRow); // Replace existing
+            // Smart merge: only update fields with non-empty values
+            const existingRow = existingOrdersMap.get(newRow.Orden);
+            const mergedRow = { ...existingRow }; // Start with existing data
+            
+            // Update only non-empty fields from new row
+            Object.keys(newRow).forEach(key => {
+              const newValue = newRow[key];
+              // Update if new value is not empty/null/undefined/whitespace
+              if (newValue != null && String(newValue).trim() !== '') {
+                mergedRow[key] = newValue;
+              }
+              // Otherwise keep the existing value (don't overwrite with empty)
+            });
+            
+            existingOrdersMap.set(newRow.Orden, mergedRow);
           } else {
             added++;
             existingOrdersMap.set(newRow.Orden, newRow); // Add new
