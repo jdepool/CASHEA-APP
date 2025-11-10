@@ -534,7 +534,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "NUMERO DE CUOTAS": ["Tipo orden", "Tipo Orden", "TIPO ORDEN"],
         "STATUS ORDEN": ["Estado Orden", "Estado orden", "ESTADO ORDEN"],
         "Fecha de compra": ["Fecha compra", "Fecha Compra", "FECHA COMPRA"],
+        "Orden": ["# Orden", "#Orden"],
       };
+      
+      // Add dynamic mappings for all cuotas 1-14
+      for (let i = 1; i <= 14; i++) {
+        headerMapping[`Cuota ${i}`] = [`Monto cuota ${i}`, `Monto Cuota ${i}`, `MONTO CUOTA ${i}`];
+        headerMapping[`Pagado de cuota ${i}`] = [`Pagado cuota ${i}`, `Pagado Cuota ${i}`, `PAGADO CUOTA ${i}`];
+        headerMapping[`Fecha de pago cuota ${i}`] = [`Fecha pago cuota ${i}`, `Fecha Pago Cuota ${i}`, `FECHA PAGO CUOTA ${i}`];
+      }
 
       const requiredHeaders = [
         "Orden",
