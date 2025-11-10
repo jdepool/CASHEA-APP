@@ -27,6 +27,7 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
     const fechaPago = inst.fechaPagoReal;
     const fechaCuota = inst.fechaCuota;
     const estadoCuota = (inst.estadoCuota || '').toLowerCase();
+    const verificacion = (inst.verificacion || '').toUpperCase().trim();
     
     // NO DEPOSITADO: Order is DONE but no payment received
     if (!fechaPago && estadoCuota === 'done') return 5;
@@ -34,8 +35,8 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
     // No status if no payment and order not done
     if (!fechaPago) return 0;
     
-    // OTRO ALIADO: Payment exists but no due date
-    if (fechaCuota == null) return 4;
+    // OTRO ALIADO: Payment exists but no due date OR (payment exists + due date exists + VERIFICACION = NO)
+    if (fechaCuota == null || verificacion === 'NO') return 4;
     
     // If we have both dates, calculate the status
     const pagoNormalized = new Date(fechaPago);
@@ -330,6 +331,7 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
                   const fechaPago = (inst as any).fechaPagoReal;
                   const fechaCuota = inst.fechaCuota;
                   const estadoCuota = (inst.estadoCuota || '').toLowerCase();
+                  const verificacion = ((inst as any).verificacion || '').toUpperCase().trim();
                   
                   // NO DEPOSITADO: Order is DONE but no payment received
                   if (!fechaPago && estadoCuota === 'done') {
@@ -345,8 +347,8 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
                     return <span className="text-muted-foreground text-xs">—</span>;
                   }
                   
-                  // OTRO ALIADO: Payment exists but no due date
-                  if (fechaCuota == null) {
+                  // OTRO ALIADO: Payment exists but no due date OR (payment exists + due date exists + VERIFICACION = NO)
+                  if (fechaCuota == null || verificacion === 'NO') {
                     return (
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
                         OTRO ALIADO

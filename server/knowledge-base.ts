@@ -108,14 +108,22 @@ Una cuota está ATRASADA cuando:
 - Indica morosidad del cliente
 
 ## OTRO ALIADO
-Una cuota tiene estado OTRO ALIADO cuando:
+Una cuota tiene estado OTRO ALIADO cuando se cumple CUALQUIERA de estas condiciones:
+
+**Condición 1 - Pago sin cuota programada:**
 - Existe un registro de pago (en payment_records) pero NO existe una fecha programada correspondiente en la orden
 - Esto ocurre cuando un pago se registra pero no hay una cuota programada que coincida
 - Indica pagos de otros vendedores o aliados comerciales
 
+**Condición 2 - Pago no verificado en banco:**
+- Existe un registro de pago Y existe una fecha programada en la orden
+- Pero el pago tiene VERIFICACION = NO (no se encontró en el estado de cuenta bancario)
+- Indica que el pago reportado no se pudo confirmar en el banco
+
 Impacto financiero:
 - Se consideran "Depósitos de otros aliados"
 - Se deben restar del "Banco neto" en conciliación bancaria
+- Incluye tanto pagos sin cuota programada como pagos no verificados bancariamente
 
 ## NO DEPOSITADO
 Una cuota está NO DEPOSITADA cuando:

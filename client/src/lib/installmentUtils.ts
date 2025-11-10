@@ -151,8 +151,10 @@ export function calculateInstallmentStatus(installment: any): string {
   // Use fechaPagoReal if available, otherwise use fechaPago from order
   const fechaPago = fechaPagoReal || fechaPagoFromOrder;
   
-  // OTRO ALIADO: Payment exists but no due date
-  if (fechaCuota == null) {
+  // OTRO ALIADO: Payment exists but no due date OR (payment exists + due date exists + VERIFICACION = NO)
+  // This catches: 1) Payments without scheduled cuotas, 2) Payments not verified in bank statement
+  const verificacion = (installment.verificacion || '').toUpperCase().trim();
+  if (fechaCuota == null || verificacion === 'NO') {
     return 'OTRO ALIADO';
   }
   
