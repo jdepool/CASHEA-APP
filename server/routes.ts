@@ -527,6 +527,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Headers containing "Nombre":', allHeaders.filter(h => h.toLowerCase().includes('nombre')));
       console.log('Headers containing "Venta":', allHeaders.filter(h => h.toLowerCase().includes('venta')));
       console.log('Headers containing "Cuota 1":', allHeaders.filter(h => h.includes('1')).slice(0, 5));
+      console.log('ALL HEADERS:', JSON.stringify(allHeaders, null, 2));
 
       // Map output header names to possible input header names
       const headerMapping: { [key: string]: string[] } = {
