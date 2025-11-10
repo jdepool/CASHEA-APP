@@ -117,23 +117,24 @@ export default function Home() {
     refetchOnWindowFocus: false,
   });
 
-  // Helper function to deduplicate orders by order number
+  // Helper function to deduplicate orders by order number (keeps last occurrence)
   const deduplicateOrders = useCallback((rows: any[], headers: string[]) => {
     const ordenHeader = headers.find((h: string) => h.toLowerCase() === 'orden');
     if (!ordenHeader) return rows;
     
-    const seenOrders = new Set<string>();
-    return rows.filter((row: any) => {
+    const ordersMap = new Map<string, any>();
+    const rowsWithoutOrden: any[] = [];
+    
+    rows.forEach((row: any) => {
       const ordenValue = String(row[ordenHeader] || '').trim();
-      if (!ordenValue) return true; // Keep rows without order number
-      
-      if (seenOrders.has(ordenValue)) {
-        return false; // Skip duplicate
+      if (!ordenValue) {
+        rowsWithoutOrden.push(row); // Keep rows without order number
+      } else {
+        ordersMap.set(ordenValue, row); // Overwrites previous, keeping last occurrence
       }
-      
-      seenOrders.add(ordenValue);
-      return true; // Keep first occurrence
     });
+    
+    return [...Array.from(ordersMap.values()), ...rowsWithoutOrden];
   }, []);
 
   // Load persisted data when query succeeds
@@ -501,22 +502,23 @@ export default function Home() {
       return true;
     });
 
-    // Step 2: Deduplicate by order number (keep first occurrence)
+    // Step 2: Deduplicate by order number (keep last occurrence)
     const ordenHeader = headers.find(h => h.toLowerCase() === 'orden');
     if (!ordenHeader) return filtered;
 
-    const seenOrders = new Set<string>();
-    return filtered.filter((row) => {
+    const ordersMap = new Map<string, any>();
+    const rowsWithoutOrden: any[] = [];
+    
+    filtered.forEach((row) => {
       const ordenValue = String(row[ordenHeader] || '').trim();
-      if (!ordenValue) return true; // Keep rows without order number
-      
-      if (seenOrders.has(ordenValue)) {
-        return false; // Skip duplicate
+      if (!ordenValue) {
+        rowsWithoutOrden.push(row); // Keep rows without order number
+      } else {
+        ordersMap.set(ordenValue, row); // Overwrites previous, keeping last occurrence
       }
-      
-      seenOrders.add(ordenValue);
-      return true; // Keep first occurrence
     });
+    
+    return [...Array.from(ordersMap.values()), ...rowsWithoutOrden];
   }, [tableData, headers, dateFrom, dateTo, ordenFilter, referenciaFilter, estadoCuotaFilter, masterDateFrom, masterDateTo, masterOrden]);
 
   const handleExportOrders = () => {
