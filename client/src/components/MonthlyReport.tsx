@@ -298,7 +298,10 @@ export function MonthlyReport({
         if (recordDate) {
           if (masterDateFrom) {
             const fromDate = parseDDMMYYYY(masterDateFrom);
-            if (fromDate && recordDate < fromDate) return false;
+            if (fromDate) {
+              fromDate.setHours(0, 0, 0, 0);
+              if (recordDate < fromDate) return false;
+            }
           }
           if (masterDateTo) {
             const toDate = parseDDMMYYYY(masterDateTo);
