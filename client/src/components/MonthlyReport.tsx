@@ -4,6 +4,7 @@ import { FileSpreadsheet } from "lucide-react";
 import { normalizeNumber } from "@shared/numberUtils";
 import { parseDDMMYYYY, parseExcelDate } from "@/lib/dateUtils";
 import { calculateInstallmentStatus, calculateDepositosOtrosBancos, calculateCuotasAdelantadas } from "@/lib/installmentUtils";
+import { verifyInBankStatements } from "@/lib/verificationUtils";
 
 interface MonthlyReportProps {
   marketplaceData: any;
@@ -54,95 +55,23 @@ export function MonthlyReport({
     return headers.find((h: string) => h.toLowerCase().includes(name.toLowerCase()));
   };
 
-  // Function to verify if a payment exists in bank statements (reused from PaymentRecordsDashboard)
+  // Function to verify if a payment exists in bank statements (uses shared utility)
   const verifyPaymentInBankStatement = useMemo(() => {
-    // Find relevant headers in bank statement (case-insensitive)
-    const referenciaHeader = bankStatementHeaders?.find(h => 
-      h.toLowerCase().includes('referencia')
-    );
-    const debeHeader = bankStatementHeaders?.find(h => 
-      h.toLowerCase().includes('debe')
-    );
-    const haberHeader = bankStatementHeaders?.find(h => 
-      h.toLowerCase().includes('haber')
-    );
-
     return (record: any): string => {
-      // If no bank statements available, return "NO"
-      if (!bankStatementRows || bankStatementRows.length === 0) {
-        return 'NO';
-      }
-
       const paymentRef = record['# Referencia'];
+      // Handle case-insensitive column name matching
       const paymentAmountVES = record['Monto Pagado en VES'] || record['Monto pagado en VES'];
       const paymentAmountUSD = record['Monto Pagado en USD'] || record['Monto pagado en USD'];
 
-      // If no reference or amounts, can't verify
-      if (!paymentRef || (!paymentAmountVES && !paymentAmountUSD)) {
-        return 'NO';
-      }
-
-      // Normalize payment reference (remove spaces, leading zeros, quotes)
-      const normalizedPaymentRef = String(paymentRef).replace(/\s+/g, '').replace(/^0+/, '').replace(/['"]/g, '').toLowerCase();
-
-      // Normalize payment amounts
-      const normalizedVES = paymentAmountVES ? normalizeNumber(paymentAmountVES) : null;
-      const normalizedUSD = paymentAmountUSD ? normalizeNumber(paymentAmountUSD) : null;
-
-      // Search bank statements for matching reference and amount
-      const found = bankStatementRows.some(bankRow => {
-        // Check reference match
-        if (referenciaHeader) {
-          const bankRef = bankRow[referenciaHeader];
-          if (bankRef) {
-            const normalizedBankRef = String(bankRef).replace(/\s+/g, '').replace(/^0+/, '').replace(/['"]/g, '').toLowerCase();
-            if (normalizedBankRef !== normalizedPaymentRef) {
-              return false;
-            }
-          } else {
-            return false;
-          }
-        } else {
-          return false;
-        }
-
-        // Reference matches, now check amount
-        let amountFound = false;
-
-        if (debeHeader) {
-          const debeAmount = bankRow[debeHeader];
-          if (debeAmount) {
-            const normalizedDebe = normalizeNumber(debeAmount);
-            if (!isNaN(normalizedDebe)) {
-              if (normalizedVES !== null && Math.abs(normalizedDebe - normalizedVES) < 0.01) {
-                amountFound = true;
-              }
-              if (normalizedUSD !== null && Math.abs(normalizedDebe - normalizedUSD) < 0.01) {
-                amountFound = true;
-              }
-            }
-          }
-        }
-
-        if (haberHeader && !amountFound) {
-          const haberAmount = bankRow[haberHeader];
-          if (haberAmount) {
-            const normalizedHaber = normalizeNumber(haberAmount);
-            if (!isNaN(normalizedHaber)) {
-              if (normalizedVES !== null && Math.abs(normalizedHaber - normalizedVES) < 0.01) {
-                amountFound = true;
-              }
-              if (normalizedUSD !== null && Math.abs(normalizedHaber - normalizedUSD) < 0.01) {
-                amountFound = true;
-              }
-            }
-          }
-        }
-
-        return amountFound;
-      });
-
-      return found ? 'SI' : 'NO';
+      return verifyInBankStatements(
+        {
+          reference: paymentRef,
+          amountVES: paymentAmountVES,
+          amountUSD: paymentAmountUSD,
+        },
+        bankStatementRows,
+        bankStatementHeaders
+      );
     };
   }, [bankStatementRows, bankStatementHeaders]);
 
