@@ -391,6 +391,11 @@ export function MonthlyReport({
       h.toLowerCase().includes('usd')
     );
     
+    console.log('=== REPORTE MENSUAL - Recibido en Banco ===');
+    console.log('Total payment records (unfiltered):', paymentRecordsData.length);
+    console.log('Filtered payment records:', filteredPaymentRecords.length);
+    console.log('Master filters:', { masterDateFrom, masterDateTo, masterOrden });
+    
     if (montoUsdHeader && filteredPaymentRecords.length > 0) {
       filteredPaymentRecords.forEach((record: any) => {
         const verificacion = verifyPaymentInBankStatement(record);
@@ -402,6 +407,8 @@ export function MonthlyReport({
         }
       });
     }
+    
+    console.log('Recibido en Banco calculated:', recibidoEnBanco);
     
     // 2. Cuotas adelantadas de clientes = sum of installments with ADELANTADO status
     // Calculated from payment-based installments (CONCILIACION DE PAGOS) with master filters only
