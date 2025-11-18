@@ -8,6 +8,8 @@ import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { parseDDMMYYYY, parseExcelDate } from "@/lib/dateUtils";
 import { MarketplaceDashboard } from "@/components/MarketplaceDashboard";
+import { Badge } from "@/components/ui/badge";
+import { verifyInBankStatements } from "@/lib/verificationUtils";
 
 interface TableRow {
   [key: string]: any;
@@ -34,6 +36,8 @@ interface MarketplaceOrdersTableProps {
   masterDateFrom?: string;
   masterDateTo?: string;
   masterOrden?: string;
+  bankStatementRows?: any[];
+  bankStatementHeaders?: string[];
 }
 
 type SortDirection = 'asc' | 'desc' | null;
@@ -58,7 +62,9 @@ export function MarketplaceOrdersTable({
   setReferenciaFilter,
   masterDateFrom,
   masterDateTo,
-  masterOrden
+  masterOrden,
+  bankStatementRows = [],
+  bankStatementHeaders = []
 }: MarketplaceOrdersTableProps) {
   const { toast } = useToast();
   const [sortColumn, setSortColumn] = useState<string | null>(null);
@@ -73,31 +79,73 @@ export function MarketplaceOrdersTable({
   const ordenColumn = findColumn("# orden") || findColumn("orden");
   const estadoEntregaColumn = findColumn("estado de entrega") || findColumn("entrega");
   const referenciaColumn = findColumn("# referencia") || findColumn("referencia");
+  const montoColumn = findColumn("monto en bs");
   // Find any date column - prioritize common names
   const dateColumn = findColumn("fecha") || findColumn("date") || headers.find(h => h.toLowerCase().includes("fecha"));
+
+  // Create extended headers array with VERIFICACION column
+  const extendedHeaders = useMemo(() => {
+    const referenciaIndex = headers.findIndex(h => 
+      h.toLowerCase().includes('referencia')
+    );
+    
+    if (referenciaIndex === -1) {
+      // If no referencia column, just append VERIFICACION at the end
+      return [...headers, 'VERIFICACION'];
+    }
+    
+    // Insert VERIFICACION after # Referencia
+    const newHeaders = [...headers];
+    newHeaders.splice(referenciaIndex + 1, 0, 'VERIFICACION');
+    return newHeaders;
+  }, [headers]);
+
+  // Create extended data array with verification values
+  const extendedData = useMemo(() => {
+    return data.map(row => {
+      const reference = row[referenciaColumn];
+      const amount = row[montoColumn];
+      
+      const verificacion = verifyInBankStatements(
+        {
+          reference: reference,
+          amountVES: amount,
+          amountUSD: null, // Marketplace orders only have Monto en Bs
+        },
+        bankStatementRows,
+        bankStatementHeaders
+      );
+      
+      const extendedRow: TableRow = {
+        ...row,
+        VERIFICACION: verificacion
+      };
+      return extendedRow;
+    });
+  }, [data, referenciaColumn, montoColumn, bankStatementRows, bankStatementHeaders]);
 
   // Get unique values for dropdowns
   const uniqueEstados = useMemo(() => {
     const estados = new Set<string>();
-    data.forEach(row => {
+    extendedData.forEach(row => {
       const estado = row[estadoColumn];
       if (estado) estados.add(String(estado));
     });
     return Array.from(estados).sort();
-  }, [data, estadoColumn]);
+  }, [extendedData, estadoColumn]);
 
   const uniqueEstadosEntrega = useMemo(() => {
     const estados = new Set<string>();
-    data.forEach(row => {
+    extendedData.forEach(row => {
       const estado = row[estadoEntregaColumn];
       if (estado) estados.add(String(estado));
     });
     return Array.from(estados).sort();
-  }, [data, estadoEntregaColumn]);
+  }, [extendedData, estadoEntregaColumn]);
 
   // Apply filters
   const filteredData = useMemo(() => {
-    return data.filter(row => {
+    return extendedData.filter(row => {
       // MASTER FILTERS - Applied FIRST
       // Master date filter
       if (dateColumn && (masterDateFrom || masterDateTo)) {
@@ -224,7 +272,7 @@ export function MarketplaceOrdersTable({
 
       return true;
     });
-  }, [data, dateFrom, dateTo, estadoFilter, ordenFilter, estadoEntregaFilter, referenciaFilter, dateColumn, estadoColumn, ordenColumn, estadoEntregaColumn, referenciaColumn, masterDateFrom, masterDateTo, masterOrden]);
+  }, [extendedData, dateFrom, dateTo, estadoFilter, ordenFilter, estadoEntregaFilter, referenciaFilter, dateColumn, estadoColumn, ordenColumn, estadoEntregaColumn, referenciaColumn, masterDateFrom, masterDateTo, masterOrden]);
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -371,9 +419,9 @@ export function MarketplaceOrdersTable({
         <div>
           <h3 className="text-lg font-semibold">Marketplace Orders</h3>
           <p className="text-sm text-muted-foreground">
-            {hasActiveFilters && sortedData.length !== data.length ? (
+            {hasActiveFilters && sortedData.length !== extendedData.length ? (
               <>
-                {sortedData.length} de {data.length} {data.length === 1 ? 'registro' : 'registros'}
+                {sortedData.length} de {extendedData.length} {extendedData.length === 1 ? 'registro' : 'registros'}
               </>
             ) : (
               <>
@@ -507,7 +555,7 @@ export function MarketplaceOrdersTable({
         <table className="w-full">
           <thead className="sticky top-0 z-10 bg-muted shadow-sm">
             <tr className="border-b">
-              {headers.map((header, index) => (
+              {extendedHeaders.map((header, index) => (
                 <th
                   key={index}
                   onClick={() => handleSort(header)}
@@ -533,13 +581,22 @@ export function MarketplaceOrdersTable({
                 className="border-b hover-elevate"
                 data-testid={`row-marketplace-${rowIndex}`}
               >
-                {headers.map((header, colIndex) => (
+                {extendedHeaders.map((header, colIndex) => (
                   <td 
                     key={colIndex} 
                     className="py-2 px-4 text-sm"
                     data-testid={`cell-${header.toLowerCase().replace(/\s+/g, '-')}-${rowIndex}`}
                   >
-                    {formatValue(row[header], header)}
+                    {header === 'VERIFICACION' ? (
+                      <Badge 
+                        variant={row[header] === 'SI' ? 'default' : 'secondary'}
+                        className={row[header] === 'SI' ? 'bg-green-600 hover:bg-green-700' : ''}
+                      >
+                        {row[header]}
+                      </Badge>
+                    ) : (
+                      formatValue(row[header], header)
+                    )}
                   </td>
                 ))}
               </tr>

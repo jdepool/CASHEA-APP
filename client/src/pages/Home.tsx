@@ -1100,6 +1100,8 @@ export default function Home() {
                     masterDateFrom={masterDateFrom}
                     masterDateTo={masterDateTo}
                     masterOrden={masterOrden}
+                    bankStatementRows={(bankStatementsData as any)?.data?.rows || []}
+                    bankStatementHeaders={(bankStatementsData as any)?.data?.headers || []}
                   />
                 ) : (
                   <div className="text-center py-12">
