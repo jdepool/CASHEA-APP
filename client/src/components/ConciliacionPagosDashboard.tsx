@@ -98,25 +98,6 @@ export function ConciliacionPagosDashboard({ installments }: ConciliacionPagosDa
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Pagos Totales</p>
-                <p className="text-3xl font-bold text-blue-600 dark:text-blue-400" data-testid="metric-pagos-totales">
-                  {formatCurrency(metrics.pagosTotales)}
-                </p>
-                <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">
-                  {metrics.pagosCount} {metrics.pagosCount === 1 ? 'pago' : 'pagos'}
-                </p>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-                <DollarSign className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Cuotas Adelantadas</p>
                 <p className="text-3xl font-bold text-amber-600 dark:text-amber-400" data-testid="metric-cuotas-adelantadas">
                   {formatCurrency(metrics.cuotasAdelantadasMonto)}
@@ -127,6 +108,25 @@ export function ConciliacionPagosDashboard({ installments }: ConciliacionPagosDa
               </div>
               <div className="h-12 w-12 rounded-full bg-amber-100 dark:bg-amber-900/20 flex items-center justify-center">
                 <TrendingUp className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Pagos Totales</p>
+                <p className="text-3xl font-bold text-blue-600 dark:text-blue-400" data-testid="metric-pagos-totales">
+                  {formatCurrency(metrics.pagosTotales)}
+                </p>
+                <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                  {metrics.pagosCount} {metrics.pagosCount === 1 ? 'pago' : 'pagos'}
+                </p>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                <DollarSign className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>
             </div>
           </CardContent>
