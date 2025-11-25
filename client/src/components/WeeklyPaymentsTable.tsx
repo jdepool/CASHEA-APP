@@ -328,10 +328,20 @@ export function WeeklyPaymentsTable({ installments }: WeeklyPaymentsTableProps) 
               </td>
               <td className="py-3 px-4 text-sm" data-testid={`cell-status-${idx}`}>
                 {(() => {
+                  const numeroCuota = inst.numeroCuota;
                   const fechaPago = (inst as any).fechaPagoReal;
                   const fechaCuota = inst.fechaCuota;
                   const estadoCuota = (inst.estadoCuota || '').toLowerCase();
                   const verificacion = ((inst as any).verificacion || '').toUpperCase().trim();
+                  
+                  // INICIAL: Cuota 0 (Pago Inicial)
+                  if (numeroCuota === 0) {
+                    return (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-400">
+                        INICIAL
+                      </span>
+                    );
+                  }
                   
                   // NO DEPOSITADO: Order is DONE but no payment received
                   if (!fechaPago && estadoCuota === 'done') {
