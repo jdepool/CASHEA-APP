@@ -403,20 +403,78 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createMarketplaceOrder(insertMarketplaceOrder: InsertMarketplaceOrder): Promise<MarketplaceOrder> {
+    // Get all existing marketplace orders to merge with new data
+    const existingOrders = await db
+      .select()
+      .from(marketplaceOrders)
+      .orderBy(desc(marketplaceOrders.uploadedAt));
+    
+    // Collect all existing rows and headers
+    let existingRows: any[] = [];
+    const existingHeadersSet = new Set<string>();
+    
+    for (const order of existingOrders) {
+      if (order.rows && Array.isArray(order.rows)) {
+        existingRows = existingRows.concat(order.rows as any[]);
+      }
+      if (order.headers && Array.isArray(order.headers)) {
+        (order.headers as string[]).forEach(h => existingHeadersSet.add(h));
+      }
+    }
+    
+    // Merge headers: union of existing and new headers
+    const mergedHeaders = Array.from(new Set([
+      ...Array.from(existingHeadersSet),
+      ...insertMarketplaceOrder.headers
+    ]));
+    
+    // Find the order number column
+    const orderNumberHeader = mergedHeaders.find(h => 
+      h.toLowerCase().includes('orden') || 
+      h.toLowerCase().includes('order')
+    );
+    
+    // Merge rows and deduplicate by order number (keep first occurrence)
+    const seenOrders = new Map<string, any>();
+    
+    // Add existing rows first (to keep existing data)
+    existingRows.forEach((row: any) => {
+      if (orderNumberHeader) {
+        const orderNum = String(row[orderNumberHeader] || '').trim();
+        if (orderNum && !seenOrders.has(orderNum)) {
+          seenOrders.set(orderNum, row);
+        }
+      }
+    });
+    
+    // Add new rows (skip if order number already exists)
+    insertMarketplaceOrder.rows.forEach((row: any) => {
+      if (orderNumberHeader) {
+        const orderNum = String(row[orderNumberHeader] || '').trim();
+        if (orderNum && !seenOrders.has(orderNum)) {
+          seenOrders.set(orderNum, row);
+        }
+      } else {
+        // If no order number header, add all new rows
+        seenOrders.set(JSON.stringify(row), row);
+      }
+    });
+    
+    const mergedRows = Array.from(seenOrders.values());
+    
     // Use transaction to ensure atomic delete+insert
-    // If insert fails, delete is rolled back automatically
     return await db.transaction(async (tx) => {
       // Delete all existing marketplace orders
       await tx.delete(marketplaceOrders);
       
-      // Insert new marketplace order
+      // Insert merged marketplace orders
       const [marketplaceOrder] = await tx
         .insert(marketplaceOrders)
         .values({
           fileName: insertMarketplaceOrder.fileName,
-          headers: insertMarketplaceOrder.headers as any,
-          rows: insertMarketplaceOrder.rows as any,
-          rowCount: insertMarketplaceOrder.rowCount,
+          headers: mergedHeaders as any,
+          rows: mergedRows as any,
+          rowCount: String(mergedRows.length),
         })
         .returning();
       
