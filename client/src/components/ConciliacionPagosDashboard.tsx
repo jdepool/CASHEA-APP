@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { TrendingUp, Clock, Users, DollarSign } from "lucide-react";
+import { TrendingUp, Clock, Users, DollarSign, Zap } from "lucide-react";
 import { calculateCuotasAdelantadas } from "@/lib/installmentUtils";
 
 interface ConciliacionPagosDashboardProps {
@@ -21,6 +21,13 @@ export function ConciliacionPagosDashboard({ installments }: ConciliacionPagosDa
     const cuotasATiempoCount = cuotasATiempoFiltered.length;
     const cuotasATiempoMonto = cuotasATiempoFiltered.reduce((sum, inst) => sum + (inst.monto || 0), 0);
 
+    // INICIAL
+    const inicialFiltered = installments.filter(
+      inst => (inst.status || '').trim().toUpperCase() === 'INICIAL'
+    );
+    const inicialCount = inicialFiltered.length;
+    const inicialMonto = inicialFiltered.reduce((sum, inst) => sum + (inst.monto || 0), 0);
+
     // Pagos en Otros Aliados
     const pagosOtrosAliadosFiltered = installments.filter(
       inst => (inst.status || '').trim().toUpperCase() === 'OTRO ALIADO'
@@ -37,6 +44,8 @@ export function ConciliacionPagosDashboard({ installments }: ConciliacionPagosDa
       cuotasAdelantadasCount,
       cuotasATiempoCount,
       cuotasATiempoMonto,
+      inicialCount,
+      inicialMonto,
       pagosOtrosAliadosCount,
       pagosOtrosAliadosMonto,
       pagosTotales,
@@ -70,6 +79,25 @@ export function ConciliacionPagosDashboard({ installments }: ConciliacionPagosDa
               </div>
               <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
                 <Clock className="h-6 w-6 text-green-600 dark:text-green-400" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">INICIAL</p>
+                <p className="text-3xl font-bold text-cyan-600 dark:text-cyan-400" data-testid="metric-inicial">
+                  {formatCurrency(metrics.inicialMonto)}
+                </p>
+                <p className="text-xs font-semibold text-cyan-600 dark:text-cyan-400">
+                  {metrics.inicialCount} {metrics.inicialCount === 1 ? 'pago' : 'pagos'}
+                </p>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-cyan-100 dark:bg-cyan-900/20 flex items-center justify-center">
+                <Zap className="h-6 w-6 text-cyan-600 dark:text-cyan-400" />
               </div>
             </div>
           </CardContent>
