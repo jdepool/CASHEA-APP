@@ -541,128 +541,23 @@ export function MonthlyReport({
       });
     }
     
-    // 6. Calculate cuotasAdelantadasPeriodosAnteriores respecting MASTER filters (same as CONCILIACION DE CUOTAS)
-    // This should match what's shown in CONCILIACION DE CUOTAS dashboard
+    // 6. Calculate cuotasAdelantadasPeriodosAnteriores - Same calculation as CONCILIACION DE CUOTAS dashboard
+    // Sum of amounts where estado = 'done' AND status = 'ADELANTADO'
     let calculatedCuotasAdelantadas = 0;
     
-    if (ordersData.length > 0 && paymentRecordsData.length > 0) {
-      // Apply master orden filter to orders
-      const masterFilteredOrders = ordersData.filter((order: any) => {
-        if (masterOrden) {
-          const ordenNum = String(order['Orden'] || "").toLowerCase();
-          if (!ordenNum.includes(masterOrden.toLowerCase())) return false;
-        }
-        return true;
-      });
-      
-      // Apply master filters to payment records
-      const masterFilteredPayments = paymentRecordsData.filter((record: any) => {
-        // Master orden filter
-        if (masterOrden) {
-          const ordenHeader = paymentRecordsHeaders.find((h: string) => 
-            h.toLowerCase().includes('orden') && !h.toLowerCase().includes('cuota')
-          );
-          if (ordenHeader) {
-            const recordOrden = String(record[ordenHeader] || "").toLowerCase();
-            if (!recordOrden.includes(masterOrden.toLowerCase())) return false;
-          }
-        }
+    if (filteredInstallmentsData && filteredInstallmentsData.length > 0) {
+      // Use the pre-calculated filtered installments from the dashboard (CONCILIACION DE CUOTAS)
+      // This ensures consistency between the two components
+      filteredInstallmentsData.forEach((installment: any) => {
+        const estado = (installment.estadoCuota || '').trim().toLowerCase();
+        const status = (installment.status || '').trim().toUpperCase();
+        const monto = installment.monto || 0;
         
-        // Master date filter (using transaction date)
-        if (masterDateFrom || masterDateTo) {
-          const fechaTransaccionHeader = paymentRecordsHeaders.find((h: string) => 
-            h.toLowerCase().includes('fecha') && h.toLowerCase().includes('transac')
-          );
-          if (fechaTransaccionHeader) {
-            const recordDate = parseExcelDate(record[fechaTransaccionHeader]);
-            if (recordDate) {
-              if (masterDateFrom) {
-                const fromDate = parseDDMMYYYY(masterDateFrom);
-                if (fromDate && recordDate < fromDate) return false;
-              }
-              if (masterDateTo) {
-                const toDate = parseDDMMYYYY(masterDateTo);
-                if (toDate) {
-                  const endOfDay = new Date(toDate);
-                  endOfDay.setHours(23, 59, 59, 999);
-                  if (recordDate > endOfDay) return false;
-                }
-              }
-            }
-          }
-        }
-        
-        return true;
-      });
-      
-      // Extract installments from filtered orders
-      const installments: any[] = [];
-      
-      masterFilteredOrders.forEach((order: any) => {
-        const ordenNum = order['Orden'];
-        if (!ordenNum) return;
-        
-        // Process cuotas 1-14 (regular installments)
-        for (let i = 1; i <= 14; i++) {
-          const fechaCuotaValue = order[`Fecha cuota ${i}`] || order[`Fecha Cuota ${i}`];
-          const montoValue = order[`Cuota ${i}`];
-          const estadoValue = order[`Estado cuota ${i}`] || order[`Estado Cuota ${i}`] || order[`Estado de cuota ${i}`];
-          
-          if (fechaCuotaValue && montoValue) {
-            const monto = normalizeNumber(montoValue);
-            const fechaCuota = parseExcelDate(fechaCuotaValue);
-            
-            if (!isNaN(monto) && monto > 0 && fechaCuota) {
-              installments.push({
-                orden: ordenNum,
-                cuotaNum: i,
-                monto,
-                fechaCuota,
-                estadoCuota: estadoValue || '',
-              });
-            }
-          }
+        // Match the exact calculation from InstallmentsDashboard
+        if (estado === 'done' && status === 'ADELANTADO') {
+          calculatedCuotasAdelantadas += monto;
         }
       });
-      
-      // Match with payments
-      const ordenHeaderPmt = paymentRecordsHeaders.find((h: string) => 
-        h.toLowerCase().includes('orden') && !h.toLowerCase().includes('cuota')
-      );
-      const cuotaHeaderPmt = paymentRecordsHeaders.find((h: string) => 
-        h.toLowerCase().includes('cuota') && h.toLowerCase().includes('pagada')
-      );
-      const fechaPagoHeader = paymentRecordsHeaders.find((h: string) => 
-        h.toLowerCase().includes('fecha') && (h.toLowerCase().includes('pago') || h.toLowerCase().includes('transac'))
-      );
-      
-      if (ordenHeaderPmt && cuotaHeaderPmt && fechaPagoHeader) {
-        installments.forEach(inst => {
-          const payment = masterFilteredPayments.find((p: any) => {
-            const pOrden = String(p[ordenHeaderPmt] || '');
-            const pCuota = String(p[cuotaHeaderPmt] || '');
-            const cuotaNumbers = pCuota.split(',').map(c => c.trim()).filter(c => c);
-            return pOrden === String(inst.orden) && cuotaNumbers.includes(String(inst.cuotaNum));
-          });
-          
-          if (payment) {
-            const fechaPagoValue = parseExcelDate(payment[fechaPagoHeader]);
-            const status = calculateInstallmentStatus({
-              fechaCuota: inst.fechaCuota,
-              fechaPagoReal: fechaPagoValue,
-              estadoCuota: inst.estadoCuota,
-            });
-            
-            const estadoNormalized = (inst.estadoCuota || '').trim().toLowerCase();
-            if (estadoNormalized === 'done' && status === 'ADELANTADO') {
-              calculatedCuotasAdelantadas += inst.monto;
-            }
-            
-            // Store STATUS on installment for later use
-            inst.status = status;
-          }
-        });
-      }
     }
     
     // 7. Calculate depositosBancoOtrosAliados from the filtered installments
