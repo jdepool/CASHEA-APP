@@ -83,16 +83,8 @@ export function BankStatementsTable({
     return (paymentRecordsData as any)?.data?.rows || [];
   }, [paymentRecordsData]);
 
-  // Extract account number from "Descripción" field (format: "CTA.: 01050128811128076357 BANCO:0105")
-  const accountNumber = useMemo(() => {
-    const descripcionHeader = headers.find((h: string) => h.toLowerCase().includes('descripci'));
-    if (!descripcionHeader) return null;
-    
-    // Get the value from the first row
-    if (rows.length === 0) return null;
-    const firstRow = rows[0];
-    const descripcionValue = firstRow[descripcionHeader];
-    
+  // Helper function to extract account number from Descripción field
+  const extractAccountNumber = (descripcionValue: any): string | null => {
     if (!descripcionValue) return null;
     
     // Extract account number from format "CTA.: [number] BANCO:"
@@ -103,7 +95,7 @@ export function BankStatementsTable({
     // Get the full account number and extract last 4 digits
     const fullAccountNumber = ctaMatch[1];
     return fullAccountNumber.slice(-4);
-  }, [headers, rows]);
+  };
 
   // Add CUENTA column after Fecha, and CONCILIADO column after Saldo
   const extendedHeaders = useMemo(() => {
@@ -128,6 +120,11 @@ export function BankStatementsTable({
     }
     
     return newHeaders;
+  }, [headers]);
+
+  // Get Descripción header for account extraction
+  const descripcionHeader = useMemo(() => {
+    return headers.find((h: string) => h.toLowerCase().includes('descripci'));
   }, [headers]);
 
   // Add CONCILIADO values to rows by checking against ALL payment records
@@ -178,7 +175,9 @@ export function BankStatementsTable({
       
       headersCopy.forEach((header: string) => {
         if (header === 'CUENTA') {
-          newRow[header] = accountNumber;
+          // Extract account number from this specific row's Descripción
+          const cuentaValue = descripcionHeader ? extractAccountNumber(row[descripcionHeader]) : null;
+          newRow[header] = cuentaValue;
         } else if (header === 'CONCILIADO') {
           newRow[header] = conciliadoValue;
         } else {
@@ -188,7 +187,7 @@ export function BankStatementsTable({
       
       return newRow;
     });
-  }, [rows, headers, paymentRecordsRows, paymentRecordsHeaders, accountNumber]);
+  }, [rows, headers, paymentRecordsRows, paymentRecordsHeaders, descripcionHeader]);
 
   // Apply master filters and local filters
   const filteredData = useMemo(() => {
