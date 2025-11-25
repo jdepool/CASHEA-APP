@@ -83,22 +83,26 @@ export function BankStatementsTable({
     return (paymentRecordsData as any)?.data?.rows || [];
   }, [paymentRecordsData]);
 
-  // Extract account number from "Nor. Cuenta" header
+  // Extract account number from "Descripción" field (format: "CTA.: 01050128811128076357 BANCO:0105")
   const accountNumber = useMemo(() => {
-    const cuentaHeader = headers.find((h: string) => h.toLowerCase().includes('nor') || h.toLowerCase().includes('cuenta'));
-    if (!cuentaHeader) return null;
+    const descripcionHeader = headers.find((h: string) => h.toLowerCase().includes('descripci'));
+    if (!descripcionHeader) return null;
     
     // Get the value from the first row
     if (rows.length === 0) return null;
     const firstRow = rows[0];
-    const cuentaValue = firstRow[cuentaHeader];
+    const descripcionValue = firstRow[descripcionHeader];
     
-    if (!cuentaValue) return null;
+    if (!descripcionValue) return null;
     
-    // Extract last 4 digits from format "CUENTA CORRIENTE ***####"
-    const cuentaStr = String(cuentaValue);
-    const lastFourMatch = cuentaStr.match(/\*?(\d{4})$/);
-    return lastFourMatch ? lastFourMatch[1] : null;
+    // Extract account number from format "CTA.: [number] BANCO:"
+    const descripcionStr = String(descripcionValue);
+    const ctaMatch = descripcionStr.match(/CTA\.\s*:\s*(\d+)/i);
+    if (!ctaMatch) return null;
+    
+    // Get the full account number and extract last 4 digits
+    const fullAccountNumber = ctaMatch[1];
+    return fullAccountNumber.slice(-4);
   }, [headers, rows]);
 
   // Add CUENTA column after Fecha, and CONCILIADO column after Saldo
