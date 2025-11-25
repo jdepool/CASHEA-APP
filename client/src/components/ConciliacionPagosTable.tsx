@@ -614,6 +614,7 @@ export function ConciliacionPagosTable({
                     <SelectItem value="graced">Graced (En gracia)</SelectItem>
                     <SelectItem value="delayed">Delayed (Atrasadas)</SelectItem>
                     <SelectItem value="cancelled">Cancelled (Canceladas)</SelectItem>
+                    <SelectItem value="inicial">INICIAL (Pago Inicial)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

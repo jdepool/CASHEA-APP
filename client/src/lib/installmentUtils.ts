@@ -108,9 +108,14 @@ export function calculateTotalAmount(installments: Installment[]): number {
 
 /**
  * Calculate STATUS string for an installment based on payment timing
- * Returns one of: ADELANTADO, A TIEMPO, ATRASADO, OTRO ALIADO, NO DEPOSITADO, or empty string
+ * Returns one of: INICIAL, ADELANTADO, A TIEMPO, ATRASADO, OTRO ALIADO, NO DEPOSITADO, or empty string
  */
 export function calculateInstallmentStatus(installment: any): string {
+  // INICIAL: Installment number is 0 (Cuota 0 / Pago Inicial)
+  if (installment.numeroCuota === 0) {
+    return 'INICIAL';
+  }
+  
   const fechaPagoReal = installment.fechaPagoReal;
   const fechaPagoFromOrder = installment.fechaPago;
   const fechaCuota = installment.fechaCuota;
