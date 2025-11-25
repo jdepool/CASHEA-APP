@@ -200,25 +200,6 @@ export function InstallmentsDashboard({ installments }: InstallmentsDashboardPro
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Depósitos Otros Aliados</p>
-                <p className="text-3xl font-bold text-purple-600 dark:text-purple-400" data-testid="metric-otro-aliado-verificado">
-                  {formatCurrency(metrics.montoOtroAliadoVerificado)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {metrics.cuotasOtroAliadoVerificado} cuotas verificadas
-                </p>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
-                <DollarSign className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Cuotas Adelantadas Periodos Anteriores</p>
                 <p className="text-3xl font-bold text-amber-600 dark:text-amber-400" data-testid="metric-adelantadas-periodos-anteriores">
                   {formatCurrency(metrics.montoAdelantadasPeriodosAnteriores)}
