@@ -15,24 +15,32 @@ export function ConciliacionPagosDashboard({ installments }: ConciliacionPagosDa
     ).length;
 
     // Cuotas A Tiempo
-    const cuotasATiempoCount = installments.filter(
+    const cuotasATiempoFiltered = installments.filter(
       inst => (inst.status || '').trim().toUpperCase() === 'A TIEMPO'
-    ).length;
+    );
+    const cuotasATiempoCount = cuotasATiempoFiltered.length;
+    const cuotasATiempoMonto = cuotasATiempoFiltered.reduce((sum, inst) => sum + (inst.monto || 0), 0);
 
     // Pagos en Otros Aliados
-    const pagosOtrosAliadosCount = installments.filter(
+    const pagosOtrosAliadosFiltered = installments.filter(
       inst => (inst.status || '').trim().toUpperCase() === 'OTRO ALIADO'
-    ).length;
+    );
+    const pagosOtrosAliadosCount = pagosOtrosAliadosFiltered.length;
+    const pagosOtrosAliadosMonto = pagosOtrosAliadosFiltered.reduce((sum, inst) => sum + (inst.monto || 0), 0);
 
-    // Pagos Totales (sum of all monto)
+    // Pagos Totales (sum of all monto and count)
     const pagosTotales = installments.reduce((sum, inst) => sum + (inst.monto || 0), 0);
+    const pagosCount = installments.length;
 
     return {
       cuotasAdelantadasMonto,
       cuotasAdelantadasCount,
       cuotasATiempoCount,
+      cuotasATiempoMonto,
       pagosOtrosAliadosCount,
+      pagosOtrosAliadosMonto,
       pagosTotales,
+      pagosCount,
     };
   }, [installments]);
 
@@ -54,10 +62,10 @@ export function ConciliacionPagosDashboard({ installments }: ConciliacionPagosDa
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Cuotas A Tiempo</p>
                 <p className="text-3xl font-bold text-green-600 dark:text-green-400" data-testid="metric-cuotas-a-tiempo">
-                  {metrics.cuotasATiempoCount}
+                  {formatCurrency(metrics.cuotasATiempoMonto)}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  {metrics.cuotasATiempoCount === 1 ? 'pago' : 'pagos'} a tiempo
+                <p className="text-xs font-semibold text-green-600 dark:text-green-400">
+                  {metrics.cuotasATiempoCount} {metrics.cuotasATiempoCount === 1 ? 'pago' : 'pagos'}
                 </p>
               </div>
               <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
@@ -73,10 +81,10 @@ export function ConciliacionPagosDashboard({ installments }: ConciliacionPagosDa
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Pagos en Otros Aliados</p>
                 <p className="text-3xl font-bold text-purple-600 dark:text-purple-400" data-testid="metric-pagos-otros-aliados">
-                  {metrics.pagosOtrosAliadosCount}
+                  {formatCurrency(metrics.pagosOtrosAliadosMonto)}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  {metrics.pagosOtrosAliadosCount === 1 ? 'pago' : 'pagos'} otros aliados
+                <p className="text-xs font-semibold text-purple-600 dark:text-purple-400">
+                  {metrics.pagosOtrosAliadosCount} {metrics.pagosOtrosAliadosCount === 1 ? 'pago' : 'pagos'}
                 </p>
               </div>
               <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
@@ -94,8 +102,8 @@ export function ConciliacionPagosDashboard({ installments }: ConciliacionPagosDa
                 <p className="text-3xl font-bold text-blue-600 dark:text-blue-400" data-testid="metric-pagos-totales">
                   {formatCurrency(metrics.pagosTotales)}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  Suma de todos los pagos
+                <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                  {metrics.pagosCount} {metrics.pagosCount === 1 ? 'pago' : 'pagos'}
                 </p>
               </div>
               <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
