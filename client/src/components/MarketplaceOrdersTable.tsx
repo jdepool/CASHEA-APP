@@ -100,9 +100,10 @@ export function MarketplaceOrdersTable({
     return newHeaders;
   }, [headers]);
 
-  // Create extended data array with verification values
+  // Create extended data array with verification values and deduplication
   const extendedData = useMemo(() => {
-    return data.map(row => {
+    // First, add verification values
+    const withVerification = data.map(row => {
       const reference = row[referenciaColumn];
       const amount = row[montoColumn];
       
@@ -122,7 +123,20 @@ export function MarketplaceOrdersTable({
       };
       return extendedRow;
     });
-  }, [data, referenciaColumn, montoColumn, bankStatementRows, bankStatementHeaders]);
+
+    // Then, deduplicate by order number (keep first occurrence)
+    if (withVerification.length === 0) return [];
+    
+    const seenOrdens = new Map<string, any>();
+    withVerification.forEach((row: any) => {
+      const ordenValue = String(row[ordenColumn] || '').trim();
+      if (ordenValue && !seenOrdens.has(ordenValue)) {
+        seenOrdens.set(ordenValue, row);
+      }
+    });
+    
+    return Array.from(seenOrdens.values());
+  }, [data, referenciaColumn, montoColumn, ordenColumn, bankStatementRows, bankStatementHeaders]);
 
   // Get unique values for dropdowns
   const uniqueEstados = useMemo(() => {
