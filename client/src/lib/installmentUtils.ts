@@ -201,13 +201,16 @@ export function calculateInstallmentStatus(installment: any): string {
 
 /**
  * Calculate "Depósitos Otros Bancos" metric from filtered installments
- * Sum of amounts where Estado Cuota = 'done' AND STATUS = 'NO DEPOSITADO'
+ * Sum of amounts where:
+ * - (Estado Cuota = 'done' AND STATUS = 'NO DEPOSITADO') OR
+ * - (STATUS = 'OTRO ALIADO' AND VERIFICACION = 'NO')
  */
 export function calculateDepositosOtrosBancos(installments: any[]): number {
   let total = 0;
   installments.forEach((inst) => {
     const estadoCuota = (inst.estadoCuota || '').toLowerCase().trim();
     const status = (inst.status || '').trim().toUpperCase();
+    const verificacion = (inst.verificacion || '').trim().toUpperCase();
     
     // Normalize status to handle multiple variations (Spanish and English)
     // Use exact matches or specific known patterns
@@ -219,8 +222,9 @@ export function calculateDepositosOtrosBancos(installments: any[]): number {
                    estadoCuota === 'completado' ||
                    estadoCuota === 'completed';
     
-    // Sum where Estado Cuota = 'done' AND STATUS = 'NO DEPOSITADO'
-    if (isDone && status === 'NO DEPOSITADO') {
+    // Sum where (Estado Cuota = 'done' AND STATUS = 'NO DEPOSITADO') OR (STATUS = 'OTRO ALIADO' AND VERIFICACION = 'NO')
+    if ((isDone && status === 'NO DEPOSITADO') || 
+        (status === 'OTRO ALIADO' && verificacion === 'NO')) {
       total += inst.monto || 0;
     }
   });
