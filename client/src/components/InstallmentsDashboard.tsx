@@ -44,8 +44,9 @@ export function InstallmentsDashboard({ installments }: InstallmentsDashboardPro
       }
       
       // Calculate DEPOSITOS OTROS BANCOS metric
-      // Estado Cuota = Done AND STATUS = NO DEPOSITADO
-      if (estado === 'done' && status === 'NO DEPOSITADO') {
+      // (Estado Cuota = Done AND STATUS = NO DEPOSITADO) OR (STATUS = OTRO ALIADO AND VERIFICACION = NO)
+      if ((estado === 'done' && status === 'NO DEPOSITADO') || 
+          (status === 'OTRO ALIADO' && verificacion === 'NO')) {
         montoDepositosOtrosBancos += monto;
         cuotasDepositosOtrosBancos++;
       }
