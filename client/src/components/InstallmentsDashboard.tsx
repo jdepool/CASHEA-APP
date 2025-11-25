@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle2, Clock, XCircle, AlertCircle, CreditCard, DollarSign, TrendingUp } from "lucide-react";
+import { CheckCircle2, XCircle, AlertCircle, CreditCard, DollarSign, TrendingUp } from "lucide-react";
 import { calculateTotalAmount } from "@/lib/installmentUtils";
 
 interface InstallmentsDashboardProps {
@@ -116,25 +116,6 @@ export function InstallmentsDashboard({ installments }: InstallmentsDashboardPro
               </div>
               <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
                 <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Cuotas Programadas</p>
-                <p className="text-3xl font-bold text-blue-600 dark:text-blue-400" data-testid="metric-cuotas-programadas">
-                  {metrics.cuotasProgramadas}
-                </p>
-                <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">
-                  {formatCurrency(metrics.montoProgramadas)}
-                </p>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-                <Clock className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>
             </div>
           </CardContent>
