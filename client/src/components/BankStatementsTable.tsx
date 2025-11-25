@@ -83,48 +83,20 @@ export function BankStatementsTable({
     return (paymentRecordsData as any)?.data?.rows || [];
   }, [paymentRecordsData]);
 
-  // Helper function to extract account number from Descripción field
-  const extractAccountNumber = (descripcionValue: any): string | null => {
-    if (!descripcionValue) return null;
-    
-    // Extract account number from format "CTA.: [number] BANCO:"
-    const descripcionStr = String(descripcionValue);
-    const ctaMatch = descripcionStr.match(/CTA\.\s*:\s*(\d+)/i);
-    if (!ctaMatch) return null;
-    
-    // Get the full account number and extract last 4 digits
-    const fullAccountNumber = ctaMatch[1];
-    return fullAccountNumber.slice(-4);
-  };
-
-  // Add CUENTA column after Fecha, and CONCILIADO column after Saldo
+  // Add CONCILIADO column after Saldo
   const extendedHeaders = useMemo(() => {
     if (headers.length === 0) return headers;
     
-    let newHeaders = [...headers];
-    
-    // Find Fecha index and insert CUENTA after it
-    const fechaIndex = headers.findIndex((h: string) => h.toLowerCase().includes('fecha'));
-    if (fechaIndex !== -1) {
-      newHeaders.splice(fechaIndex + 1, 0, 'CUENTA');
-    }
-    
-    // Find Saldo index (accounting for the new CUENTA column if it was inserted before it)
-    const saldoIndex = newHeaders.findIndex((h: string) => h.toLowerCase().includes('saldo'));
+    const saldoIndex = headers.findIndex((h: string) => h.toLowerCase().includes('saldo'));
     if (saldoIndex === -1) {
       // If no Saldo column, add CONCILIADO at the end
-      newHeaders.push('CONCILIADO');
-    } else {
-      // Insert CONCILIADO after Saldo
-      newHeaders.splice(saldoIndex + 1, 0, 'CONCILIADO');
+      return [...headers, 'CONCILIADO'];
     }
     
+    // Insert CONCILIADO after Saldo
+    const newHeaders = [...headers];
+    newHeaders.splice(saldoIndex + 1, 0, 'CONCILIADO');
     return newHeaders;
-  }, [headers]);
-
-  // Get Descripción header for account extraction
-  const descripcionHeader = useMemo(() => {
-    return headers.find((h: string) => h.toLowerCase().includes('descripci'));
   }, [headers]);
 
   // Add CONCILIADO values to rows by checking against ALL payment records
@@ -151,34 +123,20 @@ export function BankStatementsTable({
         paymentRecordsHeaders
       );
       
-      // Create new row with both CUENTA and CONCILIADO values inserted at correct positions
-      const fechaIndex = headers.findIndex((h: string) => h.toLowerCase().includes('fecha'));
+      // Create new row with CONCILIADO value inserted after Saldo
       const saldoIndex = headers.findIndex((h: string) => h.toLowerCase().includes('saldo'));
+      if (saldoIndex === -1) {
+        // No Saldo column, add CONCILIADO at the end
+        return { ...row, CONCILIADO: conciliadoValue };
+      }
       
+      // Insert CONCILIADO after Saldo (same position as in extendedHeaders)
       const newRow: any = {};
-      let headersCopy = [...headers];
-      
-      // Insert CUENTA after Fecha
-      if (fechaIndex !== -1) {
-        headersCopy.splice(fechaIndex + 1, 0, 'CUENTA');
-      }
-      
-      // Recalculate saldoIndex after inserting CUENTA
-      const newSaldoIndex = headersCopy.findIndex((h: string) => h.toLowerCase().includes('saldo'));
-      
-      // Insert CONCILIADO after Saldo
-      if (newSaldoIndex !== -1) {
-        headersCopy.splice(newSaldoIndex + 1, 0, 'CONCILIADO');
-      } else {
-        headersCopy.push('CONCILIADO');
-      }
+      const headersCopy = [...headers];
+      headersCopy.splice(saldoIndex + 1, 0, 'CONCILIADO');
       
       headersCopy.forEach((header: string) => {
-        if (header === 'CUENTA') {
-          // Extract account number from this specific row's Descripción
-          const cuentaValue = descripcionHeader ? extractAccountNumber(row[descripcionHeader]) : null;
-          newRow[header] = cuentaValue;
-        } else if (header === 'CONCILIADO') {
+        if (header === 'CONCILIADO') {
           newRow[header] = conciliadoValue;
         } else {
           newRow[header] = row[header];
@@ -187,7 +145,7 @@ export function BankStatementsTable({
       
       return newRow;
     });
-  }, [rows, headers, paymentRecordsRows, paymentRecordsHeaders, descripcionHeader]);
+  }, [rows, headers, paymentRecordsRows, paymentRecordsHeaders]);
 
   // Apply master filters and local filters
   const filteredData = useMemo(() => {
