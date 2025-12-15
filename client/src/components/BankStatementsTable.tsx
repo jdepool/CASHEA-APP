@@ -15,6 +15,8 @@ interface BankStatementsTableProps {
   masterDateFrom?: string;
   masterDateTo?: string;
   masterOrden?: string;
+  masterTienda?: string;
+  ordenToTiendaMap?: Map<string, string>;
 }
 
 type SortDirection = 'asc' | 'desc' | null;
@@ -28,6 +30,8 @@ export function BankStatementsTable({
   masterDateFrom = "",
   masterDateTo = "",
   masterOrden = "",
+  masterTienda = "",
+  ordenToTiendaMap = new Map(),
 }: BankStatementsTableProps) {
   const [sortConfig, setSortConfig] = useState<SortConfig>({ column: null, direction: null });
   const [showFilters, setShowFilters] = useState(false);
@@ -185,6 +189,21 @@ export function BankStatementsTable({
         if (!hasMatch) return false;
       }
 
+      // Master tienda filter - match order to tienda using ordenToTiendaMap
+      // For bank statements, search for order numbers in the row and check if any matches the tienda
+      if (masterTienda && masterTienda !== 'all') {
+        // Bank statements don't have direct order numbers, so we search for any orden that matches the tienda
+        // This is less precise but allows filtering by tienda if order number is present in any field
+        const allValues = Object.values(row).map(v => String(v || '')).join(' ');
+        let hasMatchingTienda = false;
+        ordenToTiendaMap.forEach((tienda, orden) => {
+          if (tienda === masterTienda && allValues.includes(orden)) {
+            hasMatchingTienda = true;
+          }
+        });
+        if (!hasMatchingTienda) return false;
+      }
+
       // TAB-SPECIFIC FILTERS - Applied AFTER master filters
       // Referencia filter
       if (referenciaFilter) {
@@ -199,7 +218,7 @@ export function BankStatementsTable({
 
       return true;
     });
-  }, [rowsWithConciliado, headers, masterDateFrom, masterDateTo, masterOrden, referenciaFilter]);
+  }, [rowsWithConciliado, headers, masterDateFrom, masterDateTo, masterOrden, masterTienda, ordenToTiendaMap, referenciaFilter]);
 
   // Apply sorting
   const sortedData = useMemo(() => {

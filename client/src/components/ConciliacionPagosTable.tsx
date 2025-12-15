@@ -30,6 +30,8 @@ interface ConciliacionPagosTableProps {
   masterDateFrom?: string;
   masterDateTo?: string;
   masterOrden?: string;
+  masterTienda?: string;
+  ordenToTiendaMap?: Map<string, string>;
 }
 
 export function ConciliacionPagosTable({ 
@@ -47,6 +49,8 @@ export function ConciliacionPagosTable({
   masterDateFrom,
   masterDateTo,
   masterOrden,
+  masterTienda,
+  ordenToTiendaMap = new Map(),
 }: ConciliacionPagosTableProps) {
   const { toast } = useToast();
 
@@ -432,6 +436,13 @@ export function ConciliacionPagosTable({
         if (!ordenValue.includes(masterOrden.toLowerCase())) return false;
       }
 
+      // Master tienda filter - match order to tienda using ordenToTiendaMap
+      if (masterTienda && masterTienda !== 'all') {
+        const ordenValue = String(installment.orden || '').replace(/^0+/, '') || '0';
+        const rowTienda = ordenToTiendaMap.get(ordenValue);
+        if (!rowTienda || rowTienda !== masterTienda) return false;
+      }
+
       // TAB-SPECIFIC FILTERS - Applied AFTER master filters
       // HARDCODED: Only show payment-based entries (Fecha de Pago view)
       if (!installment.isPaymentBased) return false;
@@ -481,7 +492,7 @@ export function ConciliacionPagosTable({
 
       return true;
     });
-  }, [allInstallments, dateFrom, dateTo, ordenFilter, estadoCuotaFilter, masterDateFrom, masterDateTo, masterOrden]);
+  }, [allInstallments, dateFrom, dateTo, ordenFilter, estadoCuotaFilter, masterDateFrom, masterDateTo, masterOrden, masterTienda, ordenToTiendaMap]);
 
   const clearFilters = () => {
     setDateFrom("");

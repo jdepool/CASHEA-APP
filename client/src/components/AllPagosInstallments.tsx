@@ -13,6 +13,8 @@ interface AllPagosInstallmentsProps {
   masterDateFrom?: string;
   masterDateTo?: string;
   masterOrden?: string;
+  masterTienda?: string;
+  ordenToTiendaMap?: Map<string, string>;
   onFilteredInstallmentsChange?: (installments: any[]) => void;
 }
 
@@ -25,6 +27,8 @@ export function AllPagosInstallments({
   masterDateFrom,
   masterDateTo,
   masterOrden,
+  masterTienda,
+  ordenToTiendaMap = new Map(),
   onFilteredInstallmentsChange
 }: AllPagosInstallmentsProps) {
 
@@ -296,6 +300,13 @@ export function AllPagosInstallments({
         if (!ordenValue.includes(masterOrden.toLowerCase())) return false;
       }
 
+      // Master tienda filter - match order to tienda using ordenToTiendaMap
+      if (masterTienda && masterTienda !== 'all') {
+        const ordenValue = String(installment.orden || '').replace(/^0+/, '') || '0';
+        const rowTienda = ordenToTiendaMap.get(ordenValue);
+        if (!rowTienda || rowTienda !== masterTienda) return false;
+      }
+
       // TAB-SPECIFIC FILTERS - Applied AFTER master filters
       // Date range filter - USE PAYMENT DATE (fechaPagoReal/fechaPago)
       if ((dateFrom || dateTo) && !masterDateFrom && !masterDateTo) {
@@ -345,7 +356,7 @@ export function AllPagosInstallments({
 
       return true;
     });
-  }, [allInstallments, dateFrom, dateTo, ordenFilter, estadoCuotaFilter, masterDateFrom, masterDateTo, masterOrden, tableData]);
+  }, [allInstallments, dateFrom, dateTo, ordenFilter, estadoCuotaFilter, masterDateFrom, masterDateTo, masterOrden, masterTienda, ordenToTiendaMap, tableData]);
 
   // Notify parent component when filtered installments change
   useEffect(() => {

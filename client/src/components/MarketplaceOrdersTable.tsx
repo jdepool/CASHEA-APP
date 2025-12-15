@@ -36,6 +36,8 @@ interface MarketplaceOrdersTableProps {
   masterDateFrom?: string;
   masterDateTo?: string;
   masterOrden?: string;
+  masterTienda?: string;
+  uniqueTiendas?: string[];
   bankStatementRows?: any[];
   bankStatementHeaders?: string[];
 }
@@ -63,6 +65,8 @@ export function MarketplaceOrdersTable({
   masterDateFrom,
   masterDateTo,
   masterOrden,
+  masterTienda,
+  uniqueTiendas = [],
   bankStatementRows = [],
   bankStatementHeaders = []
 }: MarketplaceOrdersTableProps) {
@@ -208,6 +212,15 @@ export function MarketplaceOrdersTable({
       if (masterOrden) {
         const rowOrden = String(row[ordenColumn] || "").toLowerCase();
         if (!rowOrden.includes(masterOrden.toLowerCase())) return false;
+      }
+
+      // Master tienda filter - match directly against TIENDA column
+      if (masterTienda && masterTienda !== 'all') {
+        const tiendaColumn = headers.find((h: string) => h.toLowerCase() === 'tienda');
+        if (tiendaColumn) {
+          const rowTienda = String(row[tiendaColumn] || '').trim();
+          if (rowTienda !== masterTienda) return false;
+        }
       }
 
       // TAB-SPECIFIC FILTERS - Applied AFTER master filters

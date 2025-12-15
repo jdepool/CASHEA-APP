@@ -17,6 +17,8 @@ interface MonthlyReportProps {
   masterDateFrom?: string;
   masterDateTo?: string;
   masterOrden?: string;
+  masterTienda?: string;
+  ordenToTiendaMap?: Map<string, string>;
   paymentRecordsData?: any[];
   paymentRecordsHeaders?: string[];
   ordersData?: any[];
@@ -38,6 +40,8 @@ export function MonthlyReport({
   masterDateFrom,
   masterDateTo,
   masterOrden,
+  masterTienda,
+  ordenToTiendaMap = new Map(),
   paymentRecordsData = [],
   paymentRecordsHeaders = [],
   ordersData = [],
@@ -136,6 +140,15 @@ export function MonthlyReport({
       if (masterOrden && ordenColumn) {
         const rowOrden = String(row[ordenColumn] || "").toLowerCase();
         if (!rowOrden.includes(masterOrden.toLowerCase())) return false;
+      }
+
+      // Master tienda filter - match directly against TIENDA column (same as MarketplaceOrdersTable)
+      if (masterTienda && masterTienda !== 'all') {
+        const tiendaColumn = headers.find((h: string) => h.toLowerCase() === 'tienda');
+        if (tiendaColumn) {
+          const rowTienda = String(row[tiendaColumn] || '').trim();
+          if (rowTienda !== masterTienda) return false;
+        }
       }
 
       // TAB-SPECIFIC FILTERS - Applied AFTER master filters

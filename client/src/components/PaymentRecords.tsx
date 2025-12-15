@@ -25,6 +25,8 @@ interface PaymentRecordsProps {
   masterDateFrom?: string;
   masterDateTo?: string;
   masterOrden?: string;
+  masterTienda?: string;
+  ordenToTiendaMap?: Map<string, string>;
 }
 
 export function PaymentRecords({
@@ -40,7 +42,9 @@ export function PaymentRecords({
   setReferenciaFilter,
   masterDateFrom,
   masterDateTo,
-  masterOrden
+  masterOrden,
+  masterTienda,
+  ordenToTiendaMap = new Map()
 }: PaymentRecordsProps) {
   const { toast } = useToast();
 
@@ -137,6 +141,18 @@ export function PaymentRecords({
         if (ordenHeader) {
           const ordenValue = String(row[ordenHeader] || '').toLowerCase();
           if (!ordenValue.includes(masterOrden.toLowerCase())) return false;
+        }
+      }
+
+      // Master tienda filter - match order to tienda using ordenToTiendaMap
+      if (masterTienda && masterTienda !== 'all') {
+        const ordenHeader = headers.find((h: string) => 
+          h.toLowerCase().includes('orden') && !h.toLowerCase().includes('cuota')
+        );
+        if (ordenHeader) {
+          const ordenValue = String(row[ordenHeader] || '').replace(/^0+/, '') || '0';
+          const rowTienda = ordenToTiendaMap.get(ordenValue);
+          if (!rowTienda || rowTienda !== masterTienda) return false;
         }
       }
 

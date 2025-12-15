@@ -26,6 +26,8 @@ interface CuotasTableProps {
   masterDateFrom?: string;
   masterDateTo?: string;
   masterOrden?: string;
+  masterTienda?: string;
+  ordenToTiendaMap?: Map<string, string>;
 }
 
 type SortField = 'orden' | 'cuota' | 'fecha' | 'monto' | 'estado';
@@ -45,7 +47,9 @@ export function CuotasTable({
   setEstadoFilter,
   masterDateFrom,
   masterDateTo,
-  masterOrden
+  masterOrden,
+  masterTienda,
+  ordenToTiendaMap = new Map()
 }: CuotasTableProps) {
   const { toast } = useToast();
   const [sortField, setSortField] = useState<SortField | null>(null);
@@ -93,6 +97,15 @@ export function CuotasTable({
       filtered = filtered.filter((cuota) => 
         String(cuota.orden).toLowerCase().includes(masterOrden.toLowerCase())
       );
+    }
+
+    // Master tienda filter - match order to tienda using ordenToTiendaMap
+    if (masterTienda && masterTienda !== 'all') {
+      filtered = filtered.filter((cuota) => {
+        const ordenValue = String(cuota.orden || '').replace(/^0+/, '') || '0';
+        const rowTienda = ordenToTiendaMap.get(ordenValue);
+        return rowTienda === masterTienda;
+      });
     }
 
     // TAB-SPECIFIC FILTERS - Applied AFTER master filters

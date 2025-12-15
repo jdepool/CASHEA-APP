@@ -41,6 +41,7 @@ export default function Home() {
   const [masterDateFrom, setMasterDateFrom] = useState<string>("");
   const [masterDateTo, setMasterDateTo] = useState<string>("");
   const [masterOrden, setMasterOrden] = useState<string>("");
+  const [masterTienda, setMasterTienda] = useState<string>("all");
   
   // TODAS LAS ORDENES tab filters
   const [dateFrom, setDateFrom] = useState<string>("");
@@ -162,6 +163,64 @@ export default function Home() {
     // For now, return 0 and let MonthlyReport handle its own calculation
     return 0;
   }, []);
+
+  // Extract unique tiendas from marketplace data for the filter dropdown
+  const uniqueTiendas = useMemo(() => {
+    const mpData = marketplaceData as any;
+    if (!mpData?.data?.rows || !mpData?.data?.headers) return [];
+    
+    const headers = mpData.data.headers;
+    const rows = mpData.data.rows;
+    
+    // Find the Tienda column (case-insensitive)
+    const tiendaColumn = headers.find((h: string) => 
+      h.toLowerCase().includes('tienda') || h.toLowerCase() === 'store'
+    );
+    
+    if (!tiendaColumn) return [];
+    
+    const tiendas = new Set<string>();
+    rows.forEach((row: any) => {
+      const tienda = row[tiendaColumn];
+      if (tienda && String(tienda).trim()) {
+        tiendas.add(String(tienda).trim());
+      }
+    });
+    
+    return Array.from(tiendas).sort();
+  }, [marketplaceData]);
+
+  // Create orden-to-tienda mapping from marketplace data
+  const ordenToTiendaMap = useMemo(() => {
+    const mpData = marketplaceData as any;
+    if (!mpData?.data?.rows || !mpData?.data?.headers) return new Map<string, string>();
+    
+    const headers = mpData.data.headers;
+    const rows = mpData.data.rows;
+    
+    // Find the Tienda and Orden columns
+    const tiendaColumn = headers.find((h: string) => 
+      h.toLowerCase().includes('tienda') || h.toLowerCase() === 'store'
+    );
+    const ordenColumn = headers.find((h: string) => 
+      h.toLowerCase().includes('orden') || h.toLowerCase() === '# orden'
+    );
+    
+    if (!tiendaColumn || !ordenColumn) return new Map<string, string>();
+    
+    const mapping = new Map<string, string>();
+    rows.forEach((row: any) => {
+      const orden = row[ordenColumn];
+      const tienda = row[tiendaColumn];
+      if (orden && tienda) {
+        // Normalize order number (remove leading zeros)
+        const normalizedOrden = String(orden).replace(/^0+/, '') || '0';
+        mapping.set(normalizedOrden, String(tienda).trim());
+      }
+    });
+    
+    return mapping;
+  }, [marketplaceData]);
 
   const processFile = useCallback(async (file: File) => {
     setIsProcessing(true);
@@ -442,6 +501,16 @@ export default function Home() {
         }
       }
 
+      // Master tienda filter - match order to tienda using ordenToTiendaMap
+      if (masterTienda && masterTienda !== 'all') {
+        const ordenHeader = headers.find(h => h.toLowerCase() === 'orden');
+        if (ordenHeader) {
+          const ordenValue = String(row[ordenHeader] || '').replace(/^0+/, '') || '0';
+          const rowTienda = ordenToTiendaMap.get(ordenValue);
+          if (!rowTienda || rowTienda !== masterTienda) return false;
+        }
+      }
+
       // TAB-SPECIFIC FILTERS - Applied AFTER master filters
       // Date range filter
       if (dateFrom || dateTo) {
@@ -519,7 +588,7 @@ export default function Home() {
     });
     
     return [...Array.from(ordersMap.values()), ...rowsWithoutOrden];
-  }, [tableData, headers, dateFrom, dateTo, ordenFilter, referenciaFilter, estadoCuotaFilter, masterDateFrom, masterDateTo, masterOrden]);
+  }, [tableData, headers, dateFrom, dateTo, ordenFilter, referenciaFilter, estadoCuotaFilter, masterDateFrom, masterDateTo, masterOrden, masterTienda, ordenToTiendaMap]);
 
   const handleExportOrders = () => {
     if (filteredTableData.length === 0) {
@@ -562,6 +631,7 @@ export default function Home() {
     setMasterDateFrom("");
     setMasterDateTo("");
     setMasterOrden("");
+    setMasterTienda("all");
   };
 
   return (
@@ -612,6 +682,8 @@ export default function Home() {
                       masterDateTo={masterDateTo}
                       onFilteredInstallmentsChange={setFilteredInstallmentsData}
                       masterOrden={masterOrden}
+                      masterTienda={masterTienda}
+                      ordenToTiendaMap={ordenToTiendaMap}
                     />
                   </div>
                   <div style={{ display: 'none' }}>
@@ -624,6 +696,8 @@ export default function Home() {
                       masterDateFrom={masterDateFrom}
                       masterDateTo={masterDateTo}
                       masterOrden={masterOrden}
+                      masterTienda={masterTienda}
+                      ordenToTiendaMap={ordenToTiendaMap}
                       onFilteredInstallmentsChange={setFilteredPagosInstallmentsData}
                     />
                   </div>
@@ -637,6 +711,8 @@ export default function Home() {
                       masterDateFrom={masterDateFrom}
                       masterDateTo={masterDateTo}
                       masterOrden={masterOrden}
+                      masterTienda={masterTienda}
+                      ordenToTiendaMap={ordenToTiendaMap}
                       onFilteredInstallmentsChange={setFilteredPagosMasterOnlyData}
                     />
                   </div>
@@ -648,9 +724,12 @@ export default function Home() {
                   dateFrom={masterDateFrom}
                   dateTo={masterDateTo}
                   orden={masterOrden}
+                  tienda={masterTienda}
+                  uniqueTiendas={uniqueTiendas}
                   onDateFromChange={setMasterDateFrom}
                   onDateToChange={setMasterDateTo}
                   onOrdenChange={setMasterOrden}
+                  onTiendaChange={setMasterTienda}
                   onClearFilters={clearMasterFilters}
                 />
               
@@ -975,6 +1054,8 @@ export default function Home() {
                     masterDateFrom={masterDateFrom}
                     masterDateTo={masterDateTo}
                     masterOrden={masterOrden}
+                    masterTienda={masterTienda}
+                    ordenToTiendaMap={ordenToTiendaMap}
                   />
                 ) : (
                   <div className="text-center py-12">
@@ -992,6 +1073,8 @@ export default function Home() {
                   masterDateFrom={masterDateFrom}
                   masterDateTo={masterDateTo}
                   masterOrden={masterOrden}
+                  masterTienda={masterTienda}
+                  ordenToTiendaMap={ordenToTiendaMap}
                 />
               </TabsContent>
 
@@ -1010,6 +1093,8 @@ export default function Home() {
                   masterDateFrom={masterDateFrom}
                   masterDateTo={masterDateTo}
                   masterOrden={masterOrden}
+                  masterTienda={masterTienda}
+                  ordenToTiendaMap={ordenToTiendaMap}
                 />
               </TabsContent>
 
@@ -1033,6 +1118,8 @@ export default function Home() {
                     masterDateTo={masterDateTo}
                     onFilteredInstallmentsChange={setFilteredInstallmentsData}
                     masterOrden={masterOrden}
+                    masterTienda={masterTienda}
+                    ordenToTiendaMap={ordenToTiendaMap}
                   />
                 ) : (
                   <div className="text-center py-12">
@@ -1062,6 +1149,8 @@ export default function Home() {
                     masterDateFrom={masterDateFrom}
                     masterDateTo={masterDateTo}
                     masterOrden={masterOrden}
+                    masterTienda={masterTienda}
+                    ordenToTiendaMap={ordenToTiendaMap}
                   />
                 ) : (
                   <div className="text-center py-12">
@@ -1097,6 +1186,8 @@ export default function Home() {
                     masterDateFrom={masterDateFrom}
                     masterDateTo={masterDateTo}
                     masterOrden={masterOrden}
+                    masterTienda={masterTienda}
+                    uniqueTiendas={uniqueTiendas}
                     bankStatementRows={(bankStatementsData as any)?.data?.rows || []}
                     bankStatementHeaders={(bankStatementsData as any)?.data?.headers || []}
                   />
@@ -1123,6 +1214,8 @@ export default function Home() {
                   masterDateFrom={masterDateFrom}
                   masterDateTo={masterDateTo}
                   masterOrden={masterOrden}
+                  masterTienda={masterTienda}
+                  ordenToTiendaMap={ordenToTiendaMap}
                   ordersData={tableData}
                   paymentRecordsData={(paymentRecordsData as any)?.data?.rows || []}
                   paymentRecordsHeaders={(paymentRecordsData as any)?.data?.headers || []}
