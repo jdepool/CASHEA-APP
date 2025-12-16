@@ -174,9 +174,19 @@ export function AllInstallments({
 
   // Extract all installments and enrich with payment dates
   const allInstallments = useMemo(() => {
-    // Filter out cancelled orders before extracting installments
-    const nonCancelledOrders = tableData.filter(row => !isCancelledOrder(row));
-    let installments = extractInstallments(nonCancelledOrders);
+    // Filter out cancelled orders AND orders not in marketplace data
+    const validOrders = tableData.filter(row => {
+      // Exclude cancelled orders
+      if (isCancelledOrder(row)) return false;
+      
+      // Exclude orders not in marketplace data (ordenToTiendaMap)
+      const ordenValue = String(row["Orden"] || '').replace(/^0+/, '') || '0';
+      if (!ordenToTiendaMap.has(ordenValue)) return false;
+      
+      return true;
+    });
+    let installments = extractInstallments(validOrders);
+    const nonCancelledOrders = validOrders; // Use validOrders for payment-based entries lookup
 
     // Cross-reference with payment records to add payment dates
     const apiData = paymentRecordsData as any;
@@ -383,7 +393,7 @@ export function AllInstallments({
     }));
 
     return installments;
-  }, [tableData, paymentRecordsData]);
+  }, [tableData, paymentRecordsData, ordenToTiendaMap]);
 
   // Apply filters to installments
   const filteredInstallments = useMemo(() => {
