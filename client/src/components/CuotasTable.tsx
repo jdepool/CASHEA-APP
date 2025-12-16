@@ -61,11 +61,21 @@ export function CuotasTable({
     return statusOrden.includes("cancel");
   };
 
-  // Extract all installments from orders, excluding cancelled orders
+  // Extract all installments from orders, excluding cancelled orders and orders not in marketplace
   const allCuotas = useMemo(() => {
-    const nonCancelledOrders = tableData.filter(row => !isCancelledOrder(row));
-    return extractInstallments(nonCancelledOrders);
-  }, [tableData]);
+    // Filter out cancelled orders AND orders not in marketplace data
+    const validOrders = tableData.filter(row => {
+      // Exclude cancelled orders
+      if (isCancelledOrder(row)) return false;
+      
+      // Exclude orders not in marketplace data (ordenToTiendaMap)
+      const ordenValue = String(row["Orden"] || '').replace(/^0+/, '') || '0';
+      if (!ordenToTiendaMap.has(ordenValue)) return false;
+      
+      return true;
+    });
+    return extractInstallments(validOrders);
+  }, [tableData, ordenToTiendaMap]);
 
   // Filter cuotas
   const filteredCuotas = useMemo(() => {
