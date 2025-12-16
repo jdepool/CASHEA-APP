@@ -197,6 +197,13 @@ export function Dashboard({ data, allData, headers, dateFrom, dateTo, masterDate
     }).format(value);
   };
 
+  const formatNumber = (value: number) => {
+    return new Intl.NumberFormat('es-ES', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(Math.round(value));
+  };
+
   return (
     <div className="space-y-4 mb-6">
       {/* First row - Active orders metrics */}
@@ -281,7 +288,7 @@ export function Dashboard({ data, allData, headers, dateFrom, dateTo, masterDate
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="metric-cuotas-periodo">
-              {metrics.cuotasDelPeriodo}
+              {formatNumber(metrics.cuotasDelPeriodo)}
             </div>
             <p className="text-xs text-muted-foreground">
               {(masterDateFrom || masterDateTo || dateFrom || dateTo) ? 'Cuotas en rango' : 'Selecciona fechas'}
