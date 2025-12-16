@@ -70,11 +70,20 @@ export function DataTable({ data, headers }: DataTableProps) {
       }
     }
 
+    // Check if this is a count column (not currency)
+    const headerLower = header.toLowerCase();
+    if (headerLower.includes('numero de cuotas') || headerLower.includes('# cuotas')) {
+      return new Intl.NumberFormat('es-ES', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(Math.round(value));
+    }
+
     if (typeof value === 'number' && (
-      header.toLowerCase().includes('venta') || 
-      header.toLowerCase().includes('cuota') ||
-      header.toLowerCase().includes('pagado') ||
-      header.toLowerCase().includes('pago inicial')
+      headerLower.includes('venta') || 
+      headerLower.includes('cuota') ||
+      headerLower.includes('pagado') ||
+      headerLower.includes('pago inicial')
     )) {
       return new Intl.NumberFormat('es-ES', {
         style: 'currency',
