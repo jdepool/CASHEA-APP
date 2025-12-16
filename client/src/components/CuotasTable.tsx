@@ -181,7 +181,7 @@ export function CuotasTable({
     }
 
     return filtered;
-  }, [allCuotas, dateFrom, dateTo, ordenFilter, estadoFilter, sortField, sortDirection, masterDateFrom, masterDateTo, masterOrden]);
+  }, [allCuotas, dateFrom, dateTo, ordenFilter, estadoFilter, sortField, sortDirection, masterDateFrom, masterDateTo, masterOrden, masterTienda, ordenToTiendaMap]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -259,7 +259,7 @@ export function CuotasTable({
       totalCuotas,
       totalAmount
     };
-  }, [filteredCuotas, hasActiveFilters, masterDateFrom, masterDateTo, masterOrden]);
+  }, [filteredCuotas, hasActiveFilters, masterDateFrom, masterDateTo, masterOrden, masterTienda]);
 
   return (
     <div className="space-y-4">

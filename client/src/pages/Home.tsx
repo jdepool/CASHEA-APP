@@ -916,6 +916,8 @@ export default function Home() {
                       masterDateFrom={masterDateFrom}
                       masterDateTo={masterDateTo}
                       masterOrden={masterOrden}
+                      masterTienda={masterTienda}
+                      ordenToTiendaMap={ordenToTiendaMap}
                     />
                     
                     <div className="flex items-center justify-between mb-4">

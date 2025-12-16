@@ -12,9 +12,11 @@ interface DashboardProps {
   masterDateFrom?: string;
   masterDateTo?: string;
   masterOrden?: string;
+  masterTienda?: string;
+  ordenToTiendaMap?: Map<string, string>;
 }
 
-export function Dashboard({ data, allData, headers, dateFrom, dateTo, masterDateFrom, masterDateTo, masterOrden }: DashboardProps) {
+export function Dashboard({ data, allData, headers, dateFrom, dateTo, masterDateFrom, masterDateTo, masterOrden, masterTienda, ordenToTiendaMap = new Map() }: DashboardProps) {
   // Helper function to check if an order is cancelled
   const isCancelledOrder = (row: any): boolean => {
     const statusOrden = String(row["STATUS ORDEN"] || "").toLowerCase().trim();
@@ -135,6 +137,18 @@ export function Dashboard({ data, allData, headers, dateFrom, dateTo, masterDate
           }
         }
         
+        // Skip orders that don't match master tienda filter
+        if (masterTienda && masterTienda !== 'all') {
+          const ordenHeader = headers.find((h: string) => h.toLowerCase() === 'orden');
+          if (ordenHeader) {
+            const ordenValue = String(row[ordenHeader] || '').replace(/^0+/, '') || '0';
+            const rowTienda = ordenToTiendaMap.get(ordenValue);
+            if (!rowTienda || rowTienda !== masterTienda) {
+              return;
+            }
+          }
+        }
+        
         // Process cuotas 1-14 (regular installments only, excluding Cuota 0/PAGO INICIAL)
         for (let i = 1; i <= 14; i++) {
           const fechaCuotaStr = row[`Fecha cuota ${i}`];
@@ -173,7 +187,7 @@ export function Dashboard({ data, allData, headers, dateFrom, dateTo, masterDate
       ventaTotalCanceladas,
       montoInicialCanceladas,
     };
-  }, [data, allData, dateFrom, dateTo, masterDateFrom, masterDateTo, masterOrden]);
+  }, [data, allData, dateFrom, dateTo, masterDateFrom, masterDateTo, masterOrden, masterTienda, ordenToTiendaMap, headers]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {

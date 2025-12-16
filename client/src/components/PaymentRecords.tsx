@@ -210,7 +210,7 @@ export function PaymentRecords({
     });
     
     return filtered;
-  }, [sortedPaymentData, headers, dateFrom, dateTo, ordenFilter, referenciaFilter, masterDateFrom, masterDateTo, masterOrden]);
+  }, [sortedPaymentData, headers, dateFrom, dateTo, ordenFilter, referenciaFilter, masterDateFrom, masterDateTo, masterOrden, masterTienda, ordenToTiendaMap]);
 
   const handleExport = () => {
     if (paymentData.length === 0) {

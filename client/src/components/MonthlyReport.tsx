@@ -225,7 +225,7 @@ export function MonthlyReport({
 
       return true;
     });
-  }, [data, dateFrom, dateTo, estadoFilter, ordenFilter, estadoEntregaFilter, referenciaFilter, dateColumn, estadoColumn, ordenColumn, estadoEntregaColumn, referenciaColumn, masterDateFrom, masterDateTo, masterOrden]);
+  }, [data, dateFrom, dateTo, estadoFilter, ordenFilter, estadoEntregaFilter, referenciaFilter, dateColumn, estadoColumn, ordenColumn, estadoEntregaColumn, referenciaColumn, masterDateFrom, masterDateTo, masterOrden, masterTienda]);
 
   const metrics = useMemo(() => {
     // Apply master filters to payment records data
@@ -649,7 +649,7 @@ export function MonthlyReport({
       totalReconocerFinal,
       totalPagarCashea,
     };
-  }, [filteredData, headers, paymentRecordsData, paymentRecordsHeaders, ordersData, bankStatementRows, bankStatementHeaders, masterDateFrom, masterDateTo, masterOrden, verifyPaymentInBankStatement, filteredInstallmentsData, filteredPagosMasterOnlyData]);
+  }, [filteredData, headers, paymentRecordsData, paymentRecordsHeaders, ordersData, bankStatementRows, bankStatementHeaders, masterDateFrom, masterDateTo, masterOrden, masterTienda, ordenToTiendaMap, verifyPaymentInBankStatement, filteredInstallmentsData, filteredPagosMasterOnlyData]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {
