@@ -63,10 +63,10 @@ export function CuotasDashboard({ installments }: CuotasDashboardProps) {
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">CUOTAS PAGADAS</p>
               <p className="text-2xl font-bold text-green-600 dark:text-green-400" data-testid="metric-cuotas-pagadas-total">
-                {formatNumber(metrics.cuotasPagadas)}
+                {formatCurrency(metrics.montoCuotasPagadas)}
               </p>
               <p className="text-sm font-semibold text-green-600 dark:text-green-400">
-                {formatCurrency(metrics.montoCuotasPagadas)}
+                {formatNumber(metrics.cuotasPagadas)} cuotas
               </p>
             </div>
             <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center">
@@ -83,10 +83,10 @@ export function CuotasDashboard({ installments }: CuotasDashboardProps) {
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">CUENTAS POR COBRAR NETAS</p>
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400" data-testid="metric-cuentas-por-cobrar-netas">
-                {formatNumber(metrics.cuotasProgramadas)}
+                {formatCurrency(metrics.montoCuotasProgramadas)}
               </p>
               <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
-                {formatCurrency(metrics.montoCuotasProgramadas)}
+                {formatNumber(metrics.cuotasProgramadas)} cuotas
               </p>
             </div>
             <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
