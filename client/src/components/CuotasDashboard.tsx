@@ -103,10 +103,10 @@ export function CuotasDashboard({ installments }: CuotasDashboardProps) {
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">CUOTAS ATRASADAS</p>
               <p className="text-2xl font-bold text-red-600 dark:text-red-400" data-testid="metric-cuotas-atrasadas-total">
-                {formatNumber(metrics.cuotasAtrasadas)}
+                {formatCurrency(metrics.montoAtrasadas)}
               </p>
               <p className="text-sm font-semibold text-red-600 dark:text-red-400">
-                {formatCurrency(metrics.montoAtrasadas)}
+                {formatNumber(metrics.cuotasAtrasadas)} cuotas
               </p>
             </div>
             <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
