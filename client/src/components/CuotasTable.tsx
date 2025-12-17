@@ -253,6 +253,15 @@ export function CuotasTable({
 
   const hasActiveFilters = dateFrom || dateTo || ordenFilter || (estadoFilter && estadoFilter !== 'all');
 
+  // Format currency with dots for thousands and comma for decimals
+  const formatCurrencyWithDots = (value: number) => {
+    const formatted = new Intl.NumberFormat('de-DE', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+    return `$${formatted}`;
+  };
+
   // Calculate period metrics from filtered cuotas (respects ALL filters including master filters)
   const periodMetrics = useMemo(() => {
     // Show dashboard if there are any active filters (date, orden, estado) or master filters
@@ -339,7 +348,7 @@ export function CuotasTable({
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">CUENTAS POR COBRAR</p>
                   <p className="text-2xl font-bold mt-2" data-testid="metric-cuentas-por-cobrar">
-                    ${periodMetrics.totalAmount.toFixed(2)}
+                    {formatCurrencyWithDots(periodMetrics.totalAmount)}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     {dateFrom && dateTo 
