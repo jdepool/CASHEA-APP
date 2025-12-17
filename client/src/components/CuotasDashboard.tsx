@@ -50,6 +50,18 @@ export function CuotasDashboard({ installments }: CuotasDashboardProps) {
     }).format(value);
   };
 
+  const formatCurrencyWithDots = (value: number) => {
+    // Format as currency with dots for thousands and comma for decimal
+    const formatted = new Intl.NumberFormat('de-DE', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+    // Replace 'US$' with '$' if present
+    return formatted.replace('US$', '$');
+  };
+
   const formatNumber = (value: number) => {
     return value.toLocaleString('es-ES');
   };
@@ -83,7 +95,7 @@ export function CuotasDashboard({ installments }: CuotasDashboardProps) {
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">CUENTAS POR COBRAR NETAS</p>
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400" data-testid="metric-cuentas-por-cobrar-netas">
-                {formatCurrency(metrics.montoCuotasProgramadas)}
+                {formatCurrencyWithDots(metrics.montoCuotasProgramadas)}
               </p>
               <p className="text-sm font-semibold text-blue-600 dark:text-blue-400">
                 {formatNumber(metrics.cuotasProgramadas)} cuotas
