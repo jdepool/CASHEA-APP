@@ -34,14 +34,6 @@ interface CuotasTableProps {
 type SortField = 'orden' | 'cuota' | 'fecha' | 'monto' | 'estado';
 type SortDirection = 'asc' | 'desc' | null;
 
-// Helper function to format currency with dots as thousands separators and comma for decimal
-function formatCurrencyWithDots(amount: number): string {
-  return new Intl.NumberFormat('de-DE', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(amount);
-}
-
 export function CuotasTable({ 
   tableData, 
   showFilters, 
@@ -347,7 +339,7 @@ export function CuotasTable({
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">CUENTAS POR COBRAR</p>
                   <p className="text-2xl font-bold mt-2" data-testid="metric-cuentas-por-cobrar">
-                    ${formatCurrencyWithDots(periodMetrics.totalAmount)}
+                    ${periodMetrics.totalAmount.toFixed(2)}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     {dateFrom && dateTo 
