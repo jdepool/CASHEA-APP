@@ -10,6 +10,7 @@ import { parseDDMMYYYY, formatDate, parseExcelDate } from "@/lib/dateUtils";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
+import { CuotasDashboard } from "./CuotasDashboard";
 
 interface CuotasTableProps {
   tableData: any[];
@@ -303,6 +304,9 @@ export function CuotasTable({
           </Button>
         </div>
       </div>
+
+      {/* CUOTAS DASHBOARD - Shows filterable metrics */}
+      <CuotasDashboard installments={filteredCuotas} />
 
       {periodMetrics && (
         <div className="grid gap-4 md:grid-cols-2">
