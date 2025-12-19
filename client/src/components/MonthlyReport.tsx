@@ -4,7 +4,6 @@ import { FileSpreadsheet } from "lucide-react";
 import { normalizeNumber } from "@shared/numberUtils";
 import { parseDDMMYYYY, parseExcelDate } from "@/lib/dateUtils";
 import { calculateInstallmentStatus, calculateDepositosOtrosBancos, calculateCuotasAdelantadas } from "@/lib/installmentUtils";
-import { verifyInBankStatements } from "@/lib/verificationUtils";
 
 interface MonthlyReportProps {
   marketplaceData: any;
@@ -58,26 +57,6 @@ export function MonthlyReport({
   const findColumn = (name: string) => {
     return headers.find((h: string) => h.toLowerCase().includes(name.toLowerCase()));
   };
-
-  // Function to verify if a payment exists in bank statements (uses shared utility)
-  const verifyPaymentInBankStatement = useMemo(() => {
-    return (record: any): string => {
-      const paymentRef = record['# Referencia'];
-      // Handle case-insensitive column name matching
-      const paymentAmountVES = record['Monto Pagado en VES'] || record['Monto pagado en VES'];
-      const paymentAmountUSD = record['Monto Pagado en USD'] || record['Monto pagado en USD'];
-
-      return verifyInBankStatements(
-        {
-          reference: paymentRef,
-          amountVES: paymentAmountVES,
-          amountUSD: paymentAmountUSD,
-        },
-        bankStatementRows,
-        bankStatementHeaders
-      );
-    };
-  }, [bankStatementRows, bankStatementHeaders]);
 
   const estadoColumn = findColumn("estado pago");
   const ordenColumn = findColumn("# orden") || findColumn("orden");
@@ -340,7 +319,7 @@ export function MonthlyReport({
     
     if (montoUsdHeader && filteredPaymentRecords.length > 0) {
       filteredPaymentRecords.forEach((record: any) => {
-        const verificacion = verifyPaymentInBankStatement(record);
+        const verificacion = record['VERIFICACION'] || 'NO';
         if (verificacion === 'SI') {
           const montoValue = normalizeNumber(record[montoUsdHeader]);
           if (!isNaN(montoValue)) {
@@ -649,7 +628,7 @@ export function MonthlyReport({
       totalReconocerFinal,
       totalPagarCashea,
     };
-  }, [filteredData, headers, paymentRecordsData, paymentRecordsHeaders, ordersData, bankStatementRows, bankStatementHeaders, masterDateFrom, masterDateTo, masterOrden, masterTienda, ordenToTiendaMap, verifyPaymentInBankStatement, filteredInstallmentsData, filteredPagosMasterOnlyData]);
+  }, [filteredData, headers, paymentRecordsData, paymentRecordsHeaders, ordersData, bankStatementRows, bankStatementHeaders, masterDateFrom, masterDateTo, masterOrden, masterTienda, ordenToTiendaMap, filteredInstallmentsData, filteredPagosMasterOnlyData]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {

@@ -269,8 +269,6 @@ export function PaymentRecords({
             data={paymentData} 
             headers={headers} 
             ordersData={ordersTableData}
-            bankStatementRows={bankStatementRows}
-            bankStatementHeaders={bankStatementHeaders}
             masterDateFrom={masterDateFrom}
             masterDateTo={masterDateTo}
             masterOrden={masterOrden}

@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { WeeklyPaymentsTable } from "./WeeklyPaymentsTable";
 import { ConciliacionPagosDashboard } from "./ConciliacionPagosDashboard";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,6 @@ import { parseExcelDate, parseDDMMYYYY } from "@/lib/dateUtils";
 import { useQuery } from "@tanstack/react-query";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
-import { normalizeNumber } from "@shared/numberUtils";
 import { calculatePaymentSplits } from "@/lib/paymentUtils";
 
 interface ConciliacionPagosTableProps {
@@ -60,112 +59,6 @@ export function ConciliacionPagosTable({
     refetchOnWindowFocus: false,
     staleTime: Infinity,
   });
-
-  // Fetch bank statements for verification
-  const { data: bankStatementData } = useQuery({
-    queryKey: ['/api/bank-statements'],
-    refetchOnWindowFocus: false,
-    staleTime: Infinity,
-  });
-
-  // Extract bank statement data
-  const bankApiData = bankStatementData as any;
-  const bankStatementRows = bankApiData?.data?.rows || [];
-  const bankStatementHeaders = bankApiData?.data?.headers || [];
-
-  // Precompute bank statement lookup map for O(1) verification lookups
-  const bankRefLookupMap = useMemo(() => {
-    const map = new Map<string, { debe: number | null; haber: number | null }[]>();
-    
-    if (!bankStatementRows || bankStatementRows.length === 0) return map;
-
-    const referenciaHeader = bankStatementHeaders.find((h: string) => 
-      h.toLowerCase().includes('referencia')
-    );
-    const debeHeader = bankStatementHeaders.find((h: string) => 
-      h.toLowerCase().includes('debe')
-    );
-    const haberHeader = bankStatementHeaders.find((h: string) => 
-      h.toLowerCase().includes('haber')
-    );
-
-    if (!referenciaHeader) return map;
-
-    bankStatementRows.forEach((bankRow: any) => {
-      const bankRef = bankRow[referenciaHeader];
-      if (!bankRef) return;
-      
-      const normalizedBankRef = String(bankRef).replace(/\s+/g, '').replace(/^0+/, '').toLowerCase();
-      const last8Digits = normalizedBankRef.replace(/\D/g, '').slice(-8);
-      
-      const debe = debeHeader && bankRow[debeHeader] ? normalizeNumber(bankRow[debeHeader]) : null;
-      const haber = haberHeader && bankRow[haberHeader] ? normalizeNumber(bankRow[haberHeader]) : null;
-      
-      const entry = { debe: isNaN(debe as number) ? null : debe, haber: isNaN(haber as number) ? null : haber };
-      
-      if (!map.has(normalizedBankRef)) {
-        map.set(normalizedBankRef, []);
-      }
-      map.get(normalizedBankRef)!.push(entry);
-      
-      if (last8Digits && last8Digits !== normalizedBankRef) {
-        if (!map.has(last8Digits)) {
-          map.set(last8Digits, []);
-        }
-        map.get(last8Digits)!.push(entry);
-      }
-    });
-
-    return map;
-  }, [bankStatementRows, bankStatementHeaders]);
-
-  // Fast verification function using precomputed lookup map
-  const verifyPaymentInBankStatement = useCallback((paymentRecord: any): 'SI' | 'NO' | '-' => {
-    if (!paymentRecord) return '-';
-    if (bankRefLookupMap.size === 0) return '-';
-
-    const paymentRef = paymentRecord['# Referencia'] || paymentRecord['#Referencia'] || paymentRecord['Referencia'];
-    const paymentAmountVES = paymentRecord['Monto Pagado en VES'] || paymentRecord['Monto pagado en VES'] || paymentRecord['MONTO PAGADO EN VES'];
-    const paymentAmountUSD = paymentRecord['Monto Pagado en USD'] || paymentRecord['Monto pagado en USD'] || paymentRecord['MONTO PAGADO EN USD'];
-
-    if (!paymentRef || (!paymentAmountVES && !paymentAmountUSD)) {
-      return '-';
-    }
-
-    const normalizedPaymentRef = String(paymentRef).replace(/\s+/g, '').replace(/^0+/, '').toLowerCase();
-    const last8Digits = normalizedPaymentRef.replace(/\D/g, '').slice(-8);
-    
-    const normalizedVES = paymentAmountVES ? normalizeNumber(paymentAmountVES) : null;
-    const normalizedUSD = paymentAmountUSD ? normalizeNumber(paymentAmountUSD) : null;
-
-    const checkAmounts = (entries: { debe: number | null; haber: number | null }[]): boolean => {
-      return entries.some(entry => {
-        if (entry.debe !== null) {
-          if (normalizedVES !== null && Math.abs(entry.debe - normalizedVES) <= 0.01) return true;
-          if (normalizedUSD !== null && Math.abs(entry.debe - normalizedUSD) <= 0.01) return true;
-        }
-        if (entry.haber !== null) {
-          if (normalizedVES !== null && Math.abs(entry.haber - normalizedVES) <= 0.01) return true;
-          if (normalizedUSD !== null && Math.abs(entry.haber - normalizedUSD) <= 0.01) return true;
-        }
-        return false;
-      });
-    };
-
-    const fullMatchEntries = bankRefLookupMap.get(normalizedPaymentRef);
-    if (fullMatchEntries && checkAmounts(fullMatchEntries)) {
-      return 'SI';
-    }
-
-    if (last8Digits) {
-      const partialMatchEntries = bankRefLookupMap.get(last8Digits);
-      if (partialMatchEntries && checkAmounts(partialMatchEntries)) {
-        return 'SI';
-      }
-    }
-
-    return 'NO';
-  }, [bankRefLookupMap]);
 
   // Helper function to check if an order is cancelled
   const isCancelledOrder = (row: any): boolean => {

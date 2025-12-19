@@ -2,14 +2,11 @@ import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Receipt, DollarSign, Wallet, CheckCircle, BadgeCheck, AlertCircle, XCircle } from "lucide-react";
 import { normalizeNumber } from "@shared/numberUtils";
-import { verifyInBankStatements } from "@/lib/verificationUtils";
 
 interface PaymentRecordsDashboardProps {
   data: any[];
   headers: string[];
   ordersData: any[];
-  bankStatementRows: any[];
-  bankStatementHeaders: string[];
   masterDateFrom?: string;
   masterDateTo?: string;
   masterOrden?: string;
@@ -23,8 +20,6 @@ export function PaymentRecordsDashboard({
   data, 
   headers, 
   ordersData, 
-  bankStatementRows, 
-  bankStatementHeaders,
   masterDateFrom,
   masterDateTo,
   masterOrden,
@@ -58,25 +53,10 @@ export function PaymentRecordsDashboard({
     return map;
   }, [ordersData]);
 
-  // Function to verify if a payment exists in bank statements
-  const verifyPaymentInBankStatement = useMemo(() => {
-    return (record: any): string => {
-      const paymentRef = record['# Referencia'];
-      // Handle case-insensitive column name matching
-      const paymentAmountVES = record['Monto Pagado en VES'] || record['Monto pagado en VES'];
-      const paymentAmountUSD = record['Monto Pagado en USD'] || record['Monto pagado en USD'];
-
-      return verifyInBankStatements(
-        {
-          reference: paymentRef,
-          amountVES: paymentAmountVES,
-          amountUSD: paymentAmountUSD,
-        },
-        bankStatementRows,
-        bankStatementHeaders
-      );
-    };
-  }, [bankStatementRows, bankStatementHeaders]);
+  // Use cached VERIFICACION field from payment records (calculated server-side during upload)
+  const getVerification = (record: any): string => {
+    return record['VERIFICACION'] || '-';
+  };
 
   const metrics = useMemo(() => {
     console.log('=== PaymentRecordsDashboard Input ===');
@@ -131,7 +111,7 @@ export function PaymentRecordsDashboard({
       const montoPagado = normalizeNumber(montoUsdValue);
       
       // Check verification status for ALL rows (not just those with valid amounts)
-      const verificacion = verifyPaymentInBankStatement(row);
+      const verificacion = getVerification(row);
       
       // Count all records with VERIFICACION = NO, regardless of amount validity
       if (verificacion === 'NO') {
@@ -214,7 +194,7 @@ export function PaymentRecordsDashboard({
       pagoInicialesDepositado,
       pagoInicialesNoDepositado,
     };
-  }, [data, headers, orderStatusMap, verifyPaymentInBankStatement, masterDateFrom, masterDateTo, masterOrden, dateFrom, dateTo, ordenFilter, referenciaFilter]);
+  }, [data, headers, orderStatusMap, masterDateFrom, masterDateTo, masterOrden, dateFrom, dateTo, ordenFilter, referenciaFilter]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('es-ES', {
