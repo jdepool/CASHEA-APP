@@ -4,6 +4,7 @@ import multer from "multer";
 import * as XLSX from "xlsx";
 import { storage } from "./storage";
 import { normalizeNumber } from "@shared/numberUtils";
+import { runPaymentVerification } from "./verificationService";
 
 // Normalize header for flexible matching
 function normalizeHeader(header: string): string {
@@ -403,6 +404,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`\nDetalle: Ver arriba los ${mergeResult.skippedRecords.length} registros omitidos`);
       }
       console.log('==================================\n');
+
+      runPaymentVerification().catch(err => 
+        console.error('Background verification failed:', err)
+      );
 
       res.json({
         success: true,
@@ -1086,6 +1091,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await reverifyAllPaymentRecords(rows, allHeaders);
       }
 
+      runPaymentVerification().catch(err => 
+        console.error('Background verification failed:', err)
+      );
+
       res.json({
         success: true,
         data: {
@@ -1130,6 +1139,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Error fetching bank statements:', error);
       res.status(500).json({
         error: 'Error al obtener el estado de cuenta',
+        details: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+
+  // GET endpoint to retrieve cached payment verifications
+  app.get('/api/payment-verifications', async (req, res) => {
+    try {
+      const verifications = await storage.getAllPaymentVerifications();
+      
+      const verificationMap: Record<string, string> = {};
+      verifications.forEach(v => {
+        verificationMap[v.paymentKey] = v.verificationStatus;
+      });
+
+      res.json({
+        success: true,
+        data: verificationMap,
+        count: verifications.length
+      });
+    } catch (error) {
+      console.error('Error fetching payment verifications:', error);
+      res.status(500).json({
+        error: 'Error al obtener verificaciones',
+        details: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  });
+
+  // POST endpoint to trigger verification recalculation
+  app.post('/api/run-verification', async (req, res) => {
+    try {
+      const count = await runPaymentVerification();
+      res.json({
+        success: true,
+        message: `Se verificaron ${count} pagos`,
+        count
+      });
+    } catch (error) {
+      console.error('Error running verification:', error);
+      res.status(500).json({
+        error: 'Error al ejecutar verificación',
         details: error instanceof Error ? error.message : 'Error desconocido'
       });
     }
