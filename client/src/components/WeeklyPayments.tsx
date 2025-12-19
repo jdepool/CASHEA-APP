@@ -13,6 +13,7 @@ export function WeeklyPayments({ tableData }: WeeklyPaymentsProps) {
   const { data: paymentRecordsData } = useQuery({
     queryKey: ['/api/payment-records'],
     refetchOnWindowFocus: false,
+    staleTime: Infinity,
   });
 
   const { weeklyInstallments, expectedIncome, fridayDate} = useMemo(() => {

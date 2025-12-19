@@ -52,18 +52,21 @@ export function PaymentRecords({
   const { data: paymentRecordsData, isLoading: isLoadingPayments } = useQuery({
     queryKey: ['/api/payment-records'],
     refetchOnWindowFocus: false,
+    staleTime: Infinity,
   });
 
   // Fetch orders data to compare expected vs actual payment amounts
   const { data: ordersData, isLoading: isLoadingOrders } = useQuery({
     queryKey: ['/api/orders'],
     refetchOnWindowFocus: false,
+    staleTime: Infinity,
   });
 
   // Fetch bank statements for payment verification
   const { data: bankStatementsData, isLoading: isLoadingBankStatements } = useQuery({
     queryKey: ['/api/bank-statements'],
     refetchOnWindowFocus: false,
+    staleTime: Infinity,
   });
 
   // Derive data directly from query result

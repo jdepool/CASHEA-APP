@@ -98,24 +98,28 @@ export default function Home() {
   const { data: ordersData, isLoading: isLoadingOrders } = useQuery({
     queryKey: ['/api/orders'],
     refetchOnWindowFocus: false,
+    staleTime: Infinity,
   });
 
   // Fetch persisted marketplace orders on mount
   const { data: marketplaceData, isLoading: isLoadingMarketplace } = useQuery({
     queryKey: ['/api/marketplace-orders'],
     refetchOnWindowFocus: false,
+    staleTime: Infinity,
   });
 
   // Fetch payment records for MonthlyReport calculations
   const { data: paymentRecordsData } = useQuery({
     queryKey: ['/api/payment-records'],
     refetchOnWindowFocus: false,
+    staleTime: Infinity,
   });
 
   // Fetch bank statements for MonthlyReport calculations
   const { data: bankStatementsData } = useQuery({
     queryKey: ['/api/bank-statements'],
     refetchOnWindowFocus: false,
+    staleTime: Infinity,
   });
 
   // Helper function to deduplicate orders by order number (keeps last occurrence)

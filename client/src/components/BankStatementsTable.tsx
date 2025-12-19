@@ -41,12 +41,14 @@ export function BankStatementsTable({
   const { data: bankData } = useQuery({
     queryKey: ['/api/bank-statements'],
     refetchOnWindowFocus: false,
+    staleTime: Infinity,
   });
 
   // Fetch ALL payment records for reverse lookup (not filtered)
   const { data: paymentRecordsData } = useQuery({
     queryKey: ['/api/payment-records'],
     refetchOnWindowFocus: false,
+    staleTime: Infinity,
   });
 
   const headers = useMemo(() => {

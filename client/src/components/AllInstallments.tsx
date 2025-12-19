@@ -63,12 +63,14 @@ export function AllInstallments({
   const { data: paymentRecordsData } = useQuery({
     queryKey: ['/api/payment-records'],
     refetchOnWindowFocus: false,
+    staleTime: Infinity,
   });
 
   // Fetch bank statements for verification
   const { data: bankStatementData } = useQuery({
     queryKey: ['/api/bank-statements'],
     refetchOnWindowFocus: false,
+    staleTime: Infinity,
   });
 
   // Extract bank statement data

@@ -36,6 +36,7 @@ export function AllPagosInstallments({
   const { data: paymentRecordsData } = useQuery({
     queryKey: ['/api/payment-records'],
     refetchOnWindowFocus: false,
+    staleTime: Infinity,
   });
 
   // Helper function to check if an order is cancelled
