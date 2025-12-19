@@ -80,6 +80,7 @@ The application employs a client-server architecture with a React frontend and a
 - **Tab-Switch Performance Optimization**:
   * Heavy installment processing (extracting, matching, enriching with payment data) is performed ONCE at the Home.tsx level via `processedInstallmentsData` useMemo
   * Pre-processed data is passed as props to AllInstallments and ConciliacionPagosTable components
+  * Bank statement CONCILIADO calculation is performed ONCE at Home.tsx level via `processedBankData` useMemo and passed to BankStatementsTable
   * This prevents expensive recalculations when components remount on tab switch
   * Schedule-based installments (from orders file enriched with payment data) and payment-based installments (from payment records) are both pre-computed
   * React Query hooks use staleTime: Infinity to prevent unnecessary refetches

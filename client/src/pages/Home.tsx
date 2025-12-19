@@ -28,6 +28,7 @@ import { Loader2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { parseExcelDate, parseDDMMYYYY } from "@/lib/dateUtils";
 import { extractInstallments, calculateInstallmentStatus } from "@/lib/installmentUtils";
+import { verifyInPaymentRecords } from "@/lib/verificationUtils";
 
 export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -382,6 +383,73 @@ export default function Home() {
 
     return { scheduleInstallments, paymentInstallments };
   }, [tableData, paymentRecordsData, ordenToTiendaMap, isCancelledOrder]);
+
+  // Pre-process bank statements with CONCILIADO values ONCE to avoid recalculation on tab switch
+  const processedBankData = useMemo(() => {
+    const bankApiData = bankStatementsData as any;
+    const paymentApiData = paymentRecordsData as any;
+    
+    if (!bankApiData?.data?.rows || !bankApiData?.data?.headers) {
+      return { headers: [], rows: [], extendedHeaders: [] };
+    }
+    
+    const bankHeaders = bankApiData.data.headers;
+    const rawBankRows = bankApiData.data.rows;
+    const paymentHeaders = paymentApiData?.data?.headers || [];
+    const paymentRows = paymentApiData?.data?.rows || [];
+    
+    // Deduplicate bank rows by reference number (keep last occurrence)
+    const referenciaHeader = bankHeaders.find((h: string) => h.toLowerCase().includes('referencia'));
+    let bankRows = rawBankRows;
+    if (referenciaHeader) {
+      const seenReferences = new Map<string, any>();
+      rawBankRows.forEach((row: any) => {
+        const ref = row[referenciaHeader];
+        if (ref != null && String(ref).trim() !== '') {
+          const normalizedRef = String(ref).replace(/^["']|["']$/g, '').replace(/\s+/g, '').trim().toLowerCase();
+          seenReferences.set(normalizedRef, row);
+        }
+      });
+      bankRows = Array.from(seenReferences.values());
+    }
+    
+    // Create extended headers with CONCILIADO after Saldo
+    const saldoIndex = bankHeaders.findIndex((h: string) => h.toLowerCase().includes('saldo'));
+    let extendedHeaders: string[];
+    if (saldoIndex === -1) {
+      extendedHeaders = [...bankHeaders, 'CONCILIADO'];
+    } else {
+      extendedHeaders = [...bankHeaders];
+      extendedHeaders.splice(saldoIndex + 1, 0, 'CONCILIADO');
+    }
+    
+    // Find column headers for CONCILIADO calculation
+    const debeHeader = bankHeaders.find((h: string) => h.toLowerCase().includes('debe'));
+    const haberHeader = bankHeaders.find((h: string) => h.toLowerCase().includes('haber'));
+    
+    // Add CONCILIADO values to each row
+    const rowsWithConciliado = bankRows.map((row: any) => {
+      const bankRef = referenciaHeader ? row[referenciaHeader] : null;
+      const debeAmount = debeHeader ? row[debeHeader] : null;
+      const haberAmount = haberHeader ? row[haberHeader] : null;
+      
+      const conciliadoValue = verifyInPaymentRecords(
+        bankRef,
+        debeAmount,
+        haberAmount,
+        paymentRows,
+        paymentHeaders
+      );
+      
+      return { ...row, CONCILIADO: conciliadoValue };
+    });
+    
+    return { 
+      headers: bankHeaders, 
+      rows: rowsWithConciliado, 
+      extendedHeaders 
+    };
+  }, [bankStatementsData, paymentRecordsData]);
 
   const processFile = useCallback(async (file: File) => {
     setIsProcessing(true);
@@ -1240,6 +1308,7 @@ export default function Home() {
                   masterOrden={masterOrden}
                   masterTienda={masterTienda}
                   ordenToTiendaMap={ordenToTiendaMap}
+                  preProcessedBankData={processedBankData}
                 />
               </TabsContent>
 

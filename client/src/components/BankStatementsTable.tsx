@@ -4,11 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useQuery } from "@tanstack/react-query";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { parseExcelDate, parseDDMMYYYY } from "@/lib/dateUtils";
-import { verifyInPaymentRecords } from "@/lib/verificationUtils";
 import { Badge } from "@/components/ui/badge";
 
 interface BankStatementsTableProps {
@@ -17,6 +15,12 @@ interface BankStatementsTableProps {
   masterOrden?: string;
   masterTienda?: string;
   ordenToTiendaMap?: Map<string, string>;
+  // Pre-processed data from Home.tsx to avoid recalculation on tab switch
+  preProcessedBankData?: {
+    headers: string[];
+    rows: any[];
+    extendedHeaders: string[];
+  };
 }
 
 type SortDirection = 'asc' | 'desc' | null;
@@ -32,126 +36,25 @@ export function BankStatementsTable({
   masterOrden = "",
   masterTienda = "",
   ordenToTiendaMap = new Map(),
+  preProcessedBankData,
 }: BankStatementsTableProps) {
   const [sortConfig, setSortConfig] = useState<SortConfig>({ column: null, direction: null });
   const [showFilters, setShowFilters] = useState(false);
   const [referenciaFilter, setReferenciaFilter] = useState("");
   const { toast } = useToast();
 
-  const { data: bankData } = useQuery({
-    queryKey: ['/api/bank-statements'],
-    refetchOnWindowFocus: false,
-    staleTime: Infinity,
-  });
-
-  // Fetch ALL payment records for reverse lookup (not filtered)
-  const { data: paymentRecordsData } = useQuery({
-    queryKey: ['/api/payment-records'],
-    refetchOnWindowFocus: false,
-    staleTime: Infinity,
-  });
-
+  // Use pre-processed data from Home.tsx (avoids recalculation on tab switch)
   const headers = useMemo(() => {
-    return (bankData as any)?.data?.headers || [];
-  }, [bankData]);
+    return preProcessedBankData?.headers || [];
+  }, [preProcessedBankData]);
 
-  const rows = useMemo(() => {
-    const rawRows = (bankData as any)?.data?.rows || [];
-    
-    // Deduplicate by reference number (defensive measure)
-    if (rawRows.length === 0) return [];
-    
-    const referenciaHeader = headers.find((h: string) => h.toLowerCase().includes('referencia'));
-    if (!referenciaHeader) return rawRows;
-    
-    const seenReferences = new Map<string, any>();
-    rawRows.forEach((row: any) => {
-      const ref = row[referenciaHeader];
-      if (ref != null && String(ref).trim() !== '') {
-        const normalizedRef = String(ref)
-          .replace(/^["']|["']$/g, '')
-          .replace(/\s+/g, '')
-          .trim()
-          .toLowerCase();
-        seenReferences.set(normalizedRef, row);
-      }
-    });
-    
-    return Array.from(seenReferences.values());
-  }, [bankData, headers]);
-
-  // Extract payment records data for reverse lookup
-  const paymentRecordsHeaders = useMemo(() => {
-    return (paymentRecordsData as any)?.data?.headers || [];
-  }, [paymentRecordsData]);
-
-  const paymentRecordsRows = useMemo(() => {
-    return (paymentRecordsData as any)?.data?.rows || [];
-  }, [paymentRecordsData]);
-
-  // Add CONCILIADO column after Saldo
   const extendedHeaders = useMemo(() => {
-    if (headers.length === 0) return headers;
-    
-    const saldoIndex = headers.findIndex((h: string) => h.toLowerCase().includes('saldo'));
-    if (saldoIndex === -1) {
-      // If no Saldo column, add CONCILIADO at the end
-      return [...headers, 'CONCILIADO'];
-    }
-    
-    // Insert CONCILIADO after Saldo
-    const newHeaders = [...headers];
-    newHeaders.splice(saldoIndex + 1, 0, 'CONCILIADO');
-    return newHeaders;
-  }, [headers]);
+    return preProcessedBankData?.extendedHeaders || [];
+  }, [preProcessedBankData]);
 
-  // Add CONCILIADO values to rows by checking against ALL payment records
   const rowsWithConciliado = useMemo(() => {
-    if (!rows || rows.length === 0) return [];
-    
-    // Find bank statement column headers
-    const referenciaHeader = headers.find((h: string) => h.toLowerCase().includes('referencia'));
-    const debeHeader = headers.find((h: string) => h.toLowerCase().includes('debe'));
-    const haberHeader = headers.find((h: string) => h.toLowerCase().includes('haber'));
-    
-    return rows.map((row: any) => {
-      // Get bank statement data
-      const bankRef = referenciaHeader ? row[referenciaHeader] : null;
-      const debeAmount = debeHeader ? row[debeHeader] : null;
-      const haberAmount = haberHeader ? row[haberHeader] : null;
-      
-      // Perform reverse lookup: check if this bank transaction matches any payment record
-      const conciliadoValue = verifyInPaymentRecords(
-        bankRef,
-        debeAmount,
-        haberAmount,
-        paymentRecordsRows,
-        paymentRecordsHeaders
-      );
-      
-      // Create new row with CONCILIADO value inserted after Saldo
-      const saldoIndex = headers.findIndex((h: string) => h.toLowerCase().includes('saldo'));
-      if (saldoIndex === -1) {
-        // No Saldo column, add CONCILIADO at the end
-        return { ...row, CONCILIADO: conciliadoValue };
-      }
-      
-      // Insert CONCILIADO after Saldo (same position as in extendedHeaders)
-      const newRow: any = {};
-      const headersCopy = [...headers];
-      headersCopy.splice(saldoIndex + 1, 0, 'CONCILIADO');
-      
-      headersCopy.forEach((header: string) => {
-        if (header === 'CONCILIADO') {
-          newRow[header] = conciliadoValue;
-        } else {
-          newRow[header] = row[header];
-        }
-      });
-      
-      return newRow;
-    });
-  }, [rows, headers, paymentRecordsRows, paymentRecordsHeaders]);
+    return preProcessedBankData?.rows || [];
+  }, [preProcessedBankData]);
 
   // Apply master filters and local filters
   const filteredData = useMemo(() => {
@@ -291,7 +194,7 @@ export function BankStatementsTable({
     });
   };
 
-  if (!bankData || !(bankData as any)?.data) {
+  if (!preProcessedBankData || preProcessedBankData.rows.length === 0) {
     return (
       <div className="text-center py-12">
         <FileSpreadsheet className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
