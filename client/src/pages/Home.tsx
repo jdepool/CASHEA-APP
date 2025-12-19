@@ -768,7 +768,7 @@ export default function Home() {
                 </TabsList>
               </div>
 
-              <TabsContent value="upload" forceMount className="data-[state=inactive]:hidden space-y-6">
+              <TabsContent value="upload" className="space-y-6">
                 <div>
                   <h2 className="text-2xl font-semibold mb-2">
                     Cargar Archivos
@@ -904,7 +904,7 @@ export default function Home() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="all" forceMount className="data-[state=inactive]:hidden space-y-4">
+              <TabsContent value="all" className="space-y-4">
                 {tableData.length > 0 ? (
                   <>
                     <Dashboard 
@@ -1039,7 +1039,7 @@ export default function Home() {
                 )}
               </TabsContent>
 
-              <TabsContent value="cuotas" forceMount className="data-[state=inactive]:hidden space-y-4">
+              <TabsContent value="cuotas" className="space-y-4">
                 {tableData.length > 0 ? (
                   <CuotasTable 
                     tableData={tableData}
@@ -1070,7 +1070,7 @@ export default function Home() {
                 )}
               </TabsContent>
 
-              <TabsContent value="banco" forceMount className="data-[state=inactive]:hidden space-y-4">
+              <TabsContent value="banco" className="space-y-4">
                 <BankStatementsTable 
                   masterDateFrom={masterDateFrom}
                   masterDateTo={masterDateTo}
@@ -1080,7 +1080,7 @@ export default function Home() {
                 />
               </TabsContent>
 
-              <TabsContent value="payments" forceMount className="data-[state=inactive]:hidden">
+              <TabsContent value="payments">
                 <PaymentRecords 
                   showFilters={paymentsShowFilters}
                   setShowFilters={setPaymentsShowFilters}
@@ -1100,7 +1100,7 @@ export default function Home() {
                 />
               </TabsContent>
 
-              <TabsContent value="weekly" forceMount className="data-[state=inactive]:hidden">
+              <TabsContent value="weekly">
                 {tableData.length > 0 ? (
                   <AllInstallments 
                     tableData={tableData}
@@ -1134,7 +1134,7 @@ export default function Home() {
                 )}
               </TabsContent>
 
-              <TabsContent value="pagos" forceMount className="data-[state=inactive]:hidden">
+              <TabsContent value="pagos">
                 {tableData.length > 0 ? (
                   <ConciliacionPagosTable 
                     tableData={tableData}
@@ -1165,7 +1165,7 @@ export default function Home() {
                 )}
               </TabsContent>
 
-              <TabsContent value="marketplace" forceMount className="data-[state=inactive]:hidden">
+              <TabsContent value="marketplace">
                 {marketplaceData && (marketplaceData as any).data ? (
                   <MarketplaceOrdersTable 
                     data={(marketplaceData as any).data.rows}
@@ -1204,7 +1204,7 @@ export default function Home() {
                 )}
               </TabsContent>
 
-              <TabsContent value="monthly-report" forceMount className="data-[state=inactive]:hidden">
+              <TabsContent value="monthly-report">
                 <MonthlyReport 
                   marketplaceData={marketplaceData}
                   dateFrom={marketplaceDateFrom}
@@ -1229,7 +1229,7 @@ export default function Home() {
                 />
               </TabsContent>
 
-              <TabsContent value="ai-assistant" forceMount className="data-[state=inactive]:hidden h-[calc(100vh-200px)]">
+              <TabsContent value="ai-assistant" className="h-[calc(100vh-200px)]">
                 <AIAssistant />
               </TabsContent>
             </Tabs>
