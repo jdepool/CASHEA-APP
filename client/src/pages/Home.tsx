@@ -27,6 +27,7 @@ import { queryClient } from "@/lib/queryClient";
 import { Loader2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { parseExcelDate, parseDDMMYYYY } from "@/lib/dateUtils";
+import { extractInstallments, calculateInstallmentStatus } from "@/lib/installmentUtils";
 
 export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -225,6 +226,162 @@ export default function Home() {
     
     return mapping;
   }, [marketplaceData]);
+
+  // Helper function to check if an order is cancelled
+  const isCancelledOrder = useCallback((row: any): boolean => {
+    const statusOrden = String(row["STATUS ORDEN"] || "").toLowerCase().trim();
+    return statusOrden.includes("cancel");
+  }, []);
+
+  // Pre-process all installments data ONCE and cache it at Home level
+  // This prevents recalculation when switching tabs
+  const processedInstallmentsData = useMemo(() => {
+    if (!tableData || tableData.length === 0) {
+      return { scheduleInstallments: [], paymentInstallments: [] };
+    }
+
+    const apiData = paymentRecordsData as any;
+    const paymentRows = apiData?.data?.rows || [];
+    const paymentHeaders = apiData?.data?.headers || [];
+    const hasPaymentData = paymentRows.length > 0;
+
+    // Filter out cancelled orders AND orders not in marketplace data
+    const validOrders = tableData.filter(row => {
+      if (isCancelledOrder(row)) return false;
+      const ordenValue = String(row["Orden"] || '').replace(/^0+/, '') || '0';
+      if (!ordenToTiendaMap.has(ordenValue)) return false;
+      return true;
+    });
+
+    // Extract schedule-based installments
+    let scheduleInstallments = extractInstallments(validOrders);
+
+    // Enrich with payment data
+    if (hasPaymentData) {
+      const matchedPaymentIndices = new Set<number>();
+      
+      scheduleInstallments = scheduleInstallments.map((installment) => {
+        const matchingPaymentIndex = paymentRows.findIndex((payment: any, index: number) => {
+          if (matchedPaymentIndices.has(index)) return false;
+          
+          const paymentOrder = String(payment['# Orden'] || payment['#Orden'] || payment['Orden'] || '').trim();
+          const paymentInstallmentStr = String(payment['# Cuota Pagada'] || payment['#CuotaPagada'] || payment['Cuota'] || '').trim();
+          
+          const orderMatches = paymentOrder === String(installment.orden).trim();
+          
+          if (paymentInstallmentStr && orderMatches) {
+            const cuotaParts = paymentInstallmentStr.split(',').map((s: string) => s.trim());
+            for (const part of cuotaParts) {
+              const parsed = parseInt(part, 10);
+              if (!isNaN(parsed) && parsed === installment.numeroCuota) {
+                return true;
+              }
+            }
+          }
+          return false;
+        });
+
+        if (matchingPaymentIndex !== -1) {
+          matchedPaymentIndices.add(matchingPaymentIndex);
+          const matchingPayment = paymentRows[matchingPaymentIndex];
+          
+          const fechaTasaCambio = matchingPayment['Fecha de Transaccion'] ||
+                                  matchingPayment['FECHA DE TRANSACCION'] ||
+                                  matchingPayment['Fecha de Transacción'] ||
+                                  matchingPayment['FECHA DE TRANSACCIÓN'];
+          
+          const parsedDate = fechaTasaCambio ? parseExcelDate(fechaTasaCambio) : null;
+          
+          if (parsedDate) {
+            const verificacion = matchingPayment['VERIFICACION'] || '-';
+            return { 
+              ...installment, 
+              fechaPagoReal: parsedDate,
+              paymentDetails: {
+                referencia: matchingPayment['# Referencia'] || matchingPayment['#Referencia'] || matchingPayment['Referencia'],
+                metodoPago: matchingPayment['Método de Pago'] || matchingPayment['Metodo de Pago'] || matchingPayment['MÉTODO DE PAGO'],
+                montoPagadoUSD: matchingPayment['Monto Pagado en USD'] || matchingPayment['MONTO PAGADO EN USD'] || matchingPayment['Monto'],
+                montoPagadoVES: matchingPayment['Monto Pagado en VES'] || matchingPayment['MONTO PAGADO EN VES'],
+                tasaCambio: matchingPayment['Tasa de Cambio'] || matchingPayment['TASA DE CAMBIO']
+              },
+              verificacion
+            };
+          }
+        }
+        return installment;
+      });
+    }
+
+    // Create payment-based installments
+    const paymentInstallments: any[] = [];
+    
+    if (hasPaymentData) {
+      paymentRows.forEach((payment: any) => {
+        const paymentOrder = String(payment['# Orden'] || payment['#Orden'] || payment['Orden'] || '').trim();
+        const paymentInstallment = String(payment['# Cuota Pagada'] || payment['#CuotaPagada'] || payment['Cuota'] || '').trim();
+        const montoPagado = payment['Monto Pagado en USD'] || payment['MONTO PAGADO EN USD'] || payment['Monto'] || 0;
+        
+        const fechaTasaCambio = payment['Fecha de Transaccion'] ||
+                                payment['FECHA DE TRANSACCION'] ||
+                                payment['Fecha de Transacción'] ||
+                                payment['FECHA DE TRANSACCIÓN'];
+        
+        const parsedDate = fechaTasaCambio ? parseExcelDate(fechaTasaCambio) : null;
+        
+        if (paymentOrder) {
+          const cuotaNumbers: number[] = [];
+          
+          if (paymentInstallment) {
+            const cuotaParts = paymentInstallment.split(',').map((s: string) => s.trim());
+            for (const part of cuotaParts) {
+              const parsed = parseInt(part, 10);
+              if (!isNaN(parsed)) {
+                cuotaNumbers.push(parsed);
+              }
+            }
+          }
+          
+          if (cuotaNumbers.length === 0) {
+            cuotaNumbers.push(-1);
+          }
+          
+          const referencia = payment['# Referencia'] || payment['#Referencia'] || payment['Referencia'] || '';
+          const verificacion = payment['VERIFICACION'] || '-';
+          const numberOfCuotas = cuotaNumbers.filter(n => n !== -1).length || 1;
+          
+          cuotaNumbers.forEach((cuotaNum) => {
+            // For multi-cuota payments, use the scheduled amount for each cuota if available
+            const matchingScheduleInstallment = scheduleInstallments.find(
+              inst => String(inst.orden).trim() === paymentOrder && inst.numeroCuota === cuotaNum
+            );
+            
+            // Use scheduled amount if available, otherwise divide payment equally
+            const splitAmount = matchingScheduleInstallment?.monto || (montoPagado / numberOfCuotas);
+            
+            paymentInstallments.push({
+              orden: paymentOrder,
+              numeroCuota: cuotaNum,
+              monto: splitAmount,
+              fechaCuota: matchingScheduleInstallment?.fechaCuota || null,
+              fechaPagoReal: parsedDate,
+              isPaymentBased: true,
+              paymentDetails: {
+                referencia,
+                metodoPago: payment['Método de Pago'] || payment['Metodo de Pago'] || payment['MÉTODO DE PAGO'],
+                montoPagadoUSD: montoPagado,
+                montoPagadoVES: payment['Monto Pagado en VES'] || payment['MONTO PAGADO EN VES'],
+                tasaCambio: payment['Tasa de Cambio'] || payment['TASA DE CAMBIO']
+              },
+              verificacion,
+              scheduledAmount: matchingScheduleInstallment?.monto
+            });
+          });
+        }
+      });
+    }
+
+    return { scheduleInstallments, paymentInstallments };
+  }, [tableData, paymentRecordsData, ordenToTiendaMap, isCancelledOrder]);
 
   const processFile = useCallback(async (file: File) => {
     setIsProcessing(true);
@@ -688,6 +845,8 @@ export default function Home() {
                       masterOrden={masterOrden}
                       masterTienda={masterTienda}
                       ordenToTiendaMap={ordenToTiendaMap}
+                      preProcessedScheduleInstallments={processedInstallmentsData.scheduleInstallments}
+                      preProcessedPaymentInstallments={processedInstallmentsData.paymentInstallments}
                     />
                   </div>
                   <div style={{ display: 'none' }}>
@@ -1126,6 +1285,8 @@ export default function Home() {
                     masterOrden={masterOrden}
                     masterTienda={masterTienda}
                     ordenToTiendaMap={ordenToTiendaMap}
+                    preProcessedScheduleInstallments={processedInstallmentsData.scheduleInstallments}
+                    preProcessedPaymentInstallments={processedInstallmentsData.paymentInstallments}
                   />
                 ) : (
                   <div className="text-center py-12">
@@ -1157,6 +1318,7 @@ export default function Home() {
                     masterOrden={masterOrden}
                     masterTienda={masterTienda}
                     ordenToTiendaMap={ordenToTiendaMap}
+                    preProcessedPaymentInstallments={processedInstallmentsData.paymentInstallments}
                   />
                 ) : (
                   <div className="text-center py-12">

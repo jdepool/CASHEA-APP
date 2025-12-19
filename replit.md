@@ -77,6 +77,12 @@ The application employs a client-server architecture with a React frontend and a
   * REPORTE MENSUAL and CONCILIACION DE PAGOS use shared calculation utilities but different datasets: CONCILIACION DE PAGOS uses master+local filtered data (via AllPagosInstallments with local filters), while REPORTE MENSUAL uses master-filter-only data (via separate AllPagosInstallments instance with empty local filters)
   * This ensures dashboard metrics in CONCILIACION DE PAGOS update based on tab-specific filters while REPORTE MENSUAL metrics remain consistent using only master filters
   * Shared utility functions (`calculateDepositosOtrosBancos`, `calculateCuotasAdelantadas`) in `installmentUtils.ts` provide consistent calculations across all views
+- **Tab-Switch Performance Optimization**:
+  * Heavy installment processing (extracting, matching, enriching with payment data) is performed ONCE at the Home.tsx level via `processedInstallmentsData` useMemo
+  * Pre-processed data is passed as props to AllInstallments and ConciliacionPagosTable components
+  * This prevents expensive recalculations when components remount on tab switch
+  * Schedule-based installments (from orders file enriched with payment data) and payment-based installments (from payment records) are both pre-computed
+  * React Query hooks use staleTime: Infinity to prevent unnecessary refetches
 - **Deduplication Strategy**: 
   * Backend deduplicates during upload (removes duplicate order numbers before storing)
   * Database merge operation deduplicates when combining new uploads with existing data

@@ -7,12 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Filter, X, Download } from "lucide-react";
-import { extractInstallments, filterInstallmentsByDateRange, calculateInstallmentStatus } from "@/lib/installmentUtils";
+import { filterInstallmentsByDateRange, calculateInstallmentStatus } from "@/lib/installmentUtils";
 import { parseExcelDate, parseDDMMYYYY } from "@/lib/dateUtils";
-import { useQuery } from "@tanstack/react-query";
 import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
-import { calculatePaymentSplits } from "@/lib/paymentUtils";
 
 interface ConciliacionPagosTableProps {
   tableData: any[];
@@ -31,6 +29,8 @@ interface ConciliacionPagosTableProps {
   masterOrden?: string;
   masterTienda?: string;
   ordenToTiendaMap?: Map<string, string>;
+  // Pre-processed data from Home.tsx to avoid recalculation on tab switch
+  preProcessedPaymentInstallments?: any[];
 }
 
 export function ConciliacionPagosTable({ 
@@ -50,250 +50,18 @@ export function ConciliacionPagosTable({
   masterOrden,
   masterTienda,
   ordenToTiendaMap = new Map(),
+  preProcessedPaymentInstallments = []
 }: ConciliacionPagosTableProps) {
   const { toast } = useToast();
 
-  // Fetch payment records to cross-reference
-  const { data: paymentRecordsData } = useQuery({
-    queryKey: ['/api/payment-records'],
-    refetchOnWindowFocus: false,
-    staleTime: Infinity,
-  });
-
-  // Helper function to check if an order is cancelled
-  const isCancelledOrder = (row: any): boolean => {
-    const statusOrden = String(row["STATUS ORDEN"] || "").toLowerCase().trim();
-    return statusOrden.includes("cancel");
-  };
-
-  // Extract all installments and enrich with payment dates
+  // Use pre-processed payment installments data from Home.tsx (avoids recalculation on tab switch)
   const allInstallments = useMemo(() => {
-    // Filter out cancelled orders before extracting installments
-    const nonCancelledOrders = tableData.filter(row => !isCancelledOrder(row));
-    let installments = extractInstallments(nonCancelledOrders);
-
-    // Cross-reference with payment records to add payment dates
-    const apiData = paymentRecordsData as any;
-    const hasPaymentData = apiData?.data?.rows && Array.isArray(apiData.data.rows) && apiData.data.rows.length > 0;
-    
-    if (hasPaymentData) {
-      const paymentRows = apiData.data.rows;
-      
-      // Step 1: Enrich existing scheduled installments with payment info (for "Fecha Cuota" view)
-      // Track which payment records have been used to prevent reusing the same payment for multiple installments
-      const matchedPaymentIndices = new Set<number>();
-      
-      installments = installments.map((installment) => {
-        // Find first unused matching payment record
-        const matchingPaymentIndex = paymentRows.findIndex((payment: any, index: number) => {
-          // Skip if this payment has already been used for another installment
-          if (matchedPaymentIndices.has(index)) return false;
-          
-          const paymentOrder = String(payment['# Orden'] || payment['#Orden'] || payment['Orden'] || '').trim();
-          const paymentInstallmentStr = String(payment['# Cuota Pagada'] || payment['#CuotaPagada'] || payment['Cuota'] || '').trim();
-          
-          const orderMatches = paymentOrder === String(installment.orden).trim();
-          
-          // Match by both order and cuota number if available
-          if (paymentInstallmentStr) {
-            const paymentCuotaNum = parseInt(paymentInstallmentStr, 10);
-            return orderMatches && !isNaN(paymentCuotaNum) && paymentCuotaNum === installment.numeroCuota;
-          }
-          
-          // If no cuota number in payment, don't match (prevent incorrect associations)
-          return false;
-        });
-
-        if (matchingPaymentIndex !== -1) {
-          matchedPaymentIndices.add(matchingPaymentIndex);
-          const matchingPayment = paymentRows[matchingPaymentIndex];
-          
-          // Use transaction date to match PAGO DE CUOTAS filtering
-          const fechaTasaCambio = matchingPayment['Fecha de Transaccion'] ||
-                                  matchingPayment['FECHA DE TRANSACCION'] ||
-                                  matchingPayment['Fecha de Transacción'] ||
-                                  matchingPayment['FECHA DE TRANSACCIÓN'];
-          
-          const parsedDate = fechaTasaCambio ? parseExcelDate(fechaTasaCambio) : null;
-          
-          if (parsedDate) {
-            // Read VERIFICACION from stored data (calculated server-side during upload)
-            const verificacion = matchingPayment['VERIFICACION'] || '-';
-            
-            return { 
-              ...installment, 
-              fechaPagoReal: parsedDate,
-              paymentDetails: {
-                referencia: matchingPayment['# Referencia'] || matchingPayment['#Referencia'] || matchingPayment['Referencia'],
-                metodoPago: matchingPayment['Método de Pago'] || matchingPayment['Metodo de Pago'] || matchingPayment['MÉTODO DE PAGO'],
-                montoPagadoUSD: matchingPayment['Monto Pagado en USD'] || matchingPayment['MONTO PAGADO EN USD'] || matchingPayment['Monto'],
-                montoPagadoVES: matchingPayment['Monto Pagado en VES'] || matchingPayment['MONTO PAGADO EN VES'],
-                tasaCambio: matchingPayment['Tasa de Cambio'] || matchingPayment['TASA DE CAMBIO']
-              },
-              verificacion
-            };
-          }
-        }
-        
-        return installment;
-      });
-      
-      // Step 2: Create payment-based entries for EVERY payment record (for "Fecha de Pago" view)
-      // These will have a special flag to identify them
-      const paymentBasedEntries: any[] = [];
-      
-      // Calculate payment splits for multi-cuota payments
-      const paymentHeaders = apiData.data.headers || [];
-      const paymentSplitsMap = calculatePaymentSplits(paymentRows, paymentHeaders, tableData);
-      
-      paymentRows.forEach((payment: any) => {
-        const paymentOrder = String(payment['# Orden'] || payment['#Orden'] || payment['Orden'] || '').trim();
-        const paymentInstallment = String(payment['# Cuota Pagada'] || payment['#CuotaPagada'] || payment['Cuota'] || '').trim();
-        const montoPagado = payment['Monto Pagado en USD'] || payment['MONTO PAGADO EN USD'] || payment['Monto'] || 0;
-        
-        // Use transaction date to match PAGO DE CUOTAS filtering
-        const fechaTasaCambio = payment['Fecha de Transaccion'] ||
-                                payment['FECHA DE TRANSACCION'] ||
-                                payment['Fecha de Transacción'] ||
-                                payment['FECHA DE TRANSACCIÓN'];
-        
-        const parsedDate = fechaTasaCambio ? parseExcelDate(fechaTasaCambio) : null;
-        
-        // Include ALL payment records, even those without cuota numbers or parseable dates
-        // Match PAGO DE CUOTAS behavior: include all records with order numbers
-        if (paymentOrder) {
-          // Handle comma-separated cuota numbers (e.g., "3,4,5" means cuotas 3, 4, and 5)
-          // Match PAGO DE CUOTAS: each cuota in the list creates a separate entry
-          const cuotaNumbers: number[] = [];
-          
-          if (paymentInstallment) {
-            // Split by comma and parse each number
-            const cuotaParts = paymentInstallment.split(',').map(s => s.trim());
-            for (const part of cuotaParts) {
-              const parsed = parseInt(part, 10);
-              if (!isNaN(parsed)) {
-                cuotaNumbers.push(parsed);
-              }
-            }
-          }
-          
-          // If no valid cuota numbers found, use -1 as sentinel
-          if (cuotaNumbers.length === 0) {
-            cuotaNumbers.push(-1);
-          }
-          
-          // Create one entry per cuota number
-          cuotaNumbers.forEach((cuotaNumber) => {
-            // Look up the scheduled date from the orders file (if exists)
-            let fechaCuotaValue = null;
-            const matchingOrder = nonCancelledOrders.find((row: any) => 
-              String(row['Orden'] || '').trim() === paymentOrder
-            );
-            
-            if (matchingOrder && cuotaNumber >= 0) {
-              if (cuotaNumber === 0) {
-                const fechaCompra = matchingOrder['FECHA DE COMPRA'] || 
-                                   matchingOrder['Fecha de Compra'] || 
-                                   matchingOrder['Fecha de compra'] || 
-                                   matchingOrder['Fecha Compra'];
-                if (fechaCompra) {
-                  fechaCuotaValue = parseExcelDate(fechaCompra);
-                }
-              } else {
-                const fechaCuotaRaw = matchingOrder[`Fecha cuota ${cuotaNumber}`];
-                if (fechaCuotaRaw) {
-                  fechaCuotaValue = parseExcelDate(fechaCuotaRaw);
-                }
-              }
-            }
-            
-            // Read VERIFICACION from stored data (calculated server-side during upload)
-            const verificacion = payment['VERIFICACION'] || '-';
-            
-            // Get split amount if this is a multi-cuota payment
-            const referencia = payment['# Referencia'] || payment['#Referencia'] || payment['Referencia'];
-            const splitKey = `${referencia}-${paymentOrder}-${cuotaNumber}`;
-            const splitInfo = paymentSplitsMap.get(splitKey);
-            
-            // Use split amount if available, otherwise use full payment amount
-            const displayAmount = splitInfo?.splitAmount || (typeof montoPagado === 'number' ? montoPagado : parseFloat(String(montoPagado || 0).replace(/[^0-9.-]/g, '')) || 0);
-            
-            paymentBasedEntries.push({
-              orden: paymentOrder,
-              fechaCuota: fechaCuotaValue,
-              numeroCuota: cuotaNumber,
-              monto: displayAmount,
-              estadoCuota: 'Done',
-              fechaPago: null,
-              fechaPagoReal: parsedDate,
-              isPaymentBased: true, // Flag to identify payment-based entries
-              splitInfo: splitInfo || null, // Store split info for badge display
-              paymentDetails: {
-                referencia: payment['# Referencia'] || payment['#Referencia'] || payment['Referencia'],
-                metodoPago: payment['Método de Pago'] || payment['Metodo de Pago'] || payment['MÉTODO DE PAGO'],
-                montoPagadoUSD: payment['Monto Pagado en USD'] || payment['MONTO PAGADO EN USD'] || payment['Monto'],
-                montoPagadoVES: payment['Monto Pagado en VES'] || payment['MONTO PAGADO EN VES'],
-                tasaCambio: payment['Tasa de Cambio'] || payment['TASA DE CAMBIO']
-              },
-              verificacion
-            });
-          });
-        }
-      });
-      
-      // Combine both sets of installments
-      installments = [...installments, ...paymentBasedEntries];
-    }
-
-    // Dynamically determine installment status based on payment dates
-    // Grace period threshold: 3 days after due date before marking as delayed
-    const gracePeriodThreshold = new Date();
-    gracePeriodThreshold.setDate(gracePeriodThreshold.getDate() - 3);
-    gracePeriodThreshold.setHours(23, 59, 59, 999);
-    
-    installments = installments.map((installment) => {
-      const paymentDateRaw = installment.fechaPagoReal || installment.fechaPago;
-      const estadoLower = (installment.estadoCuota || '').trim().toLowerCase();
-      const isScheduledOrGraced = estadoLower === 'scheduled' || estadoLower === 'graced';
-      const fechaCuota = installment.fechaCuota;
-      
-      // Parse payment date to handle Excel formats and string dates
-      const paymentDate = paymentDateRaw ? parseExcelDate(paymentDateRaw) : null;
-      
-      // Rule 1: If (Scheduled OR Graced) AND has valid payment date <= scheduled date, mark as "Done"
-      if (isScheduledOrGraced && paymentDate && fechaCuota) {
-        const cuotaDate = fechaCuota instanceof Date ? fechaCuota : parseExcelDate(fechaCuota);
-        
-        if (cuotaDate && paymentDate <= cuotaDate) {
-          return { ...installment, estadoCuota: 'Done' };
-        }
-      }
-      
-      // Rule 2: If (Scheduled OR Graced) AND overdue (with 3-day grace period) AND no payment date, mark as "Delayed"
-      if (fechaCuota && isScheduledOrGraced && !paymentDate) {
-        const cuotaDate = fechaCuota instanceof Date ? new Date(fechaCuota) : parseExcelDate(fechaCuota);
-        
-        if (cuotaDate) {
-          cuotaDate.setHours(23, 59, 59, 999);
-          
-          // Only mark as delayed if due date is more than 3 days ago
-          if (cuotaDate < gracePeriodThreshold) {
-            return { ...installment, estadoCuota: 'Delayed' };
-          }
-        }
-      }
-      
-      return installment;
-    });
-
     // Add STATUS field to each installment for dashboard calculations
-    installments = installments.map((installment) => ({
+    return preProcessedPaymentInstallments.map((installment) => ({
       ...installment,
       status: calculateInstallmentStatus(installment)
     }));
-
-    return installments;
-  }, [tableData, paymentRecordsData]);
+  }, [preProcessedPaymentInstallments]);
 
   // Apply filters to installments - HARDCODED to filter by Fecha de Pago
   const filteredInstallments = useMemo(() => {
