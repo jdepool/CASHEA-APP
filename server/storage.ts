@@ -9,11 +9,14 @@ import {
   type InsertMarketplaceOrder,
   type BankStatement,
   type InsertBankStatement,
+  type PaymentVerification,
+  type InsertPaymentVerification,
   users,
   orders,
   paymentRecords,
   marketplaceOrders,
-  bankStatements
+  bankStatements,
+  paymentVerifications
 } from "@shared/schema";
 import { normalizeNumberForKey, normalizeReferenceNumber } from "@shared/numberUtils";
 import { db } from "./db";
@@ -53,6 +56,10 @@ export interface IStorage {
   
   createBankStatement(bankStatement: InsertBankStatement): Promise<BankStatement>;
   getLatestBankStatement(): Promise<BankStatement | undefined>;
+  
+  getAllPaymentVerifications(): Promise<PaymentVerification[]>;
+  savePaymentVerifications(verifications: InsertPaymentVerification[]): Promise<void>;
+  clearPaymentVerifications(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -631,6 +638,31 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(bankStatements.uploadedAt))
       .limit(1);
     return bankStatement || undefined;
+  }
+
+  async getAllPaymentVerifications(): Promise<PaymentVerification[]> {
+    return await db.select().from(paymentVerifications);
+  }
+
+  async savePaymentVerifications(verifications: InsertPaymentVerification[]): Promise<void> {
+    if (verifications.length === 0) return;
+    
+    await db.transaction(async (tx) => {
+      await tx.delete(paymentVerifications);
+      
+      const batchSize = 100;
+      for (let i = 0; i < verifications.length; i += batchSize) {
+        const batch = verifications.slice(i, i + batchSize);
+        await tx.insert(paymentVerifications).values(batch);
+      }
+    });
+    
+    console.log(`✓ Saved ${verifications.length} payment verifications`);
+  }
+
+  async clearPaymentVerifications(): Promise<void> {
+    await db.delete(paymentVerifications);
+    console.log('✓ Cleared all payment verifications');
   }
 }
 

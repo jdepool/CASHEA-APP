@@ -115,3 +115,24 @@ export const insertEmbeddingSchema = createInsertSchema(embeddings).omit({
 
 export type InsertEmbedding = z.infer<typeof insertEmbeddingSchema>;
 export type Embedding = typeof embeddings.$inferSelect;
+
+export const paymentVerifications = pgTable("payment_verifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  paymentKey: text("payment_key").notNull().unique(),
+  orden: text("orden").notNull(),
+  cuota: text("cuota").notNull(),
+  referencia: text("referencia").notNull(),
+  verificationStatus: text("verification_status").notNull(),
+  matchedBankRef: text("matched_bank_ref"),
+  paymentAmountVES: text("payment_amount_ves"),
+  paymentAmountUSD: text("payment_amount_usd"),
+  verifiedAt: timestamp("verified_at").notNull().defaultNow(),
+});
+
+export const insertPaymentVerificationSchema = createInsertSchema(paymentVerifications).omit({
+  id: true,
+  verifiedAt: true,
+});
+
+export type InsertPaymentVerification = z.infer<typeof insertPaymentVerificationSchema>;
+export type PaymentVerification = typeof paymentVerifications.$inferSelect;
