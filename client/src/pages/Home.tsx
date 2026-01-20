@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, lazy, Suspense, useTransition, useDeferredValue } from "react";
+import { useState, useCallback, useEffect, useMemo, lazy, Suspense, useTransition, useDeferredValue, useRef } from "react";
 import { FileUpload } from "@/components/FileUpload";
 import { EmptyState } from "@/components/EmptyState";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -30,7 +30,7 @@ import { Loader2 } from "lucide-react";
 import { parseExcelDate, parseDDMMYYYY } from "@/lib/dateUtils";
 import { extractInstallments, calculateInstallmentStatus } from "@/lib/installmentUtils";
 import { verifyInPaymentRecords } from "@/lib/verificationUtils";
-import { generateDataHash, shouldUpdateStatuses, updateTimeBasedStatuses, getCacheMetadata } from "@/lib/cacheUtils";
+import { generateDataHash, shouldUpdateStatuses, updateTimeBasedStatuses, getCacheMetadata, invalidateCacheWithNewHash, saveCacheWithHash } from "@/lib/cacheUtils";
 
 // Loading fallback for lazy-loaded tab components
 const TabLoader = () => (
@@ -213,12 +213,15 @@ export default function Home() {
         const combinedHash = `${ordersHash}|${paymentsHash}|${bankHash}|${marketplaceHash}`;
         const cachedHash = cacheMetadata.data.installments?.sourceDataHash || '';
 
-        if (combinedHash !== cachedHash && tableData.length > 0) {
-          console.log('Source data changed, cache will be recalculated on next save');
-          console.log('Current hash:', combinedHash);
-          console.log('Cached hash:', cachedHash);
+        if (combinedHash !== cachedHash && cachedHash !== '' && tableData.length > 0) {
+          console.log('Source data changed, invalidating old cache');
+          console.log('Current hash:', combinedHash.substring(0, 50) + '...');
+          console.log('Cached hash:', cachedHash.substring(0, 50) + '...');
+          await invalidateCacheWithNewHash(combinedHash);
+        } else if (cachedHash === '' && tableData.length > 0) {
+          console.log('No cached data yet, will save automatically');
         } else {
-          console.log('Using cached calculations, source data unchanged');
+          console.log('Cache is current');
         }
       } catch (error) {
         console.error('Error checking cache:', error);
@@ -527,6 +530,82 @@ export default function Home() {
     if (dateValue instanceof Date) return dateValue;
     return parseExcelDate(dateValue);
   }, []);
+
+  // Ref to track if cache save has been done for current hash
+  const lastSavedHashRef = useRef<string>('');
+
+  // Combine schedule and payment installments for cache, memoized to prevent repeated saves
+  const allInstallmentsForCache = useMemo(() => {
+    const { scheduleInstallments, paymentInstallments } = processedInstallmentsData;
+    
+    if (scheduleInstallments.length === 0 && paymentInstallments.length === 0) {
+      return [];
+    }
+
+    const formatInstallment = (inst: any, isPaymentBased: boolean) => ({
+      orden: String(inst.orden || ''),
+      numeroCuota: inst.numeroCuota || 0,
+      monto: inst.monto ? String(inst.monto) : null,
+      fechaCuota: inst.fechaCuota instanceof Date 
+        ? inst.fechaCuota.toISOString().split('T')[0] 
+        : inst.fechaCuota || null,
+      fechaPagoReal: inst.fechaPagoReal instanceof Date
+        ? inst.fechaPagoReal.toISOString().split('T')[0]
+        : inst.fechaPagoReal || null,
+      status: inst.status || inst.estadoCuota || null,
+      isPaymentBased,
+      tienda: ordenToTiendaMap.get(String(inst.orden).replace(/^0+/, '') || '0') || null,
+      paymentReferencia: inst.paymentDetails?.referencia || null,
+      paymentMetodo: inst.paymentDetails?.metodoPago || null,
+      paymentMontoUSD: inst.paymentDetails?.montoPagadoUSD ? String(inst.paymentDetails.montoPagadoUSD) : null,
+      paymentMontoVES: inst.paymentDetails?.montoPagadoVES ? String(inst.paymentDetails.montoPagadoVES) : null,
+      paymentTasaCambio: inst.paymentDetails?.tasaCambio ? String(inst.paymentDetails.tasaCambio) : null,
+      verificacion: inst.verificacion || null,
+      sourceVersion: 1
+    });
+
+    // Combine both schedule-based and payment-based installments
+    const scheduleFormatted = scheduleInstallments.map((inst: any) => formatInstallment(inst, false));
+    const paymentFormatted = paymentInstallments.map((inst: any) => formatInstallment(inst, true));
+
+    return [...scheduleFormatted, ...paymentFormatted];
+  }, [processedInstallmentsData, ordenToTiendaMap]);
+
+  // Compute combined hash once, memoized
+  const combinedDataHash = useMemo(() => {
+    const ordersHash = generateDataHash(tableData);
+    const paymentsRows = (paymentRecordsData as any)?.data?.rows || [];
+    const paymentsHash = generateDataHash(paymentsRows);
+    const bankRows = (bankStatementsData as any)?.data?.rows || [];
+    const bankHash = generateDataHash(bankRows);
+    const marketplaceRows = (marketplaceData as any)?.data?.rows || [];
+    const marketplaceHash = generateDataHash(marketplaceRows);
+    
+    return `${ordersHash}|${paymentsHash}|${bankHash}|${marketplaceHash}`;
+  }, [tableData, paymentRecordsData, bankStatementsData, marketplaceData]);
+
+  // Save to cache only when hash changes and data is available
+  useEffect(() => {
+    const saveToCache = async () => {
+      // Skip if no data or if we already saved this hash
+      if (allInstallmentsForCache.length === 0 || combinedDataHash === lastSavedHashRef.current) {
+        return;
+      }
+
+      try {
+        await saveCacheWithHash(allInstallmentsForCache, combinedDataHash);
+        lastSavedHashRef.current = combinedDataHash;
+        console.log(`Saved ${allInstallmentsForCache.length} installments to cache with hash: ${combinedDataHash.substring(0, 50)}...`);
+      } catch (error) {
+        console.error('Error saving to cache:', error);
+      }
+    };
+
+    // Only save if we have meaningful data
+    if (allInstallmentsForCache.length > 0 && tableData.length > 0) {
+      saveToCache();
+    }
+  }, [allInstallmentsForCache, combinedDataHash, tableData.length]);
 
   // Filtered payment installments with local + master filters (for CONCILIACION DE PAGOS tab)
   const filteredPagosWithLocalFilters = useMemo(() => {

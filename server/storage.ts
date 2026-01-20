@@ -824,16 +824,21 @@ export class DatabaseStorage implements IStorage {
   async updateInstallmentStatuses(currentDate: Date): Promise<{ updated: number }> {
     const todayStr = currentDate.toISOString().split('T')[0];
     
+    // Use domain-specific Spanish status values matching the application taxonomy:
+    // - 'A TIEMPO' for paid on time (payment date <= cuota date)
+    // - 'ADELANTADO' for paid early (payment date < cuota date - will be calculated by frontend)
+    // - 'ATRASADO' for overdue (past due date, no payment)
+    // - Status is preserved if payment exists (let frontend calculate exact status)
     const result = await db.execute(sql`
       WITH updates AS (
         UPDATE processed_installments
         SET status = CASE
-          WHEN fecha_pago_real IS NOT NULL THEN 'Done'
-          WHEN fecha_cuota IS NOT NULL AND fecha_cuota::date < ${todayStr}::date THEN 'Vencido'
+          WHEN fecha_pago_real IS NOT NULL THEN 'A TIEMPO'
+          WHEN fecha_cuota IS NOT NULL AND fecha_cuota::date < ${todayStr}::date THEN 'ATRASADO'
           ELSE status
         END
         WHERE 
-          (status IS NULL OR status = 'Pendiente' OR status = '')
+          (status IS NULL OR status = 'PENDIENTE' OR status = '' OR status = 'Pendiente')
           AND (
             fecha_pago_real IS NOT NULL 
             OR (fecha_cuota IS NOT NULL AND fecha_cuota::date < ${todayStr}::date)

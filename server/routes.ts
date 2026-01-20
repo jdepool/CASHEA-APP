@@ -1432,6 +1432,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update cache metadata with new hash
+  app.post("/api/cache/metadata/update", async (req, res) => {
+    try {
+      const { cacheKey, sourceDataHash } = req.body;
+      if (!cacheKey) {
+        return res.status(400).json({ error: 'Se requiere cacheKey' });
+      }
+      
+      const result = await storage.updateCacheMetadata(cacheKey, sourceDataHash);
+      res.json({ success: true, data: result });
+    } catch (error) {
+      console.error('Error updating cache metadata:', error);
+      res.status(500).json({ error: 'Error al actualizar metadata de cache' });
+    }
+  });
+
   // Update time-based statuses for installments
   app.post("/api/cache/installments/update-statuses", async (req, res) => {
     try {

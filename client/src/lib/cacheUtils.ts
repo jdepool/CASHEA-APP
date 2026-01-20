@@ -7,23 +7,37 @@ export function generateDataHash(data: any[]): string {
   
   let numericSum = 0;
   let latestDate = '';
+  let keyCount = 0;
   
   for (const row of data) {
     if (!row || typeof row !== 'object') continue;
     
     for (const key of Object.keys(row)) {
       const value = row[key];
+      keyCount++;
       
-      if (typeof value === 'number' && !isNaN(value)) {
+      if (typeof value === 'number' && !isNaN(value) && isFinite(value)) {
         numericSum += value;
       } else if (typeof value === 'string') {
         const dateMatch = value.match(/^\d{2}\/\d{2}\/\d{4}$/);
         if (dateMatch && value > latestDate) {
           latestDate = value;
         }
-        const numericValue = parseFloat(value.replace(/[.,]/g, match => match === ',' ? '.' : ''));
-        if (!isNaN(numericValue) && isFinite(numericValue)) {
-          numericSum += numericValue;
+        
+        // Parse European format numbers (1.234,56 → 1234.56)
+        // Check if it looks like a European number (has comma as decimal separator)
+        if (/^\d{1,3}(\.\d{3})*,\d+$/.test(value.trim())) {
+          const numericValue = parseFloat(value.replace(/\./g, '').replace(',', '.'));
+          if (!isNaN(numericValue) && isFinite(numericValue)) {
+            numericSum += numericValue;
+          }
+        }
+        // Parse standard format numbers (1234.56)
+        else if (/^-?\d+\.?\d*$/.test(value.trim())) {
+          const numericValue = parseFloat(value);
+          if (!isNaN(numericValue) && isFinite(numericValue)) {
+            numericSum += numericValue;
+          }
         }
       }
     }
@@ -31,7 +45,7 @@ export function generateDataHash(data: any[]): string {
   
   const roundedSum = Math.round(numericSum * 100) / 100;
   
-  return `${rowCount}_${roundedSum}_${latestDate || 'nodate'}`;
+  return `${rowCount}_${keyCount}_${roundedSum}_${latestDate || 'nodate'}`;
 }
 
 export function shouldUpdateStatuses(): boolean {
@@ -83,5 +97,56 @@ export async function getCacheMetadata(): Promise<{
   } catch (error) {
     console.error('Error fetching cache metadata:', error);
     return { success: false, data: null };
+  }
+}
+
+export async function invalidateCacheWithNewHash(combinedHash: string): Promise<boolean> {
+  try {
+    // First invalidate the old cache
+    await fetch('/api/cache/invalidate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cacheKey: 'installments' })
+    });
+    
+    console.log('Cache invalidated, triggering recalculation');
+    return true;
+  } catch (error) {
+    console.error('Error invalidating cache:', error);
+    return false;
+  }
+}
+
+export async function saveCacheWithHash(
+  installments: any[], 
+  combinedHash: string
+): Promise<boolean> {
+  try {
+    // Save processed installments to cache
+    const saveResponse = await fetch('/api/cache/installments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ installments })
+    });
+    
+    if (!saveResponse.ok) {
+      throw new Error('Failed to save installments to cache');
+    }
+
+    // Update metadata with new hash
+    await fetch('/api/cache/metadata/update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        cacheKey: 'installments',
+        sourceDataHash: combinedHash 
+      })
+    });
+    
+    console.log('Cache saved with new hash:', combinedHash);
+    return true;
+  } catch (error) {
+    console.error('Error saving cache:', error);
+    return false;
   }
 }
