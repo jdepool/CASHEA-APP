@@ -40,6 +40,52 @@ const TabLoader = () => (
   </div>
 );
 
+// Type for cached installment data
+interface ProcessedInstallment {
+  orden: string;
+  numeroCuota: number;
+  monto: number | null;
+  fechaCuota: Date | string | null;
+  fechaPagoReal: Date | string | null;
+  estadoCuota?: string;
+  status?: string;
+  isPaymentBased?: boolean;
+  tienda?: string | null;
+  paymentDetails?: {
+    referencia?: string;
+    metodoPago?: string;
+    montoPagadoUSD?: number;
+    montoPagadoVES?: number;
+    tasaCambio?: number;
+  };
+  verificacion?: string;
+  scheduledAmount?: number;
+}
+
+// Type for cached bank statement data
+interface ProcessedBankStatement {
+  [key: string]: any;
+  CONCILIADO?: string;
+}
+
+// Type for cached data state
+interface CachedDataState {
+  installments: {
+    scheduleInstallments: ProcessedInstallment[];
+    paymentInstallments: ProcessedInstallment[];
+  };
+  bankStatements: {
+    headers: string[];
+    rows: ProcessedBankStatement[];
+    extendedHeaders: string[];
+  };
+  ordenTiendaMap: Map<string, string>;
+  uniqueTiendas: string[];
+  lastCalculated: Date | null;
+  isLoading: boolean;
+  isRecalculating: boolean;
+}
+
 export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedPaymentFile, setSelectedPaymentFile] = useState<File | null>(null);
@@ -48,6 +94,17 @@ export default function Home() {
   const [tableData, setTableData] = useState<any[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Cached data state - uses database cache instead of useMemo calculations
+  const [cachedData, setCachedData] = useState<CachedDataState>({
+    installments: { scheduleInstallments: [], paymentInstallments: [] },
+    bankStatements: { headers: [], rows: [], extendedHeaders: [] },
+    ordenTiendaMap: new Map(),
+    uniqueTiendas: [],
+    lastCalculated: null,
+    isLoading: true,
+    isRecalculating: false
+  });
   
   // Master filter state (applies across all tabs)
   const [masterDateFrom, setMasterDateFrom] = useState<string>("");
@@ -144,6 +201,19 @@ export default function Home() {
     staleTime: Infinity,
   });
 
+  // Query hooks for loading cached data from database
+  const { data: cachedInstallments, isLoading: isLoadingCachedInstallments } = useQuery({
+    queryKey: ['/api/cache/installments'],
+    refetchOnWindowFocus: false,
+    staleTime: Infinity,
+  });
+
+  const { data: cachedOrdenMap, isLoading: isLoadingCachedOrdenMap } = useQuery({
+    queryKey: ['/api/cache/orden-tienda-map'],
+    refetchOnWindowFocus: false,
+    staleTime: Infinity,
+  });
+
   // Helper function to deduplicate orders by order number (keeps last occurrence)
   const deduplicateOrders = useCallback((rows: any[], headers: string[]) => {
     const ordenHeader = headers.find((h: string) => h.toLowerCase() === 'orden');
@@ -180,6 +250,76 @@ export default function Home() {
       }
     }
   }, [ordersData]);
+
+  // Load cached installments from database on mount
+  useEffect(() => {
+    if (cachedInstallments && !isLoadingCachedInstallments) {
+      const data = cachedInstallments as any;
+      if (data.success && data.data && data.data.length > 0) {
+        console.log(`Loaded ${data.data.length} cached installments from database`);
+        
+        // Separate schedule-based and payment-based installments
+        const scheduleInstallments = data.data
+          .filter((inst: any) => !inst.isPaymentBased)
+          .map((inst: any) => ({
+            ...inst,
+            monto: inst.monto ? parseFloat(inst.monto) : null,
+            fechaCuota: inst.fechaCuota ? new Date(inst.fechaCuota) : null,
+            fechaPagoReal: inst.fechaPagoReal ? new Date(inst.fechaPagoReal) : null,
+            paymentDetails: inst.paymentReferencia ? {
+              referencia: inst.paymentReferencia,
+              metodoPago: inst.paymentMetodo,
+              montoPagadoUSD: inst.paymentMontoUSD ? parseFloat(inst.paymentMontoUSD) : undefined,
+              montoPagadoVES: inst.paymentMontoVES ? parseFloat(inst.paymentMontoVES) : undefined,
+              tasaCambio: inst.paymentTasaCambio ? parseFloat(inst.paymentTasaCambio) : undefined,
+            } : undefined
+          }));
+        
+        const paymentInstallments = data.data
+          .filter((inst: any) => inst.isPaymentBased)
+          .map((inst: any) => ({
+            ...inst,
+            monto: inst.monto ? parseFloat(inst.monto) : null,
+            fechaCuota: inst.fechaCuota ? new Date(inst.fechaCuota) : null,
+            fechaPagoReal: inst.fechaPagoReal ? new Date(inst.fechaPagoReal) : null,
+            paymentDetails: inst.paymentReferencia ? {
+              referencia: inst.paymentReferencia,
+              metodoPago: inst.paymentMetodo,
+              montoPagadoUSD: inst.paymentMontoUSD ? parseFloat(inst.paymentMontoUSD) : undefined,
+              montoPagadoVES: inst.paymentMontoVES ? parseFloat(inst.paymentMontoVES) : undefined,
+              tasaCambio: inst.paymentTasaCambio ? parseFloat(inst.paymentTasaCambio) : undefined,
+            } : undefined
+          }));
+
+        setCachedData(prev => ({
+          ...prev,
+          installments: { scheduleInstallments, paymentInstallments },
+          isLoading: false
+        }));
+      } else {
+        // No cached data, mark as not loading so calculation can proceed
+        setCachedData(prev => ({ ...prev, isLoading: false }));
+      }
+    }
+  }, [cachedInstallments, isLoadingCachedInstallments]);
+
+  // Load cached orden-tienda map from database on mount
+  useEffect(() => {
+    if (cachedOrdenMap && !isLoadingCachedOrdenMap) {
+      const data = cachedOrdenMap as any;
+      if (data.success && data.data && Object.keys(data.data).length > 0) {
+        console.log(`Loaded cached orden-tienda map with ${Object.keys(data.data).length} entries`);
+        const map = new Map<string, string>(Object.entries(data.data));
+        const tiendas = Array.from(new Set(map.values())).sort();
+        
+        setCachedData(prev => ({
+          ...prev,
+          ordenTiendaMap: map,
+          uniqueTiendas: tiendas
+        }));
+      }
+    }
+  }, [cachedOrdenMap, isLoadingCachedOrdenMap]);
 
   // Smart cache invalidation: check if source data has changed and update statuses on app load
   useEffect(() => {
