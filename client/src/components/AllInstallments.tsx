@@ -225,21 +225,21 @@ export function AllInstallments({
 
       return {
         'Orden': inst.orden,
-        'Número Cuota': inst.numeroCuota,
         'Fecha Cuota': formatDate(inst.fechaCuota),
+        'Número Cuota': inst.numeroCuota >= 0 ? inst.numeroCuota : '',
         'Monto': inst.monto,
-        'Estado': inst.estadoCuota,
-        'Fecha Pago Real': formatDate(inst.fechaPagoReal),
-        'Fecha Pago': formatDate(inst.fechaPago),
-        'Referencia': inst.paymentDetails?.referencia || '',
-        'Verificacion': inst.verificacion || '-',
+        'Estado Cuota': inst.estadoCuota || '',
+        'Fecha de Pago': formatDate(inst.fechaPagoReal),
+        '# Referencia': inst.paymentDetails?.referencia || '',
+        'STATUS': inst.status || '',
+        'VERIFICACION': inst.verificacion || '-',
       };
     });
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Cuotas");
-    XLSX.writeFile(wb, `cuotas_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, "Conciliación Cuotas");
+    XLSX.writeFile(wb, `conciliacion_cuotas_${new Date().toISOString().split('T')[0]}.xlsx`);
     
     toast({
       title: "Archivo exportado",
