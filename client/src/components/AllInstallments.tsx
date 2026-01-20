@@ -9,7 +9,6 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Filter, X, Download } from "lucide-react";
 import { filterInstallmentsByDateRange, calculateInstallmentStatus } from "@/lib/installmentUtils";
 import { parseExcelDate, parseDDMMYYYY } from "@/lib/dateUtils";
-import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 
 interface AllInstallmentsProps {
@@ -201,7 +200,7 @@ export function AllInstallments({
 
   const hasActiveFilters = dateFrom || dateTo || ordenFilter || (estadoCuotaFilter !== 'all');
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (filteredInstallments.length === 0) {
       toast({
         title: "No hay datos para exportar",
@@ -236,6 +235,7 @@ export function AllInstallments({
       };
     });
 
+    const XLSX = await import('xlsx');
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Conciliación Cuotas");

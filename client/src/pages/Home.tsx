@@ -27,7 +27,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Loader2 } from "lucide-react";
-import * as XLSX from "xlsx";
 import { parseExcelDate, parseDDMMYYYY } from "@/lib/dateUtils";
 import { extractInstallments, calculateInstallmentStatus } from "@/lib/installmentUtils";
 import { verifyInPaymentRecords } from "@/lib/verificationUtils";
@@ -794,9 +793,10 @@ export default function Home() {
     setSelectedFile(null);
   }, []);
 
-  const handleExport = useCallback(() => {
+  const handleExport = useCallback(async () => {
     if (tableData.length === 0) return;
 
+    const XLSX = await import('xlsx');
     const ws = XLSX.utils.json_to_sheet(tableData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Datos");
@@ -1084,7 +1084,7 @@ export default function Home() {
     return [...Array.from(ordersMap.values()), ...rowsWithoutOrden];
   }, [tableData, headers, dateFrom, dateTo, ordenFilter, referenciaFilter, estadoCuotaFilter, masterDateFrom, masterDateTo, masterOrden, masterTienda, ordenToTiendaMap]);
 
-  const handleExportOrders = () => {
+  const handleExportOrders = async () => {
     if (filteredTableData.length === 0) {
       toast({
         title: "No hay datos para exportar",
@@ -1110,6 +1110,7 @@ export default function Home() {
       return formattedRow;
     });
 
+    const XLSX = await import('xlsx');
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Ordenes");

@@ -7,7 +7,6 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Filter, Download, ArrowUpDown, ArrowUp, ArrowDown, DollarSign, FileText } from "lucide-react";
 import { extractInstallments } from "@/lib/installmentUtils";
 import { parseDDMMYYYY, formatDate, parseExcelDate } from "@/lib/dateUtils";
-import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { CuotasDashboard } from "./CuotasDashboard";
@@ -222,7 +221,7 @@ export function CuotasTable({
     return <ArrowUpDown className="h-4 w-4 ml-1 opacity-50" />;
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (filteredCuotas.length === 0) return;
 
     const exportData = filteredCuotas.map((cuota) => ({
@@ -233,6 +232,7 @@ export function CuotasTable({
       'Estado': cuota.estadoCuota || ''
     }));
 
+    const XLSX = await import('xlsx');
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Cuotas");

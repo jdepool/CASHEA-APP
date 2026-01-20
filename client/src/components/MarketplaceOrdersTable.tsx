@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Download, ArrowUpDown, ArrowUp, ArrowDown, Filter } from "lucide-react";
-import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { parseDDMMYYYY, parseExcelDate } from "@/lib/dateUtils";
 import { MarketplaceDashboard } from "@/components/MarketplaceDashboard";
@@ -415,9 +414,10 @@ export function MarketplaceOrdersTable({
     return String(value);
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (sortedData.length === 0) return;
 
+    const XLSX = await import('xlsx');
     const ws = XLSX.utils.json_to_sheet(sortedData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Marketplace Orders");

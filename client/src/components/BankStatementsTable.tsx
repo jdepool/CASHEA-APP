@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { parseExcelDate, parseDDMMYYYY } from "@/lib/dateUtils";
 import { Badge } from "@/components/ui/badge";
@@ -180,9 +179,10 @@ export function BankStatementsTable({
     return null;
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (sortedData.length === 0) return;
 
+    const XLSX = await import('xlsx');
     const ws = XLSX.utils.json_to_sheet(sortedData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Estado de Cuenta");

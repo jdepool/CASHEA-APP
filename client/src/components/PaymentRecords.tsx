@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Download, FileSpreadsheet, Filter } from "lucide-react";
-import * as XLSX from "xlsx";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { parseExcelDate, parseDDMMYYYY } from "@/lib/dateUtils";
@@ -215,7 +214,7 @@ export function PaymentRecords({
     return filtered;
   }, [sortedPaymentData, headers, dateFrom, dateTo, ordenFilter, referenciaFilter, masterDateFrom, masterDateTo, masterOrden, masterTienda, ordenToTiendaMap]);
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (paymentData.length === 0) {
       toast({
         title: "No hay datos para exportar",
@@ -241,6 +240,7 @@ export function PaymentRecords({
       return formattedRow;
     });
 
+    const XLSX = await import('xlsx');
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Pagos");
