@@ -40,13 +40,13 @@ const TabLoader = () => (
   </div>
 );
 
-// Type for cached installment data
+// Type for cached installment data (uses 'any' for compatibility with existing Installment type)
 interface ProcessedInstallment {
   orden: string;
   numeroCuota: number;
-  monto: number | null;
-  fechaCuota: Date | string | null;
-  fechaPagoReal: Date | string | null;
+  monto?: number | null;
+  fechaCuota?: Date | string | null;
+  fechaPagoReal?: Date | string | null;
   estadoCuota?: string;
   status?: string;
   isPaymentBased?: boolean;
@@ -320,6 +320,291 @@ export default function Home() {
       }
     }
   }, [cachedOrdenMap, isLoadingCachedOrdenMap]);
+
+  // Recalculate and cache installments (called after file uploads)
+  const recalculateAndCacheInstallments = useCallback(async () => {
+    console.log('Recalculating installments...');
+    setCachedData(prev => ({ ...prev, isRecalculating: true }));
+    
+    try {
+      // Get current data
+      const currentOrders = tableData;
+      const currentPaymentData = paymentRecordsData as any;
+      const currentMarketplaceData = marketplaceData as any;
+      const paymentRows = currentPaymentData?.data?.rows || [];
+      
+      // Get the current orden-to-tienda map
+      const mpData = currentMarketplaceData;
+      let currentOrdenToTiendaMap = new Map<string, string>();
+      
+      if (mpData?.data?.rows && mpData?.data?.headers) {
+        const mpHeaders = mpData.data.headers;
+        const mpRows = mpData.data.rows;
+        const tiendaColumn = mpHeaders.find((h: string) => 
+          h.toLowerCase().includes('tienda') || h.toLowerCase() === 'store'
+        );
+        const ordenColumn = mpHeaders.find((h: string) => 
+          h.toLowerCase().includes('orden') || h.toLowerCase() === '# orden'
+        );
+        
+        if (tiendaColumn && ordenColumn) {
+          mpRows.forEach((row: any) => {
+            const orden = row[ordenColumn];
+            const tienda = row[tiendaColumn];
+            if (orden && tienda) {
+              const normalizedOrden = String(orden).replace(/^0+/, '') || '0';
+              currentOrdenToTiendaMap.set(normalizedOrden, String(tienda).trim());
+            }
+          });
+        }
+      }
+      
+      // Calculate installments (same logic as processedInstallmentsData useMemo)
+      const isCancelledOrderFn = (row: any): boolean => {
+        const statusOrden = String(row["STATUS ORDEN"] || "").toLowerCase().trim();
+        return statusOrden.includes("cancel");
+      };
+      
+      // Filter out cancelled orders AND orders not in marketplace data
+      const validOrders = currentOrders.filter(row => {
+        if (isCancelledOrderFn(row)) return false;
+        const ordenValue = String(row["Orden"] || '').replace(/^0+/, '') || '0';
+        if (!currentOrdenToTiendaMap.has(ordenValue)) return false;
+        return true;
+      });
+      
+      // Extract schedule-based installments
+      let scheduleInstallments = extractInstallments(validOrders);
+      
+      // Enrich with payment data
+      if (paymentRows.length > 0) {
+        scheduleInstallments = scheduleInstallments.map((installment) => {
+          const matchingPayment = paymentRows.find((payment: any) => {
+            const paymentOrder = String(payment['# Orden'] || payment['#Orden'] || payment['Orden'] || '').trim();
+            const paymentInstallmentStr = String(payment['# Cuota Pagada'] || payment['#CuotaPagada'] || payment['Cuota'] || '').trim();
+            
+            const orderMatches = paymentOrder === String(installment.orden).trim();
+            
+            if (paymentInstallmentStr && orderMatches) {
+              const cuotaParts = paymentInstallmentStr.split(',').map((s: string) => s.trim());
+              for (const part of cuotaParts) {
+                const parsed = parseInt(part, 10);
+                if (!isNaN(parsed) && parsed === installment.numeroCuota) {
+                  return true;
+                }
+              }
+            }
+            return false;
+          });
+
+          if (matchingPayment) {
+            const fechaTasaCambio = matchingPayment['Fecha de Transaccion'] ||
+                                    matchingPayment['FECHA DE TRANSACCION'] ||
+                                    matchingPayment['Fecha de Transacción'] ||
+                                    matchingPayment['FECHA DE TRANSACCIÓN'];
+            
+            const parsedDate = fechaTasaCambio ? parseExcelDate(fechaTasaCambio) : null;
+            
+            if (parsedDate) {
+              const verificacion = matchingPayment['VERIFICACION'] || '-';
+              return { 
+                ...installment, 
+                fechaPagoReal: parsedDate,
+                paymentDetails: {
+                  referencia: matchingPayment['# Referencia'] || matchingPayment['#Referencia'] || matchingPayment['Referencia'],
+                  metodoPago: matchingPayment['Método de Pago'] || matchingPayment['Metodo de Pago'] || matchingPayment['MÉTODO DE PAGO'],
+                  montoPagadoUSD: matchingPayment['Monto Pagado en USD'] || matchingPayment['MONTO PAGADO EN USD'] || matchingPayment['Monto'],
+                  montoPagadoVES: matchingPayment['Monto Pagado en VES'] || matchingPayment['MONTO PAGADO EN VES'],
+                  tasaCambio: matchingPayment['Tasa de Cambio'] || matchingPayment['TASA DE CAMBIO']
+                },
+                verificacion
+              };
+            }
+          }
+          return installment;
+        });
+      }
+      
+      // Create payment-based installments
+      const paymentInstallments: any[] = [];
+      
+      if (paymentRows.length > 0) {
+        paymentRows.forEach((payment: any) => {
+          const paymentOrder = String(payment['# Orden'] || payment['#Orden'] || payment['Orden'] || '').trim();
+          const paymentInstallment = String(payment['# Cuota Pagada'] || payment['#CuotaPagada'] || payment['Cuota'] || '').trim();
+          const montoPagado = payment['Monto Pagado en USD'] || payment['MONTO PAGADO EN USD'] || payment['Monto'] || 0;
+          
+          const fechaTasaCambio = payment['Fecha de Transaccion'] ||
+                                  payment['FECHA DE TRANSACCION'] ||
+                                  payment['Fecha de Transacción'] ||
+                                  payment['FECHA DE TRANSACCIÓN'];
+          
+          const parsedDate = fechaTasaCambio ? parseExcelDate(fechaTasaCambio) : null;
+          
+          if (paymentOrder) {
+            const cuotaNumbers: number[] = [];
+            
+            if (paymentInstallment) {
+              const cuotaParts = paymentInstallment.split(',').map((s: string) => s.trim());
+              for (const part of cuotaParts) {
+                const parsed = parseInt(part, 10);
+                if (!isNaN(parsed)) {
+                  cuotaNumbers.push(parsed);
+                }
+              }
+            }
+            
+            if (cuotaNumbers.length === 0) {
+              cuotaNumbers.push(-1);
+            }
+            
+            const referencia = payment['# Referencia'] || payment['#Referencia'] || payment['Referencia'] || '';
+            const verificacion = payment['VERIFICACION'] || '-';
+            const numberOfCuotas = cuotaNumbers.filter(n => n !== -1).length || 1;
+            
+            cuotaNumbers.forEach((cuotaNum) => {
+              const matchingScheduleInstallment = scheduleInstallments.find(
+                inst => String(inst.orden).trim() === paymentOrder && inst.numeroCuota === cuotaNum
+              );
+              
+              const splitAmount = matchingScheduleInstallment?.monto || (montoPagado / numberOfCuotas);
+              
+              paymentInstallments.push({
+                orden: paymentOrder,
+                numeroCuota: cuotaNum,
+                monto: splitAmount,
+                fechaCuota: matchingScheduleInstallment?.fechaCuota || null,
+                fechaPagoReal: parsedDate,
+                isPaymentBased: true,
+                paymentDetails: {
+                  referencia,
+                  metodoPago: payment['Método de Pago'] || payment['Metodo de Pago'] || payment['MÉTODO DE PAGO'],
+                  montoPagadoUSD: montoPagado,
+                  montoPagadoVES: payment['Monto Pagado en VES'] || payment['MONTO PAGADO EN VES'],
+                  tasaCambio: payment['Tasa de Cambio'] || payment['TASA DE CAMBIO']
+                },
+                verificacion,
+                scheduledAmount: matchingScheduleInstallment?.monto
+              });
+            });
+          }
+        });
+      }
+      
+      // Format installments for cache
+      const formatInstallment = (inst: any, isPaymentBased: boolean) => ({
+        orden: String(inst.orden || ''),
+        numeroCuota: inst.numeroCuota || 0,
+        monto: inst.monto ? String(inst.monto) : null,
+        fechaCuota: inst.fechaCuota instanceof Date 
+          ? inst.fechaCuota.toISOString().split('T')[0] 
+          : inst.fechaCuota || null,
+        fechaPagoReal: inst.fechaPagoReal instanceof Date
+          ? inst.fechaPagoReal.toISOString().split('T')[0]
+          : inst.fechaPagoReal || null,
+        status: inst.status || inst.estadoCuota || null,
+        isPaymentBased,
+        tienda: currentOrdenToTiendaMap.get(String(inst.orden).replace(/^0+/, '') || '0') || null,
+        paymentReferencia: inst.paymentDetails?.referencia || null,
+        paymentMetodo: inst.paymentDetails?.metodoPago || null,
+        paymentMontoUSD: inst.paymentDetails?.montoPagadoUSD ? String(inst.paymentDetails.montoPagadoUSD) : null,
+        paymentMontoVES: inst.paymentDetails?.montoPagadoVES ? String(inst.paymentDetails.montoPagadoVES) : null,
+        paymentTasaCambio: inst.paymentDetails?.tasaCambio ? String(inst.paymentDetails.tasaCambio) : null,
+        verificacion: inst.verificacion || null,
+        sourceVersion: 1
+      });
+      
+      const scheduleFormatted = scheduleInstallments.map((inst: any) => formatInstallment(inst, false));
+      const paymentFormatted = paymentInstallments.map((inst: any) => formatInstallment(inst, true));
+      const allInstallmentsForCache = [...scheduleFormatted, ...paymentFormatted];
+      
+      // Generate hash for cache
+      const ordersHash = generateDataHash(currentOrders);
+      const paymentsHash = generateDataHash(paymentRows);
+      const bankRows = (bankStatementsData as any)?.data?.rows || [];
+      const bankHash = generateDataHash(bankRows);
+      const marketplaceRows = (currentMarketplaceData as any)?.data?.rows || [];
+      const marketplaceHash = generateDataHash(marketplaceRows);
+      const combinedHash = `${ordersHash}|${paymentsHash}|${bankHash}|${marketplaceHash}`;
+      
+      // Save to cache
+      await saveCacheWithHash(allInstallmentsForCache, combinedHash);
+      console.log(`Saved ${allInstallmentsForCache.length} installments to cache`);
+      
+      // Update local state
+      setCachedData(prev => ({
+        ...prev,
+        installments: { scheduleInstallments, paymentInstallments },
+        ordenTiendaMap: currentOrdenToTiendaMap,
+        uniqueTiendas: Array.from(new Set(currentOrdenToTiendaMap.values())).sort(),
+        lastCalculated: new Date(),
+        isRecalculating: false
+      }));
+      
+      // Invalidate React Query cache to trigger refetch
+      await queryClient.invalidateQueries({ queryKey: ['/api/cache/installments'] });
+      
+    } catch (error) {
+      console.error('Error recalculating installments:', error);
+      setCachedData(prev => ({ ...prev, isRecalculating: false }));
+    }
+  }, [tableData, paymentRecordsData, marketplaceData, bankStatementsData]);
+
+  // Recalculate and cache orden-tienda map (called after marketplace file upload)
+  const recalculateAndCacheOrdenMap = useCallback(async () => {
+    console.log('Recalculating orden-tienda map...');
+    
+    try {
+      const mpData = marketplaceData as any;
+      if (!mpData?.data?.rows || !mpData?.data?.headers) return;
+      
+      const mpHeaders = mpData.data.headers;
+      const mpRows = mpData.data.rows;
+      
+      const tiendaColumn = mpHeaders.find((h: string) => 
+        h.toLowerCase().includes('tienda') || h.toLowerCase() === 'store'
+      );
+      const ordenColumn = mpHeaders.find((h: string) => 
+        h.toLowerCase().includes('orden') || h.toLowerCase() === '# orden'
+      );
+      
+      if (!tiendaColumn || !ordenColumn) return;
+      
+      const mapping: Record<string, string> = {};
+      mpRows.forEach((row: any) => {
+        const orden = row[ordenColumn];
+        const tienda = row[tiendaColumn];
+        if (orden && tienda) {
+          const normalizedOrden = String(orden).replace(/^0+/, '') || '0';
+          mapping[normalizedOrden] = String(tienda).trim();
+        }
+      });
+      
+      // Save to database
+      await fetch('/api/cache/orden-tienda-map', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: mapping })
+      });
+      
+      const map = new Map<string, string>(Object.entries(mapping));
+      const tiendas = Array.from(new Set(map.values())).sort();
+      
+      setCachedData(prev => ({
+        ...prev,
+        ordenTiendaMap: map,
+        uniqueTiendas: tiendas
+      }));
+      
+      // Also recalculate installments since orden-tienda mapping changed
+      await recalculateAndCacheInstallments();
+      
+      await queryClient.invalidateQueries({ queryKey: ['/api/cache/orden-tienda-map'] });
+      
+    } catch (error) {
+      console.error('Error recalculating orden-tienda map:', error);
+    }
+  }, [marketplaceData, recalculateAndCacheInstallments]);
 
   // Smart cache invalidation: check if source data has changed and update statuses on app load
   useEffect(() => {
@@ -1027,6 +1312,9 @@ export default function Home() {
           setTableData(deduplicatedRows);
         }
         
+        // Trigger recalculation of installments with new orders data
+        await recalculateAndCacheInstallments();
+        
         // Show merge statistics
         const mergeInfo = result.merge;
         if (mergeInfo) {
@@ -1052,7 +1340,7 @@ export default function Home() {
     } finally {
       setIsProcessing(false);
     }
-  }, [toast]);
+  }, [toast, recalculateAndCacheInstallments]);
 
   const handleFileSelect = useCallback((file: File) => {
     setSelectedFile(file);
@@ -1108,6 +1396,9 @@ export default function Home() {
       // Refetch payment records query to update the PaymentRecords component
       await queryClient.refetchQueries({ queryKey: ['/api/payment-records'] });
       
+      // Trigger recalculation of installments with new payment data
+      await recalculateAndCacheInstallments();
+      
       // Show merge statistics
       const mergeInfo = data.merge;
       if (mergeInfo) {
@@ -1162,6 +1453,9 @@ export default function Home() {
       // Refetch marketplace orders query
       await queryClient.refetchQueries({ queryKey: ['/api/marketplace-orders'] });
       
+      // Trigger recalculation of orden-tienda map with new marketplace data
+      await recalculateAndCacheOrdenMap();
+      
       toast({
         title: "Archivo de marketplace cargado",
         description: data.message || `${data.data.rowCount} registros importados`,
@@ -1207,6 +1501,9 @@ export default function Home() {
       // Refetch bank statements query AND payment records (VERIFICACION was updated)
       await queryClient.refetchQueries({ queryKey: ['/api/bank-statements'] });
       await queryClient.refetchQueries({ queryKey: ['/api/payment-records'] });
+      
+      // Recalculate installments since VERIFICACION may have changed
+      await recalculateAndCacheInstallments();
       
       toast({
         title: "Estado de cuenta cargado",
@@ -1428,6 +1725,17 @@ export default function Home() {
             <div className="text-center py-8">
               <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
               <p className="mt-2 text-sm text-muted-foreground">Procesando archivo...</p>
+            </div>
+          )}
+
+          {/* Recalculating overlay - shown when recalculating installments after file upload */}
+          {cachedData.isRecalculating && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+              <div className="text-center p-6 bg-card border rounded-lg shadow-lg">
+                <div className="inline-block h-10 w-10 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent mb-4"></div>
+                <h3 className="text-lg font-semibold mb-2">Calculando...</h3>
+                <p className="text-sm text-muted-foreground">Actualizando datos de cuotas y pagos</p>
+              </div>
             </div>
           )}
 
