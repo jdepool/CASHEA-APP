@@ -401,6 +401,254 @@ export default function Home() {
     return { scheduleInstallments, paymentInstallments };
   }, [tableData, paymentRecordsData, ordenToTiendaMap, isCancelledOrder]);
 
+  // Add status to payment installments and create filtered views
+  // This replaces the hidden AllPagosInstallments components
+  const paymentInstallmentsWithStatus = useMemo(() => {
+    const { paymentInstallments } = processedInstallmentsData;
+    if (!paymentInstallments || paymentInstallments.length === 0) return [];
+    
+    const gracePeriodThreshold = new Date();
+    gracePeriodThreshold.setDate(gracePeriodThreshold.getDate() - 3);
+    gracePeriodThreshold.setHours(23, 59, 59, 999);
+    
+    // Helper to safely parse date - avoids double-parsing Date objects
+    const safeParse = (val: any): Date | null => {
+      if (!val) return null;
+      if (val instanceof Date) return val;
+      return parseExcelDate(val);
+    };
+    
+    // First pass: normalize estadoCuota (mirrors AllPagosInstallments logic)
+    let normalized = paymentInstallments.map((installment: any) => {
+      // Payment-based entries ALWAYS default to 'Done' first
+      // This matches AllPagosInstallments behavior where payment entries get estadoCuota: 'Done'
+      let estadoCuota = installment.estadoCuota || (installment.isPaymentBased ? 'Done' : '');
+      
+      const paymentDateRaw = installment.fechaPagoReal || installment.fechaPago;
+      const estadoLower = estadoCuota.trim().toLowerCase();
+      const isScheduledOrGraced = estadoLower === 'scheduled' || estadoLower === 'graced';
+      const fechaCuota = installment.fechaCuota;
+      
+      const paymentDate = safeParse(paymentDateRaw);
+      
+      // If scheduled/graced and paid on or before due date -> Done
+      if (isScheduledOrGraced && paymentDate && fechaCuota) {
+        const cuotaDate = safeParse(fechaCuota);
+        
+        if (cuotaDate && paymentDate <= cuotaDate) {
+          estadoCuota = 'Done';
+        }
+      }
+      
+      // If scheduled/graced, no payment, and past grace period -> Delayed
+      if (fechaCuota && isScheduledOrGraced && !paymentDate) {
+        const cuotaDate = safeParse(fechaCuota);
+        
+        if (cuotaDate) {
+          const cuotaDateCopy = new Date(cuotaDate);
+          cuotaDateCopy.setHours(23, 59, 59, 999);
+          
+          if (cuotaDateCopy < gracePeriodThreshold) {
+            estadoCuota = 'Delayed';
+          }
+        }
+      }
+      
+      return { ...installment, estadoCuota };
+    });
+    
+    // Second pass: Add STATUS field to each installment
+    return normalized.map((inst: any) => ({
+      ...inst,
+      status: calculateInstallmentStatus(inst)
+    }));
+  }, [processedInstallmentsData]);
+
+  // Helper to safely parse date - avoids double-parsing Date objects
+  const safeParseDate = useCallback((dateValue: any): Date | null => {
+    if (!dateValue) return null;
+    if (dateValue instanceof Date) return dateValue;
+    return parseExcelDate(dateValue);
+  }, []);
+
+  // Filtered payment installments with local + master filters (for CONCILIACION DE PAGOS tab)
+  const filteredPagosWithLocalFilters = useMemo(() => {
+    if (!paymentInstallmentsWithStatus || paymentInstallmentsWithStatus.length === 0) return [];
+    
+    // Get list of valid order numbers from tableData
+    const validOrderNumbers = new Set(
+      tableData.map((row: any) => String(row['Orden'] || '').trim()).filter(Boolean)
+    );
+
+    return paymentInstallmentsWithStatus.filter((installment: any) => {
+      // CRITICAL: Only include payment-based entries (matching ConciliacionPagosTable/AllPagosInstallments logic)
+      if (!installment.isPaymentBased) return false;
+
+      // Only show cuotas for orders that exist in tableData
+      const ordenValue = String(installment.orden || '').trim();
+      if (!validOrderNumbers.has(ordenValue)) return false;
+
+      // MASTER FILTERS - Applied FIRST
+      // Master date range filter - USE PAYMENT DATE
+      if (masterDateFrom || masterDateTo) {
+        const effectiveDate = installment.fechaPagoReal || installment.fechaPago;
+        
+        if (effectiveDate) {
+          const installmentDate = safeParseDate(effectiveDate);
+          
+          if (installmentDate) {
+            const normalizedDate = new Date(installmentDate);
+            normalizedDate.setHours(0, 0, 0, 0);
+            
+            if (masterDateFrom) {
+              const fromDate = parseDDMMYYYY(masterDateFrom);
+              if (fromDate) {
+                fromDate.setHours(0, 0, 0, 0);
+                if (normalizedDate < fromDate) return false;
+              }
+            }
+            if (masterDateTo) {
+              const toDate = parseDDMMYYYY(masterDateTo);
+              if (toDate) {
+                toDate.setHours(23, 59, 59, 999);
+                if (normalizedDate > toDate) return false;
+              }
+            }
+          }
+        }
+      }
+
+      // Master orden filter
+      if (masterOrden) {
+        const ordenVal = String(installment.orden || '').toLowerCase();
+        if (!ordenVal.includes(masterOrden.toLowerCase())) return false;
+      }
+
+      // Master tienda filter
+      if (masterTienda && masterTienda !== 'all') {
+        const ordenVal = String(installment.orden || '').replace(/^0+/, '') || '0';
+        const rowTienda = ordenToTiendaMap.get(ordenVal);
+        if (!rowTienda || rowTienda !== masterTienda) return false;
+      }
+
+      // TAB-SPECIFIC FILTERS - Applied AFTER master filters
+      // Local date range filter
+      if ((pagosDateFrom || pagosDateTo) && !masterDateFrom && !masterDateTo) {
+        const effectiveDate = installment.fechaPagoReal || installment.fechaPago;
+        if (!effectiveDate) return false;
+        
+        const installmentDate = safeParseDate(effectiveDate);
+        
+        if (installmentDate) {
+          const normalizedDate = new Date(installmentDate);
+          normalizedDate.setHours(0, 0, 0, 0);
+          
+          if (pagosDateFrom) {
+            const fromDate = parseDDMMYYYY(pagosDateFrom);
+            if (fromDate) {
+              fromDate.setHours(0, 0, 0, 0);
+              if (normalizedDate < fromDate) return false;
+            }
+          }
+          if (pagosDateTo) {
+            const toDate = parseDDMMYYYY(pagosDateTo);
+            if (toDate) {
+              toDate.setHours(23, 59, 59, 999);
+              if (normalizedDate > toDate) return false;
+            }
+          }
+        }
+      }
+
+      // Local orden filter
+      if (pagosOrdenFilter && !masterOrden) {
+        const ordenVal = String(installment.orden || '').toLowerCase();
+        if (!ordenVal.includes(pagosOrdenFilter.toLowerCase())) return false;
+      }
+
+      // Estado Cuota filter
+      if (pagosEstadoCuotaFilter && pagosEstadoCuotaFilter !== 'all') {
+        const estado = (installment.estadoCuota || '').trim().toLowerCase();
+        if (estado !== pagosEstadoCuotaFilter.toLowerCase()) return false;
+      }
+
+      return true;
+    });
+  }, [paymentInstallmentsWithStatus, tableData, masterDateFrom, masterDateTo, masterOrden, masterTienda, ordenToTiendaMap, pagosDateFrom, pagosDateTo, pagosOrdenFilter, pagosEstadoCuotaFilter, safeParseDate]);
+
+  // Filtered payment installments with ONLY master filters (for MonthlyReport)
+  const filteredPagosMasterOnly = useMemo(() => {
+    if (!paymentInstallmentsWithStatus || paymentInstallmentsWithStatus.length === 0) return [];
+    
+    // Get list of valid order numbers from tableData
+    const validOrderNumbers = new Set(
+      tableData.map((row: any) => String(row['Orden'] || '').trim()).filter(Boolean)
+    );
+
+    return paymentInstallmentsWithStatus.filter((installment: any) => {
+      // CRITICAL: Only include payment-based entries (matching AllPagosInstallments logic)
+      if (!installment.isPaymentBased) return false;
+
+      // Only show cuotas for orders that exist in tableData
+      const ordenValue = String(installment.orden || '').trim();
+      if (!validOrderNumbers.has(ordenValue)) return false;
+
+      // MASTER FILTERS ONLY
+      // Master date range filter - USE PAYMENT DATE
+      if (masterDateFrom || masterDateTo) {
+        const effectiveDate = installment.fechaPagoReal || installment.fechaPago;
+        
+        if (effectiveDate) {
+          const installmentDate = safeParseDate(effectiveDate);
+          
+          if (installmentDate) {
+            const normalizedDate = new Date(installmentDate);
+            normalizedDate.setHours(0, 0, 0, 0);
+            
+            if (masterDateFrom) {
+              const fromDate = parseDDMMYYYY(masterDateFrom);
+              if (fromDate) {
+                fromDate.setHours(0, 0, 0, 0);
+                if (normalizedDate < fromDate) return false;
+              }
+            }
+            if (masterDateTo) {
+              const toDate = parseDDMMYYYY(masterDateTo);
+              if (toDate) {
+                toDate.setHours(23, 59, 59, 999);
+                if (normalizedDate > toDate) return false;
+              }
+            }
+          }
+        }
+      }
+
+      // Master orden filter
+      if (masterOrden) {
+        const ordenVal = String(installment.orden || '').toLowerCase();
+        if (!ordenVal.includes(masterOrden.toLowerCase())) return false;
+      }
+
+      // Master tienda filter
+      if (masterTienda && masterTienda !== 'all') {
+        const ordenVal = String(installment.orden || '').replace(/^0+/, '') || '0';
+        const rowTienda = ordenToTiendaMap.get(ordenVal);
+        if (!rowTienda || rowTienda !== masterTienda) return false;
+      }
+
+      return true;
+    });
+  }, [paymentInstallmentsWithStatus, tableData, masterDateFrom, masterDateTo, masterOrden, masterTienda, ordenToTiendaMap, safeParseDate]);
+
+  // Update state when filtered data changes (replaces AllPagosInstallments component effect)
+  useEffect(() => {
+    setFilteredPagosInstallmentsData(filteredPagosWithLocalFilters);
+  }, [filteredPagosWithLocalFilters]);
+
+  useEffect(() => {
+    setFilteredPagosMasterOnlyData(filteredPagosMasterOnly);
+  }, [filteredPagosMasterOnly]);
+
   // Pre-process bank statements with CONCILIADO values ONCE to avoid recalculation on tab switch
   const processedBankData = useMemo(() => {
     const bankApiData = bankStatementsData as any;
@@ -906,65 +1154,33 @@ export default function Home() {
 
           {!isProcessing && (
             <>
-              {/* Hidden components to always calculate filtered data */}
+              {/* Hidden component to calculate filtered AllInstallments data for MonthlyReport */}
               {tableData.length > 0 && (
-                <>
-                  <div style={{ display: 'none' }}>
-                    <AllInstallments 
-                      tableData={tableData}
-                      showFilters={installmentsShowFilters}
-                      setShowFilters={setInstallmentsShowFilters}
-                      dateFrom={installmentsDateFrom}
-                      setDateFrom={setInstallmentsDateFrom}
-                      dateTo={installmentsDateTo}
-                      setDateTo={setInstallmentsDateTo}
-                      ordenFilter={installmentsOrdenFilter}
-                      setOrdenFilter={setInstallmentsOrdenFilter}
-                      estadoCuotaFilter={installmentsEstadoCuotaFilter}
-                      setEstadoCuotaFilter={setInstallmentsEstadoCuotaFilter}
-                      dateFieldFilter={installmentsDateFieldFilter}
-                      setDateFieldFilter={setInstallmentsDateFieldFilter}
-                      masterDateFrom={masterDateFrom}
-                      masterDateTo={masterDateTo}
-                      onFilteredInstallmentsChange={setFilteredInstallmentsData}
-                      masterOrden={masterOrden}
-                      masterTienda={masterTienda}
-                      ordenToTiendaMap={ordenToTiendaMap}
-                      preProcessedScheduleInstallments={processedInstallmentsData.scheduleInstallments}
-                      preProcessedPaymentInstallments={processedInstallmentsData.paymentInstallments}
-                    />
-                  </div>
-                  <div style={{ display: 'none' }}>
-                    <AllPagosInstallments 
-                      tableData={tableData}
-                      dateFrom={pagosDateFrom}
-                      dateTo={pagosDateTo}
-                      ordenFilter={pagosOrdenFilter}
-                      estadoCuotaFilter={pagosEstadoCuotaFilter}
-                      masterDateFrom={masterDateFrom}
-                      masterDateTo={masterDateTo}
-                      masterOrden={masterOrden}
-                      masterTienda={masterTienda}
-                      ordenToTiendaMap={ordenToTiendaMap}
-                      onFilteredInstallmentsChange={setFilteredPagosInstallmentsData}
-                    />
-                  </div>
-                  <div style={{ display: 'none' }}>
-                    <AllPagosInstallments 
-                      tableData={tableData}
-                      dateFrom=""
-                      dateTo=""
-                      ordenFilter=""
-                      estadoCuotaFilter="all"
-                      masterDateFrom={masterDateFrom}
-                      masterDateTo={masterDateTo}
-                      masterOrden={masterOrden}
-                      masterTienda={masterTienda}
-                      ordenToTiendaMap={ordenToTiendaMap}
-                      onFilteredInstallmentsChange={setFilteredPagosMasterOnlyData}
-                    />
-                  </div>
-                </>
+                <div style={{ display: 'none' }}>
+                  <AllInstallments 
+                    tableData={tableData}
+                    showFilters={installmentsShowFilters}
+                    setShowFilters={setInstallmentsShowFilters}
+                    dateFrom={installmentsDateFrom}
+                    setDateFrom={setInstallmentsDateFrom}
+                    dateTo={installmentsDateTo}
+                    setDateTo={setInstallmentsDateTo}
+                    ordenFilter={installmentsOrdenFilter}
+                    setOrdenFilter={setInstallmentsOrdenFilter}
+                    estadoCuotaFilter={installmentsEstadoCuotaFilter}
+                    setEstadoCuotaFilter={setInstallmentsEstadoCuotaFilter}
+                    dateFieldFilter={installmentsDateFieldFilter}
+                    setDateFieldFilter={setInstallmentsDateFieldFilter}
+                    masterDateFrom={masterDateFrom}
+                    masterDateTo={masterDateTo}
+                    onFilteredInstallmentsChange={setFilteredInstallmentsData}
+                    masterOrden={masterOrden}
+                    masterTienda={masterTienda}
+                    ordenToTiendaMap={ordenToTiendaMap}
+                    preProcessedScheduleInstallments={processedInstallmentsData.scheduleInstallments}
+                    preProcessedPaymentInstallments={processedInstallmentsData.paymentInstallments}
+                  />
+                </div>
               )}
               
               <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
