@@ -32,7 +32,7 @@ import {
 } from "@shared/schema";
 import { normalizeNumberForKey, normalizeReferenceNumber } from "@shared/numberUtils";
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 
 export interface SkippedRecord {
   orden: string;
@@ -730,8 +730,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async invalidateCache(cacheKey: string): Promise<void> {
-    await db.delete(calculationCache).where(eq(calculationCache.cacheKey, cacheKey));
-    console.log(`✓ Invalidated cache: ${cacheKey}`);
+    await db.transaction(async (tx) => {
+      // Delete metadata
+      await tx.delete(calculationCache).where(eq(calculationCache.cacheKey, cacheKey));
+      
+      // Also delete actual cached data based on cache key
+      if (cacheKey === 'installments') {
+        await tx.delete(processedInstallments);
+      } else if (cacheKey === 'bank_statements') {
+        await tx.delete(processedBankStatements);
+      } else if (cacheKey === 'orden_tienda_map') {
+        await tx.delete(ordenTiendaMapping);
+      }
+    });
+    console.log(`✓ Invalidated cache and cleared data: ${cacheKey}`);
   }
 
   async getAllProcessedInstallments(): Promise<ProcessedInstallment[]> {
@@ -759,12 +771,11 @@ export class DatabaseStorage implements IStorage {
     const [installment] = await db
       .select()
       .from(processedInstallments)
-      .where(eq(processedInstallments.orden, orden));
+      .where(
+        sql`${processedInstallments.orden} = ${orden} AND ${processedInstallments.numeroCuota} = ${cuota}`
+      );
     
-    if (installment && installment.numeroCuota === cuota) {
-      return installment;
-    }
-    return undefined;
+    return installment || undefined;
   }
 
   async getOrdenTiendaMapping(): Promise<OrdenTiendaMapping[]> {
