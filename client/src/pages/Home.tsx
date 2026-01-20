@@ -258,13 +258,12 @@ export default function Home() {
     let scheduleInstallments = extractInstallments(validOrders);
 
     // Enrich with payment data
+    // NOTE: Multi-cuota payments (e.g., "1,2") should match ALL cuotas in the list
+    // We don't use matchedPaymentIndices because the same payment can apply to multiple cuotas
     if (hasPaymentData) {
-      const matchedPaymentIndices = new Set<number>();
-      
       scheduleInstallments = scheduleInstallments.map((installment) => {
-        const matchingPaymentIndex = paymentRows.findIndex((payment: any, index: number) => {
-          if (matchedPaymentIndices.has(index)) return false;
-          
+        // Find ANY payment that matches this order AND includes this cuota number
+        const matchingPayment = paymentRows.find((payment: any) => {
           const paymentOrder = String(payment['# Orden'] || payment['#Orden'] || payment['Orden'] || '').trim();
           const paymentInstallmentStr = String(payment['# Cuota Pagada'] || payment['#CuotaPagada'] || payment['Cuota'] || '').trim();
           
@@ -282,9 +281,7 @@ export default function Home() {
           return false;
         });
 
-        if (matchingPaymentIndex !== -1) {
-          matchedPaymentIndices.add(matchingPaymentIndex);
-          const matchingPayment = paymentRows[matchingPaymentIndex];
+        if (matchingPayment) {
           
           const fechaTasaCambio = matchingPayment['Fecha de Transaccion'] ||
                                   matchingPayment['FECHA DE TRANSACCION'] ||
