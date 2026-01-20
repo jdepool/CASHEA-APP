@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, lazy, Suspense, useTransition } from "react";
+import { useState, useCallback, useEffect, useMemo, lazy, Suspense, useTransition, useDeferredValue } from "react";
 import { FileUpload } from "@/components/FileUpload";
 import { EmptyState } from "@/components/EmptyState";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -253,20 +253,27 @@ export default function Home() {
     return statusOrden.includes("cancel");
   }, []);
 
+  // Create deferred versions of heavy data dependencies
+  // This allows React to interrupt expensive calculations for user interactions
+  const deferredTableData = useDeferredValue(tableData);
+  const deferredPaymentRecordsData = useDeferredValue(paymentRecordsData);
+  const deferredBankStatementsData = useDeferredValue(bankStatementsData);
+
   // Pre-process all installments data ONCE and cache it at Home level
   // This prevents recalculation when switching tabs
+  // Uses deferred values to allow React to interrupt for user interactions
   const processedInstallmentsData = useMemo(() => {
-    if (!tableData || tableData.length === 0) {
+    if (!deferredTableData || deferredTableData.length === 0) {
       return { scheduleInstallments: [], paymentInstallments: [] };
     }
 
-    const apiData = paymentRecordsData as any;
+    const apiData = deferredPaymentRecordsData as any;
     const paymentRows = apiData?.data?.rows || [];
     const paymentHeaders = apiData?.data?.headers || [];
     const hasPaymentData = paymentRows.length > 0;
 
     // Filter out cancelled orders AND orders not in marketplace data
-    const validOrders = tableData.filter(row => {
+    const validOrders = deferredTableData.filter(row => {
       if (isCancelledOrder(row)) return false;
       const ordenValue = String(row["Orden"] || '').replace(/^0+/, '') || '0';
       if (!ordenToTiendaMap.has(ordenValue)) return false;
@@ -398,7 +405,7 @@ export default function Home() {
     }
 
     return { scheduleInstallments, paymentInstallments };
-  }, [tableData, paymentRecordsData, ordenToTiendaMap, isCancelledOrder]);
+  }, [deferredTableData, deferredPaymentRecordsData, ordenToTiendaMap, isCancelledOrder]);
 
   // Add status to payment installments and create filtered views
   // This replaces the hidden AllPagosInstallments components
@@ -649,9 +656,10 @@ export default function Home() {
   }, [filteredPagosMasterOnly]);
 
   // Pre-process bank statements with CONCILIADO values ONCE to avoid recalculation on tab switch
+  // Uses deferred values to allow React to interrupt for user interactions
   const processedBankData = useMemo(() => {
-    const bankApiData = bankStatementsData as any;
-    const paymentApiData = paymentRecordsData as any;
+    const bankApiData = deferredBankStatementsData as any;
+    const paymentApiData = deferredPaymentRecordsData as any;
     
     if (!bankApiData?.data?.rows || !bankApiData?.data?.headers) {
       return { headers: [], rows: [], extendedHeaders: [] };
@@ -713,7 +721,7 @@ export default function Home() {
       rows: rowsWithConciliado, 
       extendedHeaders 
     };
-  }, [bankStatementsData, paymentRecordsData]);
+  }, [deferredBankStatementsData, deferredPaymentRecordsData]);
 
   const processFile = useCallback(async (file: File) => {
     setIsProcessing(true);
