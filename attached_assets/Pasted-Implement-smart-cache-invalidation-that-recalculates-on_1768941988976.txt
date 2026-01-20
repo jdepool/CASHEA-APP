@@ -1,0 +1,65 @@
+Implement smart cache invalidation that recalculates only when needed:
+
+1. Create a utility function to generate a hash of source data:
+function generateDataHash(data: any[]): string {
+  // Create a simple hash based on:
+  // - Number of rows
+  // - Sum of key numeric fields
+  // - Latest date in the data
+  // This detects when source data has changed
+}
+
+2. Create a recalculation service in Home.tsx:
+
+const checkAndRecalculate = useCallback(async () => {
+  // Get current cache metadata
+  const cacheMetadata = await fetch('/api/cache/metadata').then(r => r.json());
+  
+  // Generate hashes of current source data
+  const ordersHash = generateDataHash(tableData);
+  const paymentsHash = generateDataHash(paymentRecordsData?.data?.rows || []);
+  const bankHash = generateDataHash(bankStatementsData?.data?.rows || []);
+  const marketplaceHash = generateDataHash(marketplaceData?.data?.rows || []);
+  
+  // Compare with stored hashes
+  const needsRecalculation = 
+    ordersHash !== cacheMetadata.ordersHash ||
+    paymentsHash !== cacheMetadata.paymentsHash ||
+    bankHash !== cacheMetadata.bankHash ||
+    marketplaceHash !== cacheMetadata.marketplaceHash;
+  
+  if (needsRecalculation) {
+    console.log('Source data changed, recalculating...');
+    await performFullRecalculation();
+  } else {
+    console.log('Using cached calculations');
+    await loadFromCache();
+  }
+}, [tableData, paymentRecordsData, bankStatementsData, marketplaceData]);
+
+3. Add automatic status updates for time-sensitive fields:
+
+Create a function that runs on app load to update statuses based on current date:
+
+async function updateTimeBasedStatuses() {
+  const today = new Date();
+  
+  // Call API to update installment statuses
+  await fetch('/api/cache/installments/update-statuses', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ currentDate: today.toISOString() })
+  });
+}
+
+4. The update-statuses endpoint should:
+- Find all installments where status = 'PENDIENTE'
+- If fechaCuota < today AND fechaPagoReal is null → status = 'VENCIDO'
+- If fechaPagoReal exists AND fechaPagoReal <= fechaCuota → status = 'DONE'
+- If fechaPagoReal exists AND fechaPagoReal > fechaCuota → status = 'DELAYED' (or keep as DONE with a flag)
+- This updates the database without full recalculation
+
+5. Call updateTimeBasedStatuses:
+- On app load (after loading cached data)
+- Once per day (can use a simple date check in localStorage)
+- This keeps statuses accurate without recalculating everything

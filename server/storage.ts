@@ -87,6 +87,7 @@ export interface IStorage {
   
   getAllProcessedBankStatements(): Promise<ProcessedBankStatement[]>;
   saveProcessedBankStatements(statements: InsertProcessedBankStatement[]): Promise<void>;
+  updateInstallmentStatuses(currentDate: Date): Promise<{ updated: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -818,6 +819,34 @@ export class DatabaseStorage implements IStorage {
     
     await this.updateCacheMetadata('bank_statements');
     console.log(`✓ Saved ${statements.length} processed bank statements`);
+  }
+
+  async updateInstallmentStatuses(currentDate: Date): Promise<{ updated: number }> {
+    const todayStr = currentDate.toISOString().split('T')[0];
+    
+    const result = await db.execute(sql`
+      WITH updates AS (
+        UPDATE processed_installments
+        SET status = CASE
+          WHEN fecha_pago_real IS NOT NULL THEN 'Done'
+          WHEN fecha_cuota IS NOT NULL AND fecha_cuota::date < ${todayStr}::date THEN 'Vencido'
+          ELSE status
+        END
+        WHERE 
+          (status IS NULL OR status = 'Pendiente' OR status = '')
+          AND (
+            fecha_pago_real IS NOT NULL 
+            OR (fecha_cuota IS NOT NULL AND fecha_cuota::date < ${todayStr}::date)
+          )
+        RETURNING id
+      )
+      SELECT COUNT(*) as count FROM updates
+    `);
+    
+    const count = Number(result.rows?.[0]?.count || 0);
+    console.log(`✓ Updated ${count} installment statuses based on date ${todayStr}`);
+    
+    return { updated: count };
   }
 }
 

@@ -1432,6 +1432,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update time-based statuses for installments
+  app.post("/api/cache/installments/update-statuses", async (req, res) => {
+    try {
+      const { currentDate } = req.body;
+      const today = currentDate ? new Date(currentDate) : new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const result = await storage.updateInstallmentStatuses(today);
+      
+      res.json({ 
+        success: true, 
+        updated: result.updated,
+        message: `Actualizados ${result.updated} estados de cuotas` 
+      });
+    } catch (error) {
+      console.error('Error updating installment statuses:', error);
+      res.status(500).json({ error: 'Error al actualizar estados de cuotas' });
+    }
+  });
+
   // Invalidate cache (triggers recalculation)
   app.post("/api/cache/invalidate", async (req, res) => {
     try {

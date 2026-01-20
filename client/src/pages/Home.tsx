@@ -30,6 +30,7 @@ import { Loader2 } from "lucide-react";
 import { parseExcelDate, parseDDMMYYYY } from "@/lib/dateUtils";
 import { extractInstallments, calculateInstallmentStatus } from "@/lib/installmentUtils";
 import { verifyInPaymentRecords } from "@/lib/verificationUtils";
+import { generateDataHash, shouldUpdateStatuses, updateTimeBasedStatuses, getCacheMetadata } from "@/lib/cacheUtils";
 
 // Loading fallback for lazy-loaded tab components
 const TabLoader = () => (
@@ -179,6 +180,56 @@ export default function Home() {
       }
     }
   }, [ordersData]);
+
+  // Smart cache invalidation: check if source data has changed and update statuses on app load
+  useEffect(() => {
+    const checkCacheAndUpdateStatuses = async () => {
+      try {
+        // Update time-based statuses once per day on app load
+        if (shouldUpdateStatuses()) {
+          console.log('Daily status update triggered');
+          const result = await updateTimeBasedStatuses();
+          if (result.updated > 0) {
+            console.log(`Updated ${result.updated} installment statuses based on current date`);
+          }
+        }
+
+        // Check if source data has changed since last cache calculation
+        const cacheMetadata = await getCacheMetadata();
+        if (!cacheMetadata.success || !cacheMetadata.data) {
+          console.log('No cache metadata found, will recalculate on demand');
+          return;
+        }
+
+        // Generate hashes of current source data
+        const ordersHash = generateDataHash(tableData);
+        const paymentsRows = (paymentRecordsData as any)?.data?.rows || [];
+        const paymentsHash = generateDataHash(paymentsRows);
+        const bankRows = (bankStatementsData as any)?.data?.rows || [];
+        const bankHash = generateDataHash(bankRows);
+        const marketplaceRows = (marketplaceData as any)?.data?.rows || [];
+        const marketplaceHash = generateDataHash(marketplaceRows);
+
+        const combinedHash = `${ordersHash}|${paymentsHash}|${bankHash}|${marketplaceHash}`;
+        const cachedHash = cacheMetadata.data.installments?.sourceDataHash || '';
+
+        if (combinedHash !== cachedHash && tableData.length > 0) {
+          console.log('Source data changed, cache will be recalculated on next save');
+          console.log('Current hash:', combinedHash);
+          console.log('Cached hash:', cachedHash);
+        } else {
+          console.log('Using cached calculations, source data unchanged');
+        }
+      } catch (error) {
+        console.error('Error checking cache:', error);
+      }
+    };
+
+    // Only run after data is loaded
+    if (tableData.length > 0 || (paymentRecordsData as any)?.data?.rows?.length > 0) {
+      checkCacheAndUpdateStatuses();
+    }
+  }, [tableData.length, paymentRecordsData, bankStatementsData, marketplaceData]);
 
   // Calculate cuotasAdelantadasPeriodosAnteriores from CONCILIACION DE CUOTAS data
   // This will be passed to REPORTE MENSUAL so it shows the same value
