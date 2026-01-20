@@ -11,12 +11,24 @@ import {
   type InsertBankStatement,
   type PaymentVerification,
   type InsertPaymentVerification,
+  type CalculationCache,
+  type InsertCalculationCache,
+  type ProcessedInstallment,
+  type InsertProcessedInstallment,
+  type OrdenTiendaMapping,
+  type InsertOrdenTiendaMapping,
+  type ProcessedBankStatement,
+  type InsertProcessedBankStatement,
   users,
   orders,
   paymentRecords,
   marketplaceOrders,
   bankStatements,
-  paymentVerifications
+  paymentVerifications,
+  calculationCache,
+  processedInstallments,
+  ordenTiendaMapping,
+  processedBankStatements
 } from "@shared/schema";
 import { normalizeNumberForKey, normalizeReferenceNumber } from "@shared/numberUtils";
 import { db } from "./db";
@@ -60,6 +72,21 @@ export interface IStorage {
   getAllPaymentVerifications(): Promise<PaymentVerification[]>;
   savePaymentVerifications(verifications: InsertPaymentVerification[]): Promise<void>;
   clearPaymentVerifications(): Promise<void>;
+  
+  // Cache operations
+  getCacheMetadata(cacheKey: string): Promise<CalculationCache | undefined>;
+  updateCacheMetadata(cacheKey: string, sourceDataHash?: string): Promise<CalculationCache>;
+  invalidateCache(cacheKey: string): Promise<void>;
+  
+  getAllProcessedInstallments(): Promise<ProcessedInstallment[]>;
+  saveProcessedInstallments(installments: InsertProcessedInstallment[]): Promise<void>;
+  getInstallmentStatus(orden: string, cuota: number): Promise<ProcessedInstallment | undefined>;
+  
+  getOrdenTiendaMapping(): Promise<OrdenTiendaMapping[]>;
+  saveOrdenTiendaMapping(mappings: InsertOrdenTiendaMapping[]): Promise<void>;
+  
+  getAllProcessedBankStatements(): Promise<ProcessedBankStatement[]>;
+  saveProcessedBankStatements(statements: InsertProcessedBankStatement[]): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -663,6 +690,123 @@ export class DatabaseStorage implements IStorage {
   async clearPaymentVerifications(): Promise<void> {
     await db.delete(paymentVerifications);
     console.log('✓ Cleared all payment verifications');
+  }
+
+  // Cache operations
+  async getCacheMetadata(cacheKey: string): Promise<CalculationCache | undefined> {
+    const [cache] = await db
+      .select()
+      .from(calculationCache)
+      .where(eq(calculationCache.cacheKey, cacheKey));
+    return cache || undefined;
+  }
+
+  async updateCacheMetadata(cacheKey: string, sourceDataHash?: string): Promise<CalculationCache> {
+    const existing = await this.getCacheMetadata(cacheKey);
+    
+    if (existing) {
+      const [updated] = await db
+        .update(calculationCache)
+        .set({
+          calculatedAt: new Date(),
+          sourceDataHash: sourceDataHash || existing.sourceDataHash,
+          dataVersion: existing.dataVersion + 1,
+        })
+        .where(eq(calculationCache.cacheKey, cacheKey))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db
+        .insert(calculationCache)
+        .values({
+          cacheKey,
+          calculatedAt: new Date(),
+          sourceDataHash,
+          dataVersion: 1,
+        })
+        .returning();
+      return created;
+    }
+  }
+
+  async invalidateCache(cacheKey: string): Promise<void> {
+    await db.delete(calculationCache).where(eq(calculationCache.cacheKey, cacheKey));
+    console.log(`✓ Invalidated cache: ${cacheKey}`);
+  }
+
+  async getAllProcessedInstallments(): Promise<ProcessedInstallment[]> {
+    return await db.select().from(processedInstallments).orderBy(processedInstallments.orden, processedInstallments.numeroCuota);
+  }
+
+  async saveProcessedInstallments(installments: InsertProcessedInstallment[]): Promise<void> {
+    if (installments.length === 0) return;
+    
+    await db.transaction(async (tx) => {
+      await tx.delete(processedInstallments);
+      
+      const batchSize = 500;
+      for (let i = 0; i < installments.length; i += batchSize) {
+        const batch = installments.slice(i, i + batchSize);
+        await tx.insert(processedInstallments).values(batch);
+      }
+    });
+    
+    await this.updateCacheMetadata('installments');
+    console.log(`✓ Saved ${installments.length} processed installments`);
+  }
+
+  async getInstallmentStatus(orden: string, cuota: number): Promise<ProcessedInstallment | undefined> {
+    const [installment] = await db
+      .select()
+      .from(processedInstallments)
+      .where(eq(processedInstallments.orden, orden));
+    
+    if (installment && installment.numeroCuota === cuota) {
+      return installment;
+    }
+    return undefined;
+  }
+
+  async getOrdenTiendaMapping(): Promise<OrdenTiendaMapping[]> {
+    return await db.select().from(ordenTiendaMapping);
+  }
+
+  async saveOrdenTiendaMapping(mappings: InsertOrdenTiendaMapping[]): Promise<void> {
+    if (mappings.length === 0) return;
+    
+    await db.transaction(async (tx) => {
+      await tx.delete(ordenTiendaMapping);
+      
+      const batchSize = 500;
+      for (let i = 0; i < mappings.length; i += batchSize) {
+        const batch = mappings.slice(i, i + batchSize);
+        await tx.insert(ordenTiendaMapping).values(batch);
+      }
+    });
+    
+    await this.updateCacheMetadata('orden_tienda_map');
+    console.log(`✓ Saved ${mappings.length} orden-tienda mappings`);
+  }
+
+  async getAllProcessedBankStatements(): Promise<ProcessedBankStatement[]> {
+    return await db.select().from(processedBankStatements);
+  }
+
+  async saveProcessedBankStatements(statements: InsertProcessedBankStatement[]): Promise<void> {
+    if (statements.length === 0) return;
+    
+    await db.transaction(async (tx) => {
+      await tx.delete(processedBankStatements);
+      
+      const batchSize = 500;
+      for (let i = 0; i < statements.length; i += batchSize) {
+        const batch = statements.slice(i, i + batchSize);
+        await tx.insert(processedBankStatements).values(batch);
+      }
+    });
+    
+    await this.updateCacheMetadata('bank_statements');
+    console.log(`✓ Saved ${statements.length} processed bank statements`);
   }
 }
 

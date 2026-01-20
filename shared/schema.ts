@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, jsonb, timestamp, serial, integer, decimal, date, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -136,3 +136,84 @@ export const insertPaymentVerificationSchema = createInsertSchema(paymentVerific
 
 export type InsertPaymentVerification = z.infer<typeof insertPaymentVerificationSchema>;
 export type PaymentVerification = typeof paymentVerifications.$inferSelect;
+
+// Cache tables for pre-calculated data sharing with other apps
+
+export const calculationCache = pgTable("calculation_cache", {
+  id: serial("id").primaryKey(),
+  cacheKey: text("cache_key").notNull().unique(),
+  calculatedAt: timestamp("calculated_at").notNull().defaultNow(),
+  sourceDataHash: text("source_data_hash"),
+  dataVersion: integer("data_version").notNull().default(1),
+});
+
+export const insertCalculationCacheSchema = createInsertSchema(calculationCache).omit({
+  id: true,
+});
+
+export type InsertCalculationCache = z.infer<typeof insertCalculationCacheSchema>;
+export type CalculationCache = typeof calculationCache.$inferSelect;
+
+export const processedInstallments = pgTable("processed_installments", {
+  id: serial("id").primaryKey(),
+  orden: text("orden").notNull(),
+  numeroCuota: integer("numero_cuota").notNull(),
+  monto: decimal("monto", { precision: 12, scale: 2 }),
+  fechaCuota: date("fecha_cuota"),
+  fechaPagoReal: date("fecha_pago_real"),
+  status: text("status"),
+  isPaymentBased: boolean("is_payment_based").notNull().default(false),
+  tienda: text("tienda"),
+  paymentReferencia: text("payment_referencia"),
+  paymentMetodo: text("payment_metodo"),
+  paymentMontoUSD: decimal("payment_monto_usd", { precision: 12, scale: 2 }),
+  paymentMontoVES: decimal("payment_monto_ves", { precision: 12, scale: 2 }),
+  paymentTasaCambio: decimal("payment_tasa_cambio", { precision: 12, scale: 4 }),
+  verificacion: text("verificacion"),
+  calculatedAt: timestamp("calculated_at").notNull().defaultNow(),
+  sourceVersion: integer("source_version").notNull().default(1),
+});
+
+export const insertProcessedInstallmentSchema = createInsertSchema(processedInstallments).omit({
+  id: true,
+  calculatedAt: true,
+});
+
+export type InsertProcessedInstallment = z.infer<typeof insertProcessedInstallmentSchema>;
+export type ProcessedInstallment = typeof processedInstallments.$inferSelect;
+
+export const ordenTiendaMapping = pgTable("orden_tienda_mapping", {
+  id: serial("id").primaryKey(),
+  orden: text("orden").notNull().unique(),
+  tienda: text("tienda").notNull(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertOrdenTiendaMappingSchema = createInsertSchema(ordenTiendaMapping).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type InsertOrdenTiendaMapping = z.infer<typeof insertOrdenTiendaMappingSchema>;
+export type OrdenTiendaMapping = typeof ordenTiendaMapping.$inferSelect;
+
+export const processedBankStatements = pgTable("processed_bank_statements", {
+  id: serial("id").primaryKey(),
+  referencia: text("referencia"),
+  fecha: date("fecha"),
+  descripcion: text("descripcion"),
+  debe: decimal("debe", { precision: 12, scale: 2 }),
+  haber: decimal("haber", { precision: 12, scale: 2 }),
+  saldo: decimal("saldo", { precision: 12, scale: 2 }),
+  conciliado: text("conciliado"),
+  calculatedAt: timestamp("calculated_at").notNull().defaultNow(),
+  sourceVersion: integer("source_version").notNull().default(1),
+});
+
+export const insertProcessedBankStatementSchema = createInsertSchema(processedBankStatements).omit({
+  id: true,
+  calculatedAt: true,
+});
+
+export type InsertProcessedBankStatement = z.infer<typeof insertProcessedBankStatementSchema>;
+export type ProcessedBankStatement = typeof processedBankStatements.$inferSelect;

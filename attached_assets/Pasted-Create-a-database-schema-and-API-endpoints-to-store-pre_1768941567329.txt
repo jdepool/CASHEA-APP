@@ -1,0 +1,68 @@
+Create a database schema and API endpoints to store pre-calculated data that can be shared with other apps.
+
+1. Create a new Drizzle schema file or add to existing schema for cached calculations:
+
+// Table for storing calculation metadata and timestamps
+calculationCache table:
+- id: serial primary key
+- cacheKey: text (unique identifier like 'installments', 'bank_data', 'marketplace_summary')
+- calculatedAt: timestamp
+- sourceDataHash: text (hash of source data to detect changes)
+- dataVersion: integer (increments when source files are re-uploaded)
+
+// Table for processed installments (the main calculation result)
+processedInstallments table:
+- id: serial primary key
+- orden: text
+- numeroCuota: integer
+- monto: decimal
+- fechaCuota: date
+- fechaPagoReal: date (nullable)
+- status: text ('PENDIENTE', 'DONE', 'VENCIDO', 'ADELANTADO')
+- isPaymentBased: boolean
+- tienda: text
+- paymentReferencia: text (nullable)
+- paymentMetodo: text (nullable)
+- paymentMontoUSD: decimal (nullable)
+- paymentMontoVES: decimal (nullable)
+- paymentTasaCambio: decimal (nullable)
+- verificacion: text (nullable)
+- calculatedAt: timestamp
+- sourceVersion: integer
+
+// Table for orden-to-tienda mapping
+ordenTiendaMapping table:
+- id: serial primary key
+- orden: text (unique)
+- tienda: text
+- updatedAt: timestamp
+
+// Table for processed bank statements with CONCILIADO status
+processedBankStatements table:
+- id: serial primary key
+- referencia: text
+- fecha: date
+- descripcion: text
+- debe: decimal
+- haber: decimal
+- saldo: decimal
+- conciliado: text ('SI', 'NO', 'PARCIAL')
+- calculatedAt: timestamp
+- sourceVersion: integer
+
+2. Create API endpoints:
+
+GET /api/cache/installments - returns all processed installments
+POST /api/cache/installments - saves processed installments (bulk insert/replace)
+GET /api/cache/installments/status/:orden/:cuota - get status of specific cuota (for real-time checks)
+
+GET /api/cache/bank-statements - returns processed bank data with CONCILIADO
+POST /api/cache/bank-statements - saves processed bank statements
+
+GET /api/cache/orden-tienda-map - returns the mapping
+POST /api/cache/orden-tienda-map - saves the mapping
+
+GET /api/cache/metadata - returns calculation timestamps and versions
+POST /api/cache/invalidate - marks cache as stale (triggers recalculation)
+
+3. Run drizzle-kit push to create the tables

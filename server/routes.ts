@@ -1310,6 +1310,149 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================================
+  // Cache API endpoints for pre-calculated data sharing
+  // ============================================================
+
+  // Get all processed installments
+  app.get("/api/cache/installments", async (req, res) => {
+    try {
+      const installments = await storage.getAllProcessedInstallments();
+      res.json({ success: true, data: installments, count: installments.length });
+    } catch (error) {
+      console.error('Error fetching cached installments:', error);
+      res.status(500).json({ error: 'Error al obtener cuotas procesadas' });
+    }
+  });
+
+  // Save processed installments (bulk insert/replace)
+  app.post("/api/cache/installments", async (req, res) => {
+    try {
+      const { installments } = req.body;
+      if (!installments || !Array.isArray(installments)) {
+        return res.status(400).json({ error: 'Se requiere un array de installments' });
+      }
+      await storage.saveProcessedInstallments(installments);
+      res.json({ success: true, message: `Guardadas ${installments.length} cuotas procesadas` });
+    } catch (error) {
+      console.error('Error saving cached installments:', error);
+      res.status(500).json({ error: 'Error al guardar cuotas procesadas' });
+    }
+  });
+
+  // Get status of specific cuota
+  app.get("/api/cache/installments/status/:orden/:cuota", async (req, res) => {
+    try {
+      const { orden, cuota } = req.params;
+      const cuotaNum = parseInt(cuota, 10);
+      if (isNaN(cuotaNum)) {
+        return res.status(400).json({ error: 'Número de cuota inválido' });
+      }
+      const installment = await storage.getInstallmentStatus(orden, cuotaNum);
+      if (!installment) {
+        return res.status(404).json({ error: 'Cuota no encontrada' });
+      }
+      res.json({ success: true, data: installment });
+    } catch (error) {
+      console.error('Error fetching installment status:', error);
+      res.status(500).json({ error: 'Error al obtener estado de cuota' });
+    }
+  });
+
+  // Get all processed bank statements
+  app.get("/api/cache/bank-statements", async (req, res) => {
+    try {
+      const statements = await storage.getAllProcessedBankStatements();
+      res.json({ success: true, data: statements, count: statements.length });
+    } catch (error) {
+      console.error('Error fetching cached bank statements:', error);
+      res.status(500).json({ error: 'Error al obtener estados de cuenta procesados' });
+    }
+  });
+
+  // Save processed bank statements
+  app.post("/api/cache/bank-statements", async (req, res) => {
+    try {
+      const { statements } = req.body;
+      if (!statements || !Array.isArray(statements)) {
+        return res.status(400).json({ error: 'Se requiere un array de statements' });
+      }
+      await storage.saveProcessedBankStatements(statements);
+      res.json({ success: true, message: `Guardados ${statements.length} estados de cuenta procesados` });
+    } catch (error) {
+      console.error('Error saving cached bank statements:', error);
+      res.status(500).json({ error: 'Error al guardar estados de cuenta procesados' });
+    }
+  });
+
+  // Get orden-tienda mapping
+  app.get("/api/cache/orden-tienda-map", async (req, res) => {
+    try {
+      const mappings = await storage.getOrdenTiendaMapping();
+      res.json({ success: true, data: mappings, count: mappings.length });
+    } catch (error) {
+      console.error('Error fetching orden-tienda mapping:', error);
+      res.status(500).json({ error: 'Error al obtener mapeo orden-tienda' });
+    }
+  });
+
+  // Save orden-tienda mapping
+  app.post("/api/cache/orden-tienda-map", async (req, res) => {
+    try {
+      const { mappings } = req.body;
+      if (!mappings || !Array.isArray(mappings)) {
+        return res.status(400).json({ error: 'Se requiere un array de mappings' });
+      }
+      await storage.saveOrdenTiendaMapping(mappings);
+      res.json({ success: true, message: `Guardados ${mappings.length} mapeos orden-tienda` });
+    } catch (error) {
+      console.error('Error saving orden-tienda mapping:', error);
+      res.status(500).json({ error: 'Error al guardar mapeo orden-tienda' });
+    }
+  });
+
+  // Get cache metadata (calculation timestamps and versions)
+  app.get("/api/cache/metadata", async (req, res) => {
+    try {
+      const installmentsCache = await storage.getCacheMetadata('installments');
+      const bankStatementsCache = await storage.getCacheMetadata('bank_statements');
+      const ordenTiendaCache = await storage.getCacheMetadata('orden_tienda_map');
+      
+      res.json({
+        success: true,
+        data: {
+          installments: installmentsCache || null,
+          bankStatements: bankStatementsCache || null,
+          ordenTiendaMap: ordenTiendaCache || null,
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching cache metadata:', error);
+      res.status(500).json({ error: 'Error al obtener metadata de cache' });
+    }
+  });
+
+  // Invalidate cache (triggers recalculation)
+  app.post("/api/cache/invalidate", async (req, res) => {
+    try {
+      const { cacheKey } = req.body;
+      
+      if (cacheKey) {
+        await storage.invalidateCache(cacheKey);
+        res.json({ success: true, message: `Cache '${cacheKey}' invalidado` });
+      } else {
+        // Invalidate all caches
+        await storage.invalidateCache('installments');
+        await storage.invalidateCache('bank_statements');
+        await storage.invalidateCache('orden_tienda_map');
+        res.json({ success: true, message: 'Todos los caches invalidados' });
+      }
+    } catch (error) {
+      console.error('Error invalidating cache:', error);
+      res.status(500).json({ error: 'Error al invalidar cache' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
