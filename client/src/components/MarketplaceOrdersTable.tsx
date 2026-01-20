@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -43,7 +43,7 @@ interface MarketplaceOrdersTableProps {
 
 type SortDirection = 'asc' | 'desc' | null;
 
-export function MarketplaceOrdersTable({ 
+export const MarketplaceOrdersTable = React.memo(function MarketplaceOrdersTable({ 
   data, 
   headers, 
   fileName,
@@ -633,4 +633,4 @@ export function MarketplaceOrdersTable({
       </div>
     </div>
   );
-}
+});

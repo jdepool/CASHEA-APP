@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import React, { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileSpreadsheet } from "lucide-react";
 import { normalizeNumber } from "@shared/numberUtils";
@@ -28,7 +28,7 @@ interface MonthlyReportProps {
   filteredPagosMasterOnlyData?: any[];
 }
 
-export function MonthlyReport({ 
+export const MonthlyReport = React.memo(function MonthlyReport({ 
   marketplaceData,
   dateFrom,
   dateTo,
@@ -1068,4 +1068,4 @@ export function MonthlyReport({
       </Card>
     </div>
   );
-}
+});

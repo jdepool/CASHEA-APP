@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import React, { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, ShoppingCart, CreditCard, AlertCircle, Wallet, Receipt, Calendar, XCircle } from "lucide-react";
 import { parseDDMMYYYY, parseExcelDate } from "@/lib/dateUtils";
@@ -16,7 +16,7 @@ interface DashboardProps {
   ordenToTiendaMap?: Map<string, string>;
 }
 
-export function Dashboard({ data, allData, headers, dateFrom, dateTo, masterDateFrom, masterDateTo, masterOrden, masterTienda, ordenToTiendaMap = new Map() }: DashboardProps) {
+export const Dashboard = React.memo(function Dashboard({ data, allData, headers, dateFrom, dateTo, masterDateFrom, masterDateTo, masterOrden, masterTienda, ordenToTiendaMap = new Map() }: DashboardProps) {
   // Helper function to check if an order is cancelled
   const isCancelledOrder = (row: any): boolean => {
     const statusOrden = String(row["STATUS ORDEN"] || "").toLowerCase().trim();
@@ -332,4 +332,4 @@ export function Dashboard({ data, allData, headers, dateFrom, dateTo, masterDate
       </div>
     </div>
   );
-}
+});

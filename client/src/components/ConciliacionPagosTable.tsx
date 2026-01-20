@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { WeeklyPaymentsTable } from "./WeeklyPaymentsTable";
 import { ConciliacionPagosDashboard } from "./ConciliacionPagosDashboard";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ interface ConciliacionPagosTableProps {
   preProcessedPaymentInstallments?: any[];
 }
 
-export function ConciliacionPagosTable({ 
+export const ConciliacionPagosTable = React.memo(function ConciliacionPagosTable({ 
   tableData,
   showFilters,
   setShowFilters,
@@ -322,4 +322,4 @@ export function ConciliacionPagosTable({
       <WeeklyPaymentsTable installments={filteredInstallments} />
     </div>
   );
-}
+});

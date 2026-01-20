@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,7 +33,7 @@ interface CuotasTableProps {
 type SortField = 'orden' | 'cuota' | 'fecha' | 'monto' | 'estado';
 type SortDirection = 'asc' | 'desc' | null;
 
-export function CuotasTable({ 
+export const CuotasTable = React.memo(function CuotasTable({ 
   tableData, 
   showFilters, 
   setShowFilters,
@@ -546,4 +546,4 @@ export function CuotasTable({
       </div>
     </div>
   );
-}
+});

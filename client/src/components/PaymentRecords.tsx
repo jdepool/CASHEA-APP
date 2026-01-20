@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { PaymentRecordsTable } from "./PaymentRecordsTable";
 import { PaymentRecordsDashboard } from "./PaymentRecordsDashboard";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ interface PaymentRecordsProps {
   ordenToTiendaMap?: Map<string, string>;
 }
 
-export function PaymentRecords({
+export const PaymentRecords = React.memo(function PaymentRecords({
   showFilters,
   setShowFilters,
   dateFrom,
@@ -395,4 +395,4 @@ export function PaymentRecords({
       )}
     </div>
   );
-}
+});

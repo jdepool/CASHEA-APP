@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { WeeklyPaymentsTable } from "./WeeklyPaymentsTable";
 import { InstallmentsDashboard } from "./InstallmentsDashboard";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,7 @@ interface AllInstallmentsProps {
   preProcessedPaymentInstallments?: any[];
 }
 
-export function AllInstallments({ 
+export const AllInstallments = React.memo(function AllInstallments({ 
   tableData,
   showFilters,
   setShowFilters,
@@ -352,4 +352,4 @@ export function AllInstallments({
       <WeeklyPaymentsTable installments={filteredInstallments} />
     </div>
   );
-}
+});

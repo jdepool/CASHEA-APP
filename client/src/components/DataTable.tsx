@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { StatusBadge } from "./StatusBadge";
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 
@@ -11,7 +11,7 @@ interface DataTableProps {
   headers: string[];
 }
 
-export function DataTable({ data, headers }: DataTableProps) {
+export const DataTable = React.memo(function DataTable({ data, headers }: DataTableProps) {
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const formatValue = (value: any, header: string, row?: TableRow) => {
@@ -224,4 +224,4 @@ export function DataTable({ data, headers }: DataTableProps) {
       </table>
     </div>
   );
-}
+});

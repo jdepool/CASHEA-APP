@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { FileSpreadsheet, Download, ChevronUp, ChevronDown, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,7 +29,7 @@ interface SortConfig {
   direction: SortDirection;
 }
 
-export function BankStatementsTable({
+export const BankStatementsTable = React.memo(function BankStatementsTable({
   masterDateFrom = "",
   masterDateTo = "",
   masterOrden = "",
@@ -384,4 +384,4 @@ export function BankStatementsTable({
       </Card>
     </div>
   );
-}
+});
