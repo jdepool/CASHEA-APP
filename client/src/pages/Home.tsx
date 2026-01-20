@@ -322,24 +322,39 @@ export default function Home() {
   }, [cachedOrdenMap, isLoadingCachedOrdenMap]);
 
   // Recalculate and cache installments (called after file uploads)
+  // IMPORTANT: Fetches fresh data from API to avoid stale React state issues
   const recalculateAndCacheInstallments = useCallback(async () => {
-    console.log('Recalculating installments...');
+    console.log('Recalculating installments with fresh API data...');
     setCachedData(prev => ({ ...prev, isRecalculating: true }));
     
     try {
-      // Get current data
-      const currentOrders = tableData;
-      const currentPaymentData = paymentRecordsData as any;
-      const currentMarketplaceData = marketplaceData as any;
-      const paymentRows = currentPaymentData?.data?.rows || [];
+      // Fetch fresh data directly from API to avoid stale state issues
+      const [ordersResponse, paymentsResponse, marketplaceResponse, bankResponse] = await Promise.all([
+        fetch('/api/orders'),
+        fetch('/api/payment-records'),
+        fetch('/api/marketplace-orders'),
+        fetch('/api/bank-statements')
+      ]);
       
-      // Get the current orden-to-tienda map
-      const mpData = currentMarketplaceData;
+      const [ordersResult, paymentsResult, marketplaceResult, bankResult] = await Promise.all([
+        ordersResponse.json(),
+        paymentsResponse.json(),
+        marketplaceResponse.json(),
+        bankResponse.json()
+      ]);
+      
+      // Get fresh data from API responses
+      const currentOrders = ordersResult?.success ? (ordersResult?.data?.rows || []) : tableData;
+      const paymentRows = paymentsResult?.success ? (paymentsResult?.data?.rows || []) : [];
+      const freshMarketplaceData = marketplaceResult?.success ? marketplaceResult?.data : null;
+      const freshBankData = bankResult?.success ? bankResult?.data : null;
+      
+      // Get the current orden-to-tienda map from fresh marketplace data
       let currentOrdenToTiendaMap = new Map<string, string>();
       
-      if (mpData?.data?.rows && mpData?.data?.headers) {
-        const mpHeaders = mpData.data.headers;
-        const mpRows = mpData.data.rows;
+      if (freshMarketplaceData?.rows && freshMarketplaceData?.headers) {
+        const mpHeaders = freshMarketplaceData.headers;
+        const mpRows = freshMarketplaceData.rows;
         const tiendaColumn = mpHeaders.find((h: string) => 
           h.toLowerCase().includes('tienda') || h.toLowerCase() === 'store'
         );
@@ -518,12 +533,12 @@ export default function Home() {
       const paymentFormatted = paymentInstallments.map((inst: any) => formatInstallment(inst, true));
       const allInstallmentsForCache = [...scheduleFormatted, ...paymentFormatted];
       
-      // Generate hash for cache
+      // Generate hash for cache using fresh data
       const ordersHash = generateDataHash(currentOrders);
       const paymentsHash = generateDataHash(paymentRows);
-      const bankRows = (bankStatementsData as any)?.data?.rows || [];
+      const bankRows = freshBankData?.rows || [];
       const bankHash = generateDataHash(bankRows);
-      const marketplaceRows = (currentMarketplaceData as any)?.data?.rows || [];
+      const marketplaceRows = freshMarketplaceData?.rows || [];
       const marketplaceHash = generateDataHash(marketplaceRows);
       const combinedHash = `${ordersHash}|${paymentsHash}|${bankHash}|${marketplaceHash}`;
       
@@ -548,18 +563,23 @@ export default function Home() {
       console.error('Error recalculating installments:', error);
       setCachedData(prev => ({ ...prev, isRecalculating: false }));
     }
-  }, [tableData, paymentRecordsData, marketplaceData, bankStatementsData]);
+  }, [tableData]); // tableData is only fallback, main data comes from fresh API fetch
 
   // Recalculate and cache orden-tienda map (called after marketplace file upload)
+  // IMPORTANT: Fetches fresh data from API to avoid stale React state issues
   const recalculateAndCacheOrdenMap = useCallback(async () => {
-    console.log('Recalculating orden-tienda map...');
+    console.log('Recalculating orden-tienda map with fresh API data...');
     
     try {
-      const mpData = marketplaceData as any;
-      if (!mpData?.data?.rows || !mpData?.data?.headers) return;
+      // Fetch fresh marketplace data directly from API
+      const marketplaceResponse = await fetch('/api/marketplace-orders');
+      const marketplaceResult = await marketplaceResponse.json();
       
-      const mpHeaders = mpData.data.headers;
-      const mpRows = mpData.data.rows;
+      const freshMpData = marketplaceResult?.success ? marketplaceResult?.data : null;
+      if (!freshMpData?.rows || !freshMpData?.headers) return;
+      
+      const mpHeaders = freshMpData.headers;
+      const mpRows = freshMpData.rows;
       
       const tiendaColumn = mpHeaders.find((h: string) => 
         h.toLowerCase().includes('tienda') || h.toLowerCase() === 'store'
@@ -604,7 +624,7 @@ export default function Home() {
     } catch (error) {
       console.error('Error recalculating orden-tienda map:', error);
     }
-  }, [marketplaceData, recalculateAndCacheInstallments]);
+  }, [recalculateAndCacheInstallments]); // Removed stale marketplaceData dependency
 
   // Smart cache invalidation: check if source data has changed and update statuses on app load
   useEffect(() => {
