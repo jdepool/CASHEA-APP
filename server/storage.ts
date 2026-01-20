@@ -87,7 +87,7 @@ export interface IStorage {
   
   getAllProcessedBankStatements(): Promise<ProcessedBankStatement[]>;
   saveProcessedBankStatements(statements: InsertProcessedBankStatement[]): Promise<void>;
-  updateInstallmentStatuses(currentDate: Date): Promise<{ updated: number }>;
+  updateInstallmentStatuses(currentDate: Date): Promise<{ updated: number; statusChanges: Record<string, number> }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -821,37 +821,72 @@ export class DatabaseStorage implements IStorage {
     console.log(`✓ Saved ${statements.length} processed bank statements`);
   }
 
-  async updateInstallmentStatuses(currentDate: Date): Promise<{ updated: number }> {
+  async updateInstallmentStatuses(currentDate: Date): Promise<{ 
+    updated: number; 
+    statusChanges: Record<string, number>;
+  }> {
     const todayStr = currentDate.toISOString().split('T')[0];
     
-    // Use domain-specific Spanish status values matching the application taxonomy:
-    // - 'A TIEMPO' for paid on time (payment date <= cuota date)
-    // - 'ADELANTADO' for paid early (payment date < cuota date - will be calculated by frontend)
-    // - 'ATRASADO' for overdue (past due date, no payment)
-    // - Status is preserved if payment exists (let frontend calculate exact status)
-    const result = await db.execute(sql`
-      WITH updates AS (
-        UPDATE processed_installments
-        SET status = CASE
-          WHEN fecha_pago_real IS NOT NULL THEN 'A TIEMPO'
-          WHEN fecha_cuota IS NOT NULL AND fecha_cuota::date < ${todayStr}::date THEN 'ATRASADO'
-          ELSE status
-        END
-        WHERE 
-          (status IS NULL OR status = 'PENDIENTE' OR status = '' OR status = 'Pendiente')
-          AND (
-            fecha_pago_real IS NOT NULL 
-            OR (fecha_cuota IS NOT NULL AND fecha_cuota::date < ${todayStr}::date)
-          )
-        RETURNING id
-      )
-      SELECT COUNT(*) as count FROM updates
+    // Status values based on business logic:
+    // - 'DONE' for paid on time (payment date <= cuota date)
+    // - 'DELAYED' for paid late (payment date > cuota date)
+    // - 'VENCIDO' for overdue (past due date, no payment)
+    // - 'PENDIENTE' for pending (not yet due, no payment)
+    
+    // First, get current statuses before update to track changes
+    const beforeResult = await db.execute(sql`
+      SELECT 
+        id,
+        COALESCE(status, 'PENDIENTE') as old_status,
+        CASE
+          WHEN fecha_pago_real IS NOT NULL THEN
+            CASE
+              WHEN fecha_pago_real::date <= fecha_cuota::date THEN 'DONE'
+              ELSE 'DELAYED'
+            END
+          WHEN fecha_cuota IS NOT NULL AND fecha_cuota::date < ${todayStr}::date THEN 'VENCIDO'
+          ELSE 'PENDIENTE'
+        END as new_status
+      FROM processed_installments
+      WHERE fecha_cuota IS NOT NULL
     `);
     
-    const count = Number(result.rows?.[0]?.count || 0);
-    console.log(`✓ Updated ${count} installment statuses based on date ${todayStr}`);
+    // Count status transitions
+    const statusChanges: Record<string, number> = {};
+    let changedCount = 0;
     
-    return { updated: count };
+    for (const row of beforeResult.rows || []) {
+      const oldStatus = String(row.old_status || 'PENDIENTE').toUpperCase();
+      const newStatus = String(row.new_status || 'PENDIENTE').toUpperCase();
+      
+      if (oldStatus !== newStatus) {
+        const key = `${oldStatus}->${newStatus}`;
+        statusChanges[key] = (statusChanges[key] || 0) + 1;
+        changedCount++;
+      }
+    }
+    
+    // Now perform the actual update
+    await db.execute(sql`
+      UPDATE processed_installments
+      SET status = CASE
+        WHEN fecha_pago_real IS NOT NULL THEN
+          CASE
+            WHEN fecha_pago_real::date <= fecha_cuota::date THEN 'DONE'
+            ELSE 'DELAYED'
+          END
+        WHEN fecha_cuota IS NOT NULL AND fecha_cuota::date < ${todayStr}::date THEN 'VENCIDO'
+        ELSE 'PENDIENTE'
+      END
+      WHERE fecha_cuota IS NOT NULL
+    `);
+    
+    console.log(`✓ Updated ${changedCount} installment statuses based on date ${todayStr}`);
+    if (Object.keys(statusChanges).length > 0) {
+      console.log('  Status changes:', statusChanges);
+    }
+    
+    return { updated: changedCount, statusChanges };
   }
 }
 

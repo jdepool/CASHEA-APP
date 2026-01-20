@@ -61,7 +61,10 @@ export function shouldUpdateStatuses(): boolean {
   return false;
 }
 
-export async function updateTimeBasedStatuses(): Promise<{ updated: number }> {
+export async function updateTimeBasedStatuses(): Promise<{ 
+  updated: number; 
+  statusChanges?: Record<string, number>;
+}> {
   try {
     const response = await fetch('/api/cache/installments/update-statuses', {
       method: 'POST',
@@ -73,10 +76,14 @@ export async function updateTimeBasedStatuses(): Promise<{ updated: number }> {
       throw new Error('Failed to update statuses');
     }
     
-    return await response.json();
+    const result = await response.json();
+    return { 
+      updated: result.updated || 0, 
+      statusChanges: result.statusChanges || {} 
+    };
   } catch (error) {
     console.error('Error updating time-based statuses:', error);
-    return { updated: 0 };
+    return { updated: 0, statusChanges: {} };
   }
 }
 

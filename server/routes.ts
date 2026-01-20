@@ -1449,6 +1449,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update time-based statuses for installments
+  // Called on app startup and after loading cached data to ensure statuses are current
   app.post("/api/cache/installments/update-statuses", async (req, res) => {
     try {
       const { currentDate } = req.body;
@@ -1460,6 +1461,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ 
         success: true, 
         updated: result.updated,
+        statusChanges: result.statusChanges,
         message: `Actualizados ${result.updated} estados de cuotas` 
       });
     } catch (error) {
