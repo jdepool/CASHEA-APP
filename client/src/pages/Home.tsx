@@ -1,19 +1,21 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, lazy, Suspense, useTransition } from "react";
 import { FileUpload } from "@/components/FileUpload";
-import { DataTable } from "@/components/DataTable";
-import { Dashboard } from "@/components/Dashboard";
 import { EmptyState } from "@/components/EmptyState";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { AllInstallments } from "@/components/AllInstallments";
-import { AllPagosInstallments } from "@/components/AllPagosInstallments";
-import { ConciliacionPagosTable } from "@/components/ConciliacionPagosTable";
-import { PaymentRecords } from "@/components/PaymentRecords";
-import { MarketplaceOrdersTable } from "@/components/MarketplaceOrdersTable";
-import { CuotasTable } from "@/components/CuotasTable";
-import { MonthlyReport } from "@/components/MonthlyReport";
 import { MasterFilter } from "@/components/MasterFilter";
-import { BankStatementsTable } from "@/components/BankStatementsTable";
-import { AIAssistant } from "@/components/AIAssistant";
+
+// Lazy-loaded heavy components for faster initial page load
+const DataTable = lazy(() => import("@/components/DataTable").then(m => ({ default: m.DataTable })));
+const Dashboard = lazy(() => import("@/components/Dashboard").then(m => ({ default: m.Dashboard })));
+const AllInstallments = lazy(() => import("@/components/AllInstallments").then(m => ({ default: m.AllInstallments })));
+const AllPagosInstallments = lazy(() => import("@/components/AllPagosInstallments").then(m => ({ default: m.AllPagosInstallments })));
+const ConciliacionPagosTable = lazy(() => import("@/components/ConciliacionPagosTable").then(m => ({ default: m.ConciliacionPagosTable })));
+const PaymentRecords = lazy(() => import("@/components/PaymentRecords").then(m => ({ default: m.PaymentRecords })));
+const MarketplaceOrdersTable = lazy(() => import("@/components/MarketplaceOrdersTable").then(m => ({ default: m.MarketplaceOrdersTable })));
+const CuotasTable = lazy(() => import("@/components/CuotasTable").then(m => ({ default: m.CuotasTable })));
+const MonthlyReport = lazy(() => import("@/components/MonthlyReport").then(m => ({ default: m.MonthlyReport })));
+const BankStatementsTable = lazy(() => import("@/components/BankStatementsTable").then(m => ({ default: m.BankStatementsTable })));
+const AIAssistant = lazy(() => import("@/components/AIAssistant").then(m => ({ default: m.AIAssistant })));
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -29,6 +31,14 @@ import * as XLSX from "xlsx";
 import { parseExcelDate, parseDDMMYYYY } from "@/lib/dateUtils";
 import { extractInstallments, calculateInstallmentStatus } from "@/lib/installmentUtils";
 import { verifyInPaymentRecords } from "@/lib/verificationUtils";
+
+// Loading fallback for lazy-loaded tab components
+const TabLoader = () => (
+  <div className="flex items-center justify-center py-12">
+    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    <span className="ml-2 text-muted-foreground">Cargando...</span>
+  </div>
+);
 
 export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -93,6 +103,16 @@ export default function Home() {
   const [marketplaceOrdenFilter, setMarketplaceOrdenFilter] = useState<string>("");
   const [marketplaceEstadoEntregaFilter, setMarketplaceEstadoEntregaFilter] = useState<string>("all");
   const [marketplaceReferenciaFilter, setMarketplaceReferenciaFilter] = useState<string>("");
+  
+  // Tab state with transition for lazy-loaded components
+  const [activeTab, setActiveTab] = useState<string>("upload");
+  const [isPending, startTransition] = useTransition();
+  
+  const handleTabChange = useCallback((value: string) => {
+    startTransition(() => {
+      setActiveTab(value);
+    });
+  }, []);
   
   const { toast } = useToast();
 
@@ -947,7 +967,7 @@ export default function Home() {
                 </>
               )}
               
-              <Tabs defaultValue="upload" className="space-y-4">
+              <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
                 <MasterFilter
                   dateFrom={masterDateFrom}
                   dateTo={masterDateTo}
@@ -1133,6 +1153,7 @@ export default function Home() {
               </TabsContent>
 
               <TabsContent value="all" className="space-y-4">
+                <Suspense fallback={<TabLoader />}>
                 {tableData.length > 0 ? (
                   <>
                     <Dashboard 
@@ -1265,9 +1286,11 @@ export default function Home() {
                     </p>
                   </div>
                 )}
+                </Suspense>
               </TabsContent>
 
               <TabsContent value="cuotas" className="space-y-4">
+                <Suspense fallback={<TabLoader />}>
                 {tableData.length > 0 ? (
                   <CuotasTable 
                     tableData={tableData}
@@ -1296,9 +1319,11 @@ export default function Home() {
                     </p>
                   </div>
                 )}
+                </Suspense>
               </TabsContent>
 
               <TabsContent value="banco" className="space-y-4">
+                <Suspense fallback={<TabLoader />}>
                 <BankStatementsTable 
                   masterDateFrom={masterDateFrom}
                   masterDateTo={masterDateTo}
@@ -1307,9 +1332,11 @@ export default function Home() {
                   ordenToTiendaMap={ordenToTiendaMap}
                   preProcessedBankData={processedBankData}
                 />
+                </Suspense>
               </TabsContent>
 
               <TabsContent value="payments">
+                <Suspense fallback={<TabLoader />}>
                 <PaymentRecords 
                   showFilters={paymentsShowFilters}
                   setShowFilters={setPaymentsShowFilters}
@@ -1327,9 +1354,11 @@ export default function Home() {
                   masterTienda={masterTienda}
                   ordenToTiendaMap={ordenToTiendaMap}
                 />
+                </Suspense>
               </TabsContent>
 
               <TabsContent value="weekly">
+                <Suspense fallback={<TabLoader />}>
                 {tableData.length > 0 ? (
                   <AllInstallments 
                     tableData={tableData}
@@ -1363,9 +1392,11 @@ export default function Home() {
                     </p>
                   </div>
                 )}
+                </Suspense>
               </TabsContent>
 
               <TabsContent value="pagos">
+                <Suspense fallback={<TabLoader />}>
                 {tableData.length > 0 ? (
                   <ConciliacionPagosTable 
                     tableData={tableData}
@@ -1395,9 +1426,11 @@ export default function Home() {
                     </p>
                   </div>
                 )}
+                </Suspense>
               </TabsContent>
 
               <TabsContent value="marketplace">
+                <Suspense fallback={<TabLoader />}>
                 {marketplaceData && (marketplaceData as any).data ? (
                   <MarketplaceOrdersTable 
                     data={(marketplaceData as any).data.rows}
@@ -1434,9 +1467,11 @@ export default function Home() {
                     </p>
                   </div>
                 )}
+                </Suspense>
               </TabsContent>
 
               <TabsContent value="monthly-report">
+                <Suspense fallback={<TabLoader />}>
                 <MonthlyReport 
                   marketplaceData={marketplaceData}
                   dateFrom={marketplaceDateFrom}
@@ -1459,10 +1494,13 @@ export default function Home() {
                   filteredPagosMasterOnlyData={filteredPagosMasterOnlyData}
                   cuotasAdelantadasPeriodosAnteriores={cuotasAdelantadasPeriodosAnteriores}
                 />
+                </Suspense>
               </TabsContent>
 
               <TabsContent value="ai-assistant" className="h-[calc(100vh-200px)]">
+                <Suspense fallback={<TabLoader />}>
                 <AIAssistant />
+                </Suspense>
               </TabsContent>
             </Tabs>
             </>
