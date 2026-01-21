@@ -391,63 +391,83 @@ export default function Home() {
       // Extract schedule-based installments
       let scheduleInstallments = extractInstallments(validOrders);
       
-      // Enrich with payment data
+      // Build first reference map for schedule installments (use first payment's reference for each cuota)
+      const scheduleFirstRef: Map<string, { payment: any; date: Date | null }> = new Map();
       if (paymentRows.length > 0) {
-        scheduleInstallments = scheduleInstallments.map((installment) => {
-          const matchingPayment = paymentRows.find((payment: any) => {
-            const paymentOrder = String(payment['# Orden'] || payment['#Orden'] || payment['Orden'] || '').trim();
-            const paymentInstallmentStr = String(payment['# Cuota Pagada'] || payment['#CuotaPagada'] || payment['Cuota'] || '').trim();
-            
-            const orderMatches = paymentOrder === String(installment.orden).trim();
-            
-            if (paymentInstallmentStr && orderMatches) {
-              const cuotaParts = paymentInstallmentStr.split(',').map((s: string) => s.trim());
-              for (const part of cuotaParts) {
-                const parsed = parseInt(part, 10);
-                if (!isNaN(parsed) && parsed === installment.numeroCuota) {
-                  return true;
+        paymentRows.forEach((payment: any) => {
+          const paymentOrder = String(payment['# Orden'] || payment['#Orden'] || payment['Orden'] || '').trim();
+          const paymentInstallmentStr = String(payment['# Cuota Pagada'] || payment['#CuotaPagada'] || payment['Cuota'] || '').trim();
+          const fechaTasaCambio = payment['Fecha de Transaccion'] ||
+                                  payment['FECHA DE TRANSACCION'] ||
+                                  payment['Fecha de Transacción'] ||
+                                  payment['FECHA DE TRANSACCIÓN'];
+          const parsedDate = fechaTasaCambio ? parseExcelDate(fechaTasaCambio) : null;
+          
+          if (paymentInstallmentStr) {
+            const cuotaParts = paymentInstallmentStr.split(',').map((s: string) => s.trim());
+            for (const part of cuotaParts) {
+              const parsed = parseInt(part, 10);
+              if (!isNaN(parsed)) {
+                const key = `${paymentOrder}_${parsed}`;
+                // Only store first reference (by order of appearance in payment records)
+                if (!scheduleFirstRef.has(key)) {
+                  scheduleFirstRef.set(key, { payment, date: parsedDate });
                 }
               }
             }
-            return false;
-          });
+          }
+        });
+      }
+      
+      // Enrich with payment data (using only FIRST reference for each cuota)
+      if (paymentRows.length > 0) {
+        scheduleInstallments = scheduleInstallments.map((installment: any) => {
+          const key = `${String(installment.orden).trim()}_${installment.numeroCuota}`;
+          const firstRefData = scheduleFirstRef.get(key);
 
-          if (matchingPayment) {
-            const fechaTasaCambio = matchingPayment['Fecha de Transaccion'] ||
-                                    matchingPayment['FECHA DE TRANSACCION'] ||
-                                    matchingPayment['Fecha de Transacción'] ||
-                                    matchingPayment['FECHA DE TRANSACCIÓN'];
-            
-            const parsedDate = fechaTasaCambio ? parseExcelDate(fechaTasaCambio) : null;
-            
-            if (parsedDate) {
-              const verificacion = matchingPayment['VERIFICACION'] || '-';
-              return { 
-                ...installment, 
-                fechaPagoReal: parsedDate,
-                paymentDetails: {
-                  referencia: matchingPayment['# Referencia'] || matchingPayment['#Referencia'] || matchingPayment['Referencia'],
-                  metodoPago: matchingPayment['Método de Pago'] || matchingPayment['Metodo de Pago'] || matchingPayment['MÉTODO DE PAGO'],
-                  montoPagadoUSD: matchingPayment['Monto Pagado en USD'] || matchingPayment['MONTO PAGADO EN USD'] || matchingPayment['Monto'],
-                  montoPagadoVES: matchingPayment['Monto Pagado en VES'] || matchingPayment['MONTO PAGADO EN VES'],
-                  tasaCambio: matchingPayment['Tasa de Cambio'] || matchingPayment['TASA DE CAMBIO']
-                },
-                verificacion
-              };
-            }
+          if (firstRefData && firstRefData.date) {
+            const matchingPayment = firstRefData.payment;
+            const verificacion = matchingPayment['VERIFICACION'] || '-';
+            return { 
+              ...installment, 
+              fechaPagoReal: firstRefData.date,
+              paymentDetails: {
+                referencia: matchingPayment['# Referencia'] || matchingPayment['#Referencia'] || matchingPayment['Referencia'],
+                metodoPago: matchingPayment['Método de Pago'] || matchingPayment['Metodo de Pago'] || matchingPayment['MÉTODO DE PAGO'],
+                montoPagadoUSD: matchingPayment['Monto Pagado en USD'] || matchingPayment['MONTO PAGADO EN USD'] || matchingPayment['Monto'],
+                montoPagadoVES: matchingPayment['Monto Pagado en VES'] || matchingPayment['MONTO PAGADO EN VES'],
+                tasaCambio: matchingPayment['Tasa de Cambio'] || matchingPayment['TASA DE CAMBIO']
+              },
+              verificacion
+            };
           }
           return installment;
         });
       }
       
       // Create payment-based installments
+      // KEY LOGIC: 
+      // 1. Track cuotas and use only FIRST reference for bank reconciliation
+      // 2. Aggregate all payment amounts per cuota (for when schedule data is missing)
+      // 3. If ANY payment for a cuota is verified (SI), the cuota inherits verified status
       const paymentInstallments: any[] = [];
       
+      // Data structure to aggregate per cuota: first reference, total amount, and best verification
+      interface CuotaAggregation {
+        firstReferencia: string;
+        firstVerificacion: string;
+        firstFechaPago: Date | null;
+        firstPaymentDetails: any;
+        totalAmountUSD: number;
+        hasVerifiedPayment: boolean; // True if ANY payment is verified "SI"
+      }
+      const cuotaAggregation: Map<string, CuotaAggregation> = new Map();
+      
       if (paymentRows.length > 0) {
+        // Single pass: Collect first reference AND aggregate amounts per cuota
         paymentRows.forEach((payment: any) => {
           const paymentOrder = String(payment['# Orden'] || payment['#Orden'] || payment['Orden'] || '').trim();
           const paymentInstallment = String(payment['# Cuota Pagada'] || payment['#CuotaPagada'] || payment['Cuota'] || '').trim();
-          const montoPagado = payment['Monto Pagado en USD'] || payment['MONTO PAGADO EN USD'] || payment['Monto'] || 0;
           
           const fechaTasaCambio = payment['Fecha de Transaccion'] ||
                                   payment['FECHA DE TRANSACCION'] ||
@@ -455,54 +475,74 @@ export default function Home() {
                                   payment['FECHA DE TRANSACCIÓN'];
           
           const parsedDate = fechaTasaCambio ? parseExcelDate(fechaTasaCambio) : null;
+          const referencia = payment['# Referencia'] || payment['#Referencia'] || payment['Referencia'] || '';
+          const verificacion = payment['VERIFICACION'] || '-';
+          const montoPagadoUSD = parseFloat(payment['Monto Pagado en USD'] || payment['MONTO PAGADO EN USD'] || payment['Monto'] || 0) || 0;
           
-          if (paymentOrder) {
-            const cuotaNumbers: number[] = [];
+          if (!paymentOrder) return;
+          
+          const cuotaParts = paymentInstallment ? paymentInstallment.split(',').map((s: string) => s.trim()) : ['-1'];
+          const numberOfCuotas = cuotaParts.filter(p => parseInt(p, 10) !== -1).length || 1;
+          const amountPerCuota = montoPagadoUSD / numberOfCuotas;
+          
+          for (const part of cuotaParts) {
+            const cuotaNum = parseInt(part, 10);
+            const cuotaKey = `${paymentOrder}_${isNaN(cuotaNum) ? -1 : cuotaNum}`;
             
-            if (paymentInstallment) {
-              const cuotaParts = paymentInstallment.split(',').map((s: string) => s.trim());
-              for (const part of cuotaParts) {
-                const parsed = parseInt(part, 10);
-                if (!isNaN(parsed)) {
-                  cuotaNumbers.push(parsed);
-                }
-              }
-            }
+            const existing = cuotaAggregation.get(cuotaKey);
             
-            if (cuotaNumbers.length === 0) {
-              cuotaNumbers.push(-1);
-            }
-            
-            const referencia = payment['# Referencia'] || payment['#Referencia'] || payment['Referencia'] || '';
-            const verificacion = payment['VERIFICACION'] || '-';
-            const numberOfCuotas = cuotaNumbers.filter(n => n !== -1).length || 1;
-            
-            cuotaNumbers.forEach((cuotaNum) => {
-              const matchingScheduleInstallment = scheduleInstallments.find(
-                inst => String(inst.orden).trim() === paymentOrder && inst.numeroCuota === cuotaNum
-              );
-              
-              const splitAmount = matchingScheduleInstallment?.monto || (montoPagado / numberOfCuotas);
-              
-              paymentInstallments.push({
-                orden: paymentOrder,
-                numeroCuota: cuotaNum,
-                monto: splitAmount,
-                fechaCuota: matchingScheduleInstallment?.fechaCuota || null,
-                fechaPagoReal: parsedDate,
-                isPaymentBased: true,
-                paymentDetails: {
+            if (!existing) {
+              // First payment for this cuota - store as first reference
+              cuotaAggregation.set(cuotaKey, {
+                firstReferencia: referencia,
+                firstVerificacion: verificacion,
+                firstFechaPago: parsedDate,
+                firstPaymentDetails: {
                   referencia,
                   metodoPago: payment['Método de Pago'] || payment['Metodo de Pago'] || payment['MÉTODO DE PAGO'],
-                  montoPagadoUSD: montoPagado,
+                  montoPagadoUSD,
                   montoPagadoVES: payment['Monto Pagado en VES'] || payment['MONTO PAGADO EN VES'],
                   tasaCambio: payment['Tasa de Cambio'] || payment['TASA DE CAMBIO']
                 },
-                verificacion,
-                scheduledAmount: matchingScheduleInstallment?.monto
+                totalAmountUSD: amountPerCuota,
+                hasVerifiedPayment: verificacion === 'SI'
               });
-            });
+            } else {
+              // Additional payment for this cuota - aggregate amount and check verification
+              existing.totalAmountUSD += amountPerCuota;
+              if (verificacion === 'SI') {
+                existing.hasVerifiedPayment = true;
+              }
+            }
           }
+        });
+        
+        // Create ONE payment installment per unique cuota
+        cuotaAggregation.forEach((aggData, cuotaKey) => {
+          const [paymentOrder, cuotaNumStr] = cuotaKey.split('_');
+          const cuotaNum = parseInt(cuotaNumStr, 10);
+          
+          const matchingScheduleInstallment = scheduleInstallments.find(
+            (inst: any) => String(inst.orden).trim() === paymentOrder && inst.numeroCuota === cuotaNum
+          );
+          
+          // Use scheduled amount if available, otherwise use aggregated payment amount
+          const splitAmount = matchingScheduleInstallment?.monto || aggData.totalAmountUSD;
+          
+          // Verification: If ANY payment is verified, use SI; otherwise use first payment's status
+          const effectiveVerificacion = aggData.hasVerifiedPayment ? 'SI' : aggData.firstVerificacion;
+          
+          paymentInstallments.push({
+            orden: paymentOrder,
+            numeroCuota: cuotaNum,
+            monto: splitAmount,
+            fechaCuota: matchingScheduleInstallment?.fechaCuota || null,
+            fechaPagoReal: aggData.firstFechaPago,
+            isPaymentBased: true,
+            paymentDetails: aggData.firstPaymentDetails,
+            verificacion: effectiveVerificacion,
+            scheduledAmount: matchingScheduleInstallment?.monto
+          });
         });
       }
       
@@ -782,67 +822,82 @@ export default function Home() {
     // Extract schedule-based installments
     let scheduleInstallments = extractInstallments(validOrders);
 
-    // Enrich with payment data
-    // NOTE: Multi-cuota payments (e.g., "1,2") should match ALL cuotas in the list
-    // We don't use matchedPaymentIndices because the same payment can apply to multiple cuotas
+    // Build first reference map for schedule installments (use first payment's reference for each cuota)
+    const scheduleFirstRefMemo: Map<string, { payment: any; date: Date | null }> = new Map();
     if (hasPaymentData) {
-      scheduleInstallments = scheduleInstallments.map((installment) => {
-        // Find ANY payment that matches this order AND includes this cuota number
-        const matchingPayment = paymentRows.find((payment: any) => {
-          const paymentOrder = String(payment['# Orden'] || payment['#Orden'] || payment['Orden'] || '').trim();
-          const paymentInstallmentStr = String(payment['# Cuota Pagada'] || payment['#CuotaPagada'] || payment['Cuota'] || '').trim();
-          
-          const orderMatches = paymentOrder === String(installment.orden).trim();
-          
-          if (paymentInstallmentStr && orderMatches) {
-            const cuotaParts = paymentInstallmentStr.split(',').map((s: string) => s.trim());
-            for (const part of cuotaParts) {
-              const parsed = parseInt(part, 10);
-              if (!isNaN(parsed) && parsed === installment.numeroCuota) {
-                return true;
+      paymentRows.forEach((payment: any) => {
+        const paymentOrder = String(payment['# Orden'] || payment['#Orden'] || payment['Orden'] || '').trim();
+        const paymentInstallmentStr = String(payment['# Cuota Pagada'] || payment['#CuotaPagada'] || payment['Cuota'] || '').trim();
+        const fechaTasaCambio = payment['Fecha de Transaccion'] ||
+                                payment['FECHA DE TRANSACCION'] ||
+                                payment['Fecha de Transacción'] ||
+                                payment['FECHA DE TRANSACCIÓN'];
+        const parsedDate = fechaTasaCambio ? parseExcelDate(fechaTasaCambio) : null;
+        
+        if (paymentInstallmentStr) {
+          const cuotaParts = paymentInstallmentStr.split(',').map((s: string) => s.trim());
+          for (const part of cuotaParts) {
+            const parsed = parseInt(part, 10);
+            if (!isNaN(parsed)) {
+              const key = `${paymentOrder}_${parsed}`;
+              // Only store first reference (by order of appearance in payment records)
+              if (!scheduleFirstRefMemo.has(key)) {
+                scheduleFirstRefMemo.set(key, { payment, date: parsedDate });
               }
             }
           }
-          return false;
-        });
+        }
+      });
+    }
+    
+    // Enrich with payment data (using only FIRST reference for each cuota)
+    if (hasPaymentData) {
+      scheduleInstallments = scheduleInstallments.map((installment: any) => {
+        const key = `${String(installment.orden).trim()}_${installment.numeroCuota}`;
+        const firstRefData = scheduleFirstRefMemo.get(key);
 
-        if (matchingPayment) {
-          
-          const fechaTasaCambio = matchingPayment['Fecha de Transaccion'] ||
-                                  matchingPayment['FECHA DE TRANSACCION'] ||
-                                  matchingPayment['Fecha de Transacción'] ||
-                                  matchingPayment['FECHA DE TRANSACCIÓN'];
-          
-          const parsedDate = fechaTasaCambio ? parseExcelDate(fechaTasaCambio) : null;
-          
-          if (parsedDate) {
-            const verificacion = matchingPayment['VERIFICACION'] || '-';
-            return { 
-              ...installment, 
-              fechaPagoReal: parsedDate,
-              paymentDetails: {
-                referencia: matchingPayment['# Referencia'] || matchingPayment['#Referencia'] || matchingPayment['Referencia'],
-                metodoPago: matchingPayment['Método de Pago'] || matchingPayment['Metodo de Pago'] || matchingPayment['MÉTODO DE PAGO'],
-                montoPagadoUSD: matchingPayment['Monto Pagado en USD'] || matchingPayment['MONTO PAGADO EN USD'] || matchingPayment['Monto'],
-                montoPagadoVES: matchingPayment['Monto Pagado en VES'] || matchingPayment['MONTO PAGADO EN VES'],
-                tasaCambio: matchingPayment['Tasa de Cambio'] || matchingPayment['TASA DE CAMBIO']
-              },
-              verificacion
-            };
-          }
+        if (firstRefData && firstRefData.date) {
+          const matchingPayment = firstRefData.payment;
+          const verificacion = matchingPayment['VERIFICACION'] || '-';
+          return { 
+            ...installment, 
+            fechaPagoReal: firstRefData.date,
+            paymentDetails: {
+              referencia: matchingPayment['# Referencia'] || matchingPayment['#Referencia'] || matchingPayment['Referencia'],
+              metodoPago: matchingPayment['Método de Pago'] || matchingPayment['Metodo de Pago'] || matchingPayment['MÉTODO DE PAGO'],
+              montoPagadoUSD: matchingPayment['Monto Pagado en USD'] || matchingPayment['MONTO PAGADO EN USD'] || matchingPayment['Monto'],
+              montoPagadoVES: matchingPayment['Monto Pagado en VES'] || matchingPayment['MONTO PAGADO EN VES'],
+              tasaCambio: matchingPayment['Tasa de Cambio'] || matchingPayment['TASA DE CAMBIO']
+            },
+            verificacion
+          };
         }
         return installment;
       });
     }
 
     // Create payment-based installments
+    // KEY LOGIC: 
+    // 1. Track cuotas and use only FIRST reference for bank reconciliation
+    // 2. Aggregate all payment amounts per cuota (for when schedule data is missing)
+    // 3. If ANY payment for a cuota is verified (SI), the cuota inherits verified status
     const paymentInstallments: any[] = [];
     
+    // Data structure to aggregate per cuota
+    const cuotaAggMemo: Map<string, {
+      firstReferencia: string;
+      firstVerificacion: string;
+      firstFechaPago: Date | null;
+      firstPaymentDetails: any;
+      totalAmountUSD: number;
+      hasVerifiedPayment: boolean;
+    }> = new Map();
+    
     if (hasPaymentData) {
+      // Single pass: Collect first reference AND aggregate amounts per cuota
       paymentRows.forEach((payment: any) => {
         const paymentOrder = String(payment['# Orden'] || payment['#Orden'] || payment['Orden'] || '').trim();
         const paymentInstallment = String(payment['# Cuota Pagada'] || payment['#CuotaPagada'] || payment['Cuota'] || '').trim();
-        const montoPagado = payment['Monto Pagado en USD'] || payment['MONTO PAGADO EN USD'] || payment['Monto'] || 0;
         
         const fechaTasaCambio = payment['Fecha de Transaccion'] ||
                                 payment['FECHA DE TRANSACCION'] ||
@@ -850,56 +905,74 @@ export default function Home() {
                                 payment['FECHA DE TRANSACCIÓN'];
         
         const parsedDate = fechaTasaCambio ? parseExcelDate(fechaTasaCambio) : null;
+        const referencia = payment['# Referencia'] || payment['#Referencia'] || payment['Referencia'] || '';
+        const verificacion = payment['VERIFICACION'] || '-';
+        const montoPagadoUSD = parseFloat(payment['Monto Pagado en USD'] || payment['MONTO PAGADO EN USD'] || payment['Monto'] || 0) || 0;
         
-        if (paymentOrder) {
-          const cuotaNumbers: number[] = [];
+        if (!paymentOrder) return;
+        
+        const cuotaParts = paymentInstallment ? paymentInstallment.split(',').map((s: string) => s.trim()) : ['-1'];
+        const numberOfCuotas = cuotaParts.filter(p => parseInt(p, 10) !== -1).length || 1;
+        const amountPerCuota = montoPagadoUSD / numberOfCuotas;
+        
+        for (const part of cuotaParts) {
+          const cuotaNum = parseInt(part, 10);
+          const cuotaKey = `${paymentOrder}_${isNaN(cuotaNum) ? -1 : cuotaNum}`;
           
-          if (paymentInstallment) {
-            const cuotaParts = paymentInstallment.split(',').map((s: string) => s.trim());
-            for (const part of cuotaParts) {
-              const parsed = parseInt(part, 10);
-              if (!isNaN(parsed)) {
-                cuotaNumbers.push(parsed);
-              }
-            }
-          }
+          const existing = cuotaAggMemo.get(cuotaKey);
           
-          if (cuotaNumbers.length === 0) {
-            cuotaNumbers.push(-1);
-          }
-          
-          const referencia = payment['# Referencia'] || payment['#Referencia'] || payment['Referencia'] || '';
-          const verificacion = payment['VERIFICACION'] || '-';
-          const numberOfCuotas = cuotaNumbers.filter(n => n !== -1).length || 1;
-          
-          cuotaNumbers.forEach((cuotaNum) => {
-            // For multi-cuota payments, use the scheduled amount for each cuota if available
-            const matchingScheduleInstallment = scheduleInstallments.find(
-              inst => String(inst.orden).trim() === paymentOrder && inst.numeroCuota === cuotaNum
-            );
-            
-            // Use scheduled amount if available, otherwise divide payment equally
-            const splitAmount = matchingScheduleInstallment?.monto || (montoPagado / numberOfCuotas);
-            
-            paymentInstallments.push({
-              orden: paymentOrder,
-              numeroCuota: cuotaNum,
-              monto: splitAmount,
-              fechaCuota: matchingScheduleInstallment?.fechaCuota || null,
-              fechaPagoReal: parsedDate,
-              isPaymentBased: true,
-              paymentDetails: {
+          if (!existing) {
+            // First payment for this cuota - store as first reference
+            cuotaAggMemo.set(cuotaKey, {
+              firstReferencia: referencia,
+              firstVerificacion: verificacion,
+              firstFechaPago: parsedDate,
+              firstPaymentDetails: {
                 referencia,
                 metodoPago: payment['Método de Pago'] || payment['Metodo de Pago'] || payment['MÉTODO DE PAGO'],
-                montoPagadoUSD: montoPagado,
+                montoPagadoUSD,
                 montoPagadoVES: payment['Monto Pagado en VES'] || payment['MONTO PAGADO EN VES'],
                 tasaCambio: payment['Tasa de Cambio'] || payment['TASA DE CAMBIO']
               },
-              verificacion,
-              scheduledAmount: matchingScheduleInstallment?.monto
+              totalAmountUSD: amountPerCuota,
+              hasVerifiedPayment: verificacion === 'SI'
             });
-          });
+          } else {
+            // Additional payment for this cuota - aggregate amount and check verification
+            existing.totalAmountUSD += amountPerCuota;
+            if (verificacion === 'SI') {
+              existing.hasVerifiedPayment = true;
+            }
+          }
         }
+      });
+      
+      // Create ONE payment installment per unique cuota
+      cuotaAggMemo.forEach((aggData, cuotaKey) => {
+        const [paymentOrder, cuotaNumStr] = cuotaKey.split('_');
+        const cuotaNum = parseInt(cuotaNumStr, 10);
+        
+        const matchingScheduleInstallment = scheduleInstallments.find(
+          (inst: any) => String(inst.orden).trim() === paymentOrder && inst.numeroCuota === cuotaNum
+        );
+        
+        // Use scheduled amount if available, otherwise use aggregated payment amount
+        const splitAmount = matchingScheduleInstallment?.monto || aggData.totalAmountUSD;
+        
+        // Verification: If ANY payment is verified, use SI; otherwise use first payment's status
+        const effectiveVerificacion = aggData.hasVerifiedPayment ? 'SI' : aggData.firstVerificacion;
+        
+        paymentInstallments.push({
+          orden: paymentOrder,
+          numeroCuota: cuotaNum,
+          monto: splitAmount,
+          fechaCuota: matchingScheduleInstallment?.fechaCuota || null,
+          fechaPagoReal: aggData.firstFechaPago,
+          isPaymentBased: true,
+          paymentDetails: aggData.firstPaymentDetails,
+          verificacion: effectiveVerificacion,
+          scheduledAmount: matchingScheduleInstallment?.monto
+        });
       });
     }
 

@@ -25,6 +25,13 @@ Key functionalities include file upload with validation for various data types, 
 **System Design Choices**:
 The architecture emphasizes robust error handling, clear separation of concerns, and modularity through reusable components. It includes locale-aware number parsing, empty row filtering, and scientific notation prevention for numerical data. Shared verification utilities ensure consistent matching logic across payment and bank reconciliation processes. A shared dashboard data architecture and performance optimizations (e.g., pre-processing heavy data, using React Query with `staleTime: Infinity`) prevent redundant calculations and ensure smooth tab switching. A comprehensive deduplication strategy is implemented at multiple levels (backend, database merge, frontend) for orders, payments, and bank statements. A caching infrastructure with dedicated database tables and API endpoints is in place for efficient data sharing and cache invalidation, making pre-calculated data accessible to other applications.
 
+**Partial Payment Handling**:
+When a cuota is paid in parts across multiple payments (e.g., Payment 1 covers Cuota 1 + part of Cuota 2, then Payment 2 covers rest of Cuota 2 + Cuota 3), the system uses a "first reference only" strategy:
+1. The first payment reference encountered for each cuota is stored and used for bank reconciliation
+2. Bank verification status is inherited from that first payment's reference
+3. Duplicate payment installments are avoided by creating only one entry per unique cuota
+4. Status values used: DONE (paid on time), DELAYED (paid late), VENCIDO (overdue), PENDIENTE (pending)
+
 ## External Dependencies
 - **Database**: PostgreSQL (Neon).
 - **Frontend Libraries**: React, Tailwind CSS, Shadcn UI, SheetJS (xlsx), Wouter, React Query.
