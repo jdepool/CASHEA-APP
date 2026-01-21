@@ -214,6 +214,12 @@ export default function Home() {
     staleTime: Infinity,
   });
 
+  const { data: cachedBankStatements, isLoading: isLoadingCachedBankStatements } = useQuery({
+    queryKey: ['/api/cache/bank-statements'],
+    refetchOnWindowFocus: false,
+    staleTime: Infinity,
+  });
+
   // Helper function to deduplicate orders by order number (keeps last occurrence)
   const deduplicateOrders = useCallback((rows: any[], headers: string[]) => {
     const ordenHeader = headers.find((h: string) => h.toLowerCase() === 'orden');
@@ -665,6 +671,134 @@ export default function Home() {
       console.error('Error recalculating orden-tienda map:', error);
     }
   }, [recalculateAndCacheInstallments]); // Removed stale marketplaceData dependency
+
+  // Recalculate and cache enriched bank statements (called after bank or payment file upload)
+  // Fetches fresh data from API to avoid stale React state issues
+  const recalculateAndCacheBankStatements = useCallback(async () => {
+    console.log('Recalculating enriched bank statements with fresh API data...');
+    
+    try {
+      // Fetch fresh data directly from API
+      const [bankResponse, paymentsResponse, ordersResponse] = await Promise.all([
+        fetch('/api/bank-statements'),
+        fetch('/api/payment-records'),
+        fetch('/api/orders')
+      ]);
+      
+      const [bankResult, paymentsResult, ordersResult] = await Promise.all([
+        bankResponse.json(),
+        paymentsResponse.json(),
+        ordersResponse.json()
+      ]);
+      
+      const freshBankData = bankResult?.success ? bankResult?.data : null;
+      const freshPaymentData = paymentsResult?.success ? paymentsResult?.data : null;
+      const freshOrdersData = ordersResult?.success ? ordersResult?.data : null;
+      
+      if (!freshBankData?.rows || !freshBankData?.headers) {
+        console.log('No bank data available for caching');
+        return;
+      }
+      
+      const bankHeaders = freshBankData.headers;
+      const rawBankRows = freshBankData.rows;
+      const paymentHeaders = freshPaymentData?.headers || [];
+      const paymentRows = freshPaymentData?.rows || [];
+      const orderRows = freshOrdersData?.rows || [];
+      const orderHeaders = freshOrdersData?.headers || [];
+      
+      // Build Order → Nombre del comprador map from orders
+      const ordenToNombreMap = new Map<string, string>();
+      const ordenHeader = orderHeaders.find((h: string) => h.toLowerCase() === 'orden');
+      const nombreHeader = orderHeaders.find((h: string) => 
+        h.toLowerCase().includes('nombre') && h.toLowerCase().includes('comprador')
+      );
+      if (ordenHeader && nombreHeader) {
+        orderRows.forEach((row: any) => {
+          const orden = String(row[ordenHeader] || '').replace(/^0+/, '');
+          const nombre = row[nombreHeader] || '';
+          if (orden && nombre) {
+            ordenToNombreMap.set(orden, nombre);
+          }
+        });
+      }
+      
+      // Deduplicate bank rows by reference number
+      const referenciaHeader = bankHeaders.find((h: string) => h.toLowerCase().includes('referencia'));
+      const fechaHeader = bankHeaders.find((h: string) => h.toLowerCase().includes('fecha'));
+      const descHeader = bankHeaders.find((h: string) => 
+        h.toLowerCase().includes('descripcion') || h.toLowerCase().includes('concepto')
+      );
+      const debeHeader = bankHeaders.find((h: string) => h.toLowerCase().includes('debe'));
+      const haberHeader = bankHeaders.find((h: string) => h.toLowerCase().includes('haber'));
+      const saldoHeader = bankHeaders.find((h: string) => h.toLowerCase().includes('saldo'));
+      
+      let bankRows = rawBankRows;
+      if (referenciaHeader) {
+        const seenReferences = new Map<string, any>();
+        rawBankRows.forEach((row: any) => {
+          const ref = row[referenciaHeader];
+          if (ref != null && String(ref).trim() !== '') {
+            const normalizedRef = String(ref).replace(/^["']|["']$/g, '').replace(/\s+/g, '').trim().toLowerCase();
+            seenReferences.set(normalizedRef, row);
+          }
+        });
+        bankRows = Array.from(seenReferences.values());
+      }
+      
+      // Enrich bank rows with ORDEN, # CUOTA, NOMBRE, CONCILIADO
+      const enrichedStatements = bankRows.map((row: any) => {
+        const bankRef = referenciaHeader ? row[referenciaHeader] : null;
+        const debeAmount = debeHeader ? row[debeHeader] : null;
+        const haberAmount = haberHeader ? row[haberHeader] : null;
+        
+        // Find matching payment record
+        const matchedPayment = findMatchingPaymentRecord(
+          bankRef,
+          debeAmount,
+          haberAmount,
+          paymentRows,
+          paymentHeaders
+        );
+        
+        // Get buyer name
+        let nombre = '';
+        if (matchedPayment?.orden) {
+          nombre = ordenToNombreMap.get(matchedPayment.orden) || '';
+        }
+        
+        // Format for database storage
+        return {
+          referencia: bankRef ? String(bankRef) : null,
+          fecha: fechaHeader && row[fechaHeader] ? String(row[fechaHeader]).split('T')[0] : null,
+          descripcion: descHeader ? String(row[descHeader] || '') : null,
+          debe: debeAmount ? String(debeAmount) : null,
+          haber: haberAmount ? String(haberAmount) : null,
+          saldo: saldoHeader && row[saldoHeader] ? String(row[saldoHeader]) : null,
+          orden: matchedPayment?.orden || null,
+          cuota: matchedPayment?.cuota || null,
+          nombre: nombre || null,
+          conciliado: matchedPayment ? 'SI' : 'NO',
+          sourceVersion: 1
+        };
+      });
+      
+      // Save to cache
+      await fetch('/api/cache/bank-statements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ statements: enrichedStatements })
+      });
+      
+      console.log(`Saved ${enrichedStatements.length} enriched bank statements to cache`);
+      
+      // Invalidate React Query cache to trigger refetch
+      await queryClient.invalidateQueries({ queryKey: ['/api/cache/bank-statements'] });
+      
+    } catch (error) {
+      console.error('Error recalculating bank statements:', error);
+    }
+  }, []);
 
   // Smart cache invalidation: check if source data has changed and update statuses on app load
   useEffect(() => {
@@ -1303,18 +1437,67 @@ export default function Home() {
     setFilteredPagosMasterOnlyData(filteredPagosMasterOnly);
   }, [filteredPagosMasterOnly]);
 
-  // Pre-process bank statements with CONCILIADO values ONCE to avoid recalculation on tab switch
-  // Uses deferred values to allow React to interrupt for user interactions
+  // Pre-process bank statements with CONCILIADO values
+  // Uses cached data from database if available, otherwise calculates fresh
   // Also enriches with ORDEN, # CUOTA, and NOMBRE from payment records and orders
   const processedBankData = useMemo(() => {
     const bankApiData = deferredBankStatementsData as any;
-    const paymentApiData = deferredPaymentRecordsData as any;
+    const cachedData = cachedBankStatements as any;
     
     if (!bankApiData?.data?.rows || !bankApiData?.data?.headers) {
-      return { headers: [], rows: [], extendedHeaders: [] };
+      return { headers: [], rows: [], extendedHeaders: [], fromCache: false };
     }
     
     const bankHeaders = bankApiData.data.headers;
+    
+    // Define extended headers (always needed for display)
+    const saldoIndex = bankHeaders.findIndex((h: string) => h.toLowerCase().includes('saldo'));
+    const newColumns = ['ORDEN', '# CUOTA', 'NOMBRE', 'CONCILIADO'];
+    let extendedHeaders: string[];
+    if (saldoIndex === -1) {
+      extendedHeaders = [...bankHeaders, ...newColumns];
+    } else {
+      extendedHeaders = [...bankHeaders];
+      extendedHeaders.splice(saldoIndex + 1, 0, ...newColumns);
+    }
+    
+    // Check if we have cached data
+    if (cachedData?.success && cachedData?.data && cachedData.data.length > 0) {
+      // Convert cached data back to display format
+      const fechaHeader = bankHeaders.find((h: string) => h.toLowerCase().includes('fecha'));
+      const descHeader = bankHeaders.find((h: string) => 
+        h.toLowerCase().includes('descripcion') || h.toLowerCase().includes('concepto')
+      );
+      const referenciaHeader = bankHeaders.find((h: string) => h.toLowerCase().includes('referencia'));
+      const debeHeader = bankHeaders.find((h: string) => h.toLowerCase().includes('debe'));
+      const haberHeader = bankHeaders.find((h: string) => h.toLowerCase().includes('haber'));
+      const saldoHeader = bankHeaders.find((h: string) => h.toLowerCase().includes('saldo'));
+      
+      const cachedRows = cachedData.data.map((cached: any) => {
+        const row: any = {};
+        if (fechaHeader) row[fechaHeader] = cached.fecha;
+        if (descHeader) row[descHeader] = cached.descripcion;
+        if (referenciaHeader) row[referenciaHeader] = cached.referencia;
+        if (debeHeader) row[debeHeader] = cached.debe;
+        if (haberHeader) row[haberHeader] = cached.haber;
+        if (saldoHeader) row[saldoHeader] = cached.saldo;
+        row['ORDEN'] = cached.orden || '';
+        row['# CUOTA'] = cached.cuota || '';
+        row['NOMBRE'] = cached.nombre || '';
+        row['CONCILIADO'] = cached.conciliado || 'NO';
+        return row;
+      });
+      
+      return { 
+        headers: bankHeaders, 
+        rows: cachedRows, 
+        extendedHeaders,
+        fromCache: true
+      };
+    }
+    
+    // No cache available - calculate fresh (this should be rare after initial upload)
+    const paymentApiData = deferredPaymentRecordsData as any;
     const rawBankRows = bankApiData.data.rows;
     const paymentHeaders = paymentApiData?.data?.headers || [];
     const paymentRows = paymentApiData?.data?.rows || [];
@@ -1350,17 +1533,6 @@ export default function Home() {
         }
       });
       bankRows = Array.from(seenReferences.values());
-    }
-    
-    // Create extended headers: add ORDEN, # CUOTA, NOMBRE, CONCILIADO after Saldo
-    const saldoIndex = bankHeaders.findIndex((h: string) => h.toLowerCase().includes('saldo'));
-    let extendedHeaders: string[];
-    const newColumns = ['ORDEN', '# CUOTA', 'NOMBRE', 'CONCILIADO'];
-    if (saldoIndex === -1) {
-      extendedHeaders = [...bankHeaders, ...newColumns];
-    } else {
-      extendedHeaders = [...bankHeaders];
-      extendedHeaders.splice(saldoIndex + 1, 0, ...newColumns);
     }
     
     // Find column headers for CONCILIADO calculation
@@ -1403,9 +1575,10 @@ export default function Home() {
     return { 
       headers: bankHeaders, 
       rows: enrichedRows, 
-      extendedHeaders 
+      extendedHeaders,
+      fromCache: false
     };
-  }, [deferredBankStatementsData, deferredPaymentRecordsData, tableData, headers]);
+  }, [deferredBankStatementsData, deferredPaymentRecordsData, tableData, headers, cachedBankStatements]);
 
   const processFile = useCallback(async (file: File) => {
     setIsProcessing(true);
@@ -1528,6 +1701,9 @@ export default function Home() {
       // Trigger recalculation of installments with new payment data
       await recalculateAndCacheInstallments();
       
+      // Recalculate bank statements since payment records affect matching
+      await recalculateAndCacheBankStatements();
+      
       // Show merge statistics
       const mergeInfo = data.merge;
       if (mergeInfo) {
@@ -1554,7 +1730,7 @@ export default function Home() {
   const handlePaymentFileSelect = useCallback((file: File) => {
     setSelectedPaymentFile(file);
     uploadPaymentMutation.mutate(file);
-  }, [uploadPaymentMutation]);
+  }, [uploadPaymentMutation, recalculateAndCacheBankStatements]);
 
   const handleClearPaymentFile = useCallback(() => {
     setSelectedPaymentFile(null);
@@ -1634,6 +1810,9 @@ export default function Home() {
       // Recalculate installments since VERIFICACION may have changed
       await recalculateAndCacheInstallments();
       
+      // Recalculate and cache enriched bank statements
+      await recalculateAndCacheBankStatements();
+      
       toast({
         title: "Estado de cuenta cargado",
         description: data.message || `${data.data.rowCount} registros importados`,
@@ -1651,7 +1830,7 @@ export default function Home() {
   const handleBankFileSelect = useCallback((file: File) => {
     setSelectedBankFile(file);
     uploadBankMutation.mutate(file);
-  }, [uploadBankMutation]);
+  }, [uploadBankMutation, recalculateAndCacheBankStatements]);
 
   const handleClearBankFile = useCallback(() => {
     setSelectedBankFile(null);
