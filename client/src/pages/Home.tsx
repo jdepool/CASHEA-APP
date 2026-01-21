@@ -29,7 +29,7 @@ import { queryClient } from "@/lib/queryClient";
 import { Loader2 } from "lucide-react";
 import { parseExcelDate, parseDDMMYYYY } from "@/lib/dateUtils";
 import { extractInstallments, calculateInstallmentStatus } from "@/lib/installmentUtils";
-import { verifyInPaymentRecords } from "@/lib/verificationUtils";
+import { verifyInPaymentRecords, findMatchingPaymentRecord } from "@/lib/verificationUtils";
 import { generateDataHash, shouldUpdateStatuses, updateTimeBasedStatuses, getCacheMetadata, invalidateCacheWithNewHash, saveCacheWithHash } from "@/lib/cacheUtils";
 
 // Loading fallback for lazy-loaded tab components
@@ -1305,6 +1305,7 @@ export default function Home() {
 
   // Pre-process bank statements with CONCILIADO values ONCE to avoid recalculation on tab switch
   // Uses deferred values to allow React to interrupt for user interactions
+  // Also enriches with ORDEN, # CUOTA, and NOMBRE from payment records and orders
   const processedBankData = useMemo(() => {
     const bankApiData = deferredBankStatementsData as any;
     const paymentApiData = deferredPaymentRecordsData as any;
@@ -1317,6 +1318,24 @@ export default function Home() {
     const rawBankRows = bankApiData.data.rows;
     const paymentHeaders = paymentApiData?.data?.headers || [];
     const paymentRows = paymentApiData?.data?.rows || [];
+    
+    // Build Order → Nombre del comprador map from tableData (orders)
+    const ordenToNombreMap = new Map<string, string>();
+    if (tableData.length > 0 && headers.length > 0) {
+      const ordenHeader = headers.find((h: string) => h.toLowerCase() === 'orden');
+      const nombreHeader = headers.find((h: string) => 
+        h.toLowerCase().includes('nombre') && h.toLowerCase().includes('comprador')
+      );
+      if (ordenHeader && nombreHeader) {
+        tableData.forEach((row: any) => {
+          const orden = String(row[ordenHeader] || '').replace(/^0+/, '');
+          const nombre = row[nombreHeader] || '';
+          if (orden && nombre) {
+            ordenToNombreMap.set(orden, nombre);
+          }
+        });
+      }
+    }
     
     // Deduplicate bank rows by reference number (keep last occurrence)
     const referenciaHeader = bankHeaders.find((h: string) => h.toLowerCase().includes('referencia'));
@@ -1333,27 +1352,29 @@ export default function Home() {
       bankRows = Array.from(seenReferences.values());
     }
     
-    // Create extended headers with CONCILIADO after Saldo
+    // Create extended headers: add ORDEN, # CUOTA, NOMBRE, CONCILIADO after Saldo
     const saldoIndex = bankHeaders.findIndex((h: string) => h.toLowerCase().includes('saldo'));
     let extendedHeaders: string[];
+    const newColumns = ['ORDEN', '# CUOTA', 'NOMBRE', 'CONCILIADO'];
     if (saldoIndex === -1) {
-      extendedHeaders = [...bankHeaders, 'CONCILIADO'];
+      extendedHeaders = [...bankHeaders, ...newColumns];
     } else {
       extendedHeaders = [...bankHeaders];
-      extendedHeaders.splice(saldoIndex + 1, 0, 'CONCILIADO');
+      extendedHeaders.splice(saldoIndex + 1, 0, ...newColumns);
     }
     
     // Find column headers for CONCILIADO calculation
     const debeHeader = bankHeaders.find((h: string) => h.toLowerCase().includes('debe'));
     const haberHeader = bankHeaders.find((h: string) => h.toLowerCase().includes('haber'));
     
-    // Add CONCILIADO values to each row
-    const rowsWithConciliado = bankRows.map((row: any) => {
+    // Add enriched data to each row (ORDEN, # CUOTA, NOMBRE, CONCILIADO)
+    const enrichedRows = bankRows.map((row: any) => {
       const bankRef = referenciaHeader ? row[referenciaHeader] : null;
       const debeAmount = debeHeader ? row[debeHeader] : null;
       const haberAmount = haberHeader ? row[haberHeader] : null;
       
-      const conciliadoValue = verifyInPaymentRecords(
+      // Find matching payment record to get Order and Cuota
+      const matchedPayment = findMatchingPaymentRecord(
         bankRef,
         debeAmount,
         haberAmount,
@@ -1361,15 +1382,30 @@ export default function Home() {
         paymentHeaders
       );
       
-      return { ...row, CONCILIADO: conciliadoValue };
+      // Get Nombre del comprador from orders using the matched Order
+      let nombre = '';
+      if (matchedPayment?.orden) {
+        nombre = ordenToNombreMap.get(matchedPayment.orden) || '';
+      }
+      
+      // Determine CONCILIADO value (SI if match found, NO otherwise)
+      const conciliadoValue = matchedPayment ? 'SI' : 'NO';
+      
+      return { 
+        ...row, 
+        'ORDEN': matchedPayment?.orden || '',
+        '# CUOTA': matchedPayment?.cuota || '',
+        'NOMBRE': nombre,
+        'CONCILIADO': conciliadoValue 
+      };
     });
     
     return { 
       headers: bankHeaders, 
-      rows: rowsWithConciliado, 
+      rows: enrichedRows, 
       extendedHeaders 
     };
-  }, [deferredBankStatementsData, deferredPaymentRecordsData]);
+  }, [deferredBankStatementsData, deferredPaymentRecordsData, tableData, headers]);
 
   const processFile = useCallback(async (file: File) => {
     setIsProcessing(true);

@@ -189,6 +189,111 @@ export function verifyInBankStatements(
 }
 
 /**
+ * Interface for matched payment record data
+ */
+export interface MatchedPaymentData {
+  orden: string | null;
+  cuota: string | null;
+  referencia: string | null;
+}
+
+/**
+ * Finds the first payment record matching a bank statement transaction.
+ * Returns the Order and Cuota information if found, null otherwise.
+ */
+export function findMatchingPaymentRecord(
+  bankRef: any,
+  bankAmountDebe: any,
+  bankAmountHaber: any,
+  paymentRecords: any[],
+  paymentHeaders: string[]
+): MatchedPaymentData | null {
+  // If no payment records available, return null
+  if (!paymentRecords || paymentRecords.length === 0) {
+    return null;
+  }
+
+  // If no reference or amounts, can't find match
+  if (!bankRef || (!bankAmountDebe && !bankAmountHaber)) {
+    return null;
+  }
+
+  // Find relevant headers in payment records (case-insensitive)
+  const referenciaHeader = paymentHeaders?.find(h => 
+    h.toLowerCase().includes('referencia')
+  );
+  const ordenHeader = paymentHeaders?.find(h => 
+    h.toLowerCase() === '# orden' || h.toLowerCase().includes('orden')
+  );
+  const cuotaHeader = paymentHeaders?.find(h => 
+    h.toLowerCase().includes('cuota') && h.toLowerCase().includes('pagada')
+  );
+  const montoVESHeader = paymentHeaders?.find(h => 
+    h.toLowerCase().includes('monto') && h.toLowerCase().includes('ves')
+  );
+  const montoUSDHeader = paymentHeaders?.find(h => 
+    h.toLowerCase().includes('monto') && h.toLowerCase().includes('usd')
+  );
+
+  // Normalize bank amounts
+  const normalizedDebe = bankAmountDebe ? normalizeNumber(bankAmountDebe) : null;
+  const normalizedHaber = bankAmountHaber ? normalizeNumber(bankAmountHaber) : null;
+
+  // Use whichever bank amount exists (Debe or Haber)
+  const bankAmount = normalizedDebe || normalizedHaber;
+  if (!bankAmount || isNaN(bankAmount)) {
+    return null;
+  }
+
+  // Search payment records for matching reference and amount
+  for (const paymentRow of paymentRecords) {
+    // Check reference match
+    if (referenciaHeader) {
+      const paymentRef = paymentRow[referenciaHeader];
+      if (!paymentRef || !referencesMatch(bankRef, paymentRef)) {
+        continue; // Reference doesn't match
+      }
+    } else {
+      continue; // No reference header in payment records
+    }
+
+    // Reference matches, now check amount
+    let amountFound = false;
+
+    if (montoVESHeader) {
+      const vesAmount = paymentRow[montoVESHeader];
+      if (vesAmount !== null && vesAmount !== undefined) {
+        const normalizedVES = normalizeNumber(vesAmount);
+        if (!isNaN(normalizedVES) && amountsMatch(bankAmount, normalizedVES)) {
+          amountFound = true;
+        }
+      }
+    }
+
+    if (montoUSDHeader && !amountFound) {
+      const usdAmount = paymentRow[montoUSDHeader];
+      if (usdAmount !== null && usdAmount !== undefined) {
+        const normalizedUSD = normalizeNumber(usdAmount);
+        if (!isNaN(normalizedUSD) && amountsMatch(bankAmount, normalizedUSD)) {
+          amountFound = true;
+        }
+      }
+    }
+
+    if (amountFound) {
+      // Found a match - extract Order and Cuota
+      return {
+        orden: ordenHeader ? String(paymentRow[ordenHeader] || '').replace(/^0+/, '') : null,
+        cuota: cuotaHeader ? String(paymentRow[cuotaHeader] || '') : null,
+        referencia: referenciaHeader ? String(paymentRow[referenciaHeader] || '') : null
+      };
+    }
+  }
+
+  return null;
+}
+
+/**
  * Reverse lookup: verifies if a bank statement transaction matches any payment record.
  * Returns "SI" if found, "NO" if not found.
  * 
