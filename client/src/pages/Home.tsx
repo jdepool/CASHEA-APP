@@ -787,7 +787,7 @@ export default function Home() {
       await fetch('/api/cache/bank-statements', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ statements: enrichedStatements })
+        body: JSON.stringify({ data: enrichedStatements })
       });
       
       console.log(`Saved ${enrichedStatements.length} enriched bank statements to cache`);
