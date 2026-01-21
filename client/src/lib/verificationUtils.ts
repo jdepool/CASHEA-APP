@@ -12,7 +12,8 @@ export function normalizeReference(ref: any): string {
  * Supports:
  * - Exact match
  * - One reference contains the other (e.g., "18115088341384" contains "115088341384")
- * - At least 8 consecutive digits match
+ * - At least 8 consecutive digits match (checks BOTH directions)
+ * - Last 8 digits match (common case for partial references)
  */
 export function referencesMatch(ref1: string, ref2: string): boolean {
   const normalized1 = normalizeReference(ref1);
@@ -23,8 +24,12 @@ export function referencesMatch(ref1: string, ref2: string): boolean {
     return true;
   }
   
-  // Check if either reference is at least 8 characters
-  if (normalized1.length < 8 || normalized2.length < 8) {
+  // Extract only digits for numeric comparison
+  const digits1 = normalized1.replace(/\D/g, '');
+  const digits2 = normalized2.replace(/\D/g, '');
+  
+  // Check if either has at least 8 digits
+  if (digits1.length < 8 && digits2.length < 8) {
     return false;
   }
   
@@ -33,10 +38,28 @@ export function referencesMatch(ref1: string, ref2: string): boolean {
     return true;
   }
   
-  // Check for 8-digit substring match
-  for (let i = 0; i <= normalized1.length - 8; i++) {
-    const substring = normalized1.substring(i, i + 8);
-    if (normalized2.includes(substring)) {
+  // Check if last 8 digits match (common case for bank references with extra prefix)
+  if (digits1.length >= 8 && digits2.length >= 8) {
+    const last8_1 = digits1.slice(-8);
+    const last8_2 = digits2.slice(-8);
+    if (last8_1 === last8_2) {
+      return true;
+    }
+  }
+  
+  // Check for 8-digit substring match in BOTH directions
+  // Check if any 8-digit substring of ref1 exists in ref2
+  for (let i = 0; i <= digits1.length - 8; i++) {
+    const substring = digits1.substring(i, i + 8);
+    if (digits2.includes(substring)) {
+      return true;
+    }
+  }
+  
+  // Check if any 8-digit substring of ref2 exists in ref1
+  for (let i = 0; i <= digits2.length - 8; i++) {
+    const substring = digits2.substring(i, i + 8);
+    if (digits1.includes(substring)) {
       return true;
     }
   }

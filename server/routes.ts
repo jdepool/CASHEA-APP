@@ -71,6 +71,13 @@ function hasEightDigitMatch(ref1: string, ref2: string): boolean {
     return false;
   }
   
+  // Check if last 8 digits match (common case for bank references with extra prefix)
+  const last8_1 = digits1.slice(-8);
+  const last8_2 = digits2.slice(-8);
+  if (last8_1 === last8_2) {
+    return true;
+  }
+  
   // Check if either string contains an 8-digit substring of the other
   for (let i = 0; i <= digits1.length - 8; i++) {
     const substring = digits1.substring(i, i + 8);
