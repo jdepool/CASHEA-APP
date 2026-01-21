@@ -381,7 +381,7 @@ export default function Home() {
       };
       
       // Filter out cancelled orders AND orders not in marketplace data
-      const validOrders = currentOrders.filter(row => {
+      const validOrders = currentOrders.filter((row: any) => {
         if (isCancelledOrderFn(row)) return false;
         const ordenValue = String(row["Orden"] || '').replace(/^0+/, '') || '0';
         if (!currentOrdenToTiendaMap.has(ordenValue)) return false;
